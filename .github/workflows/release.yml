@@ -30,15 +30,6 @@ jobs:
           - host: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             use_native: true
-          - host: ubuntu-latest
-            target: x86_64-unknown-linux-musl
-            use_musl: true
-          - host: ubuntu-latest
-            target: aarch64-unknown-linux-musl
-            use_musl: true
-          - host: ubuntu-latest
-            target: armv7-unknown-linux-musleabihf
-            use_musl: true
     runs-on: ${{ matrix.settings.host }}
     steps:
       - uses: actions/checkout@v5
@@ -83,58 +74,19 @@ jobs:
             libc6-dev \
             linux-libc-dev
 
-      - name: Setup zig (required for musl / cargo-zigbuild)
-        if: ${{ contains(matrix.settings.target, 'musl') }}
-        uses: mlugg/setup-zig@v2
-        with:
-          version: '0.15.2'
-
-      - name: Install cargo-zigbuild (for musl targets)
-        if: ${{ contains(matrix.settings.target, 'musl') }}
-        uses: taiki-e/install-action@v2
-        with:
-          tool: cargo-zigbuild
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install dependencies
         run: pnpm install -r
 
       - name: Build NAPI binary
-        env:
-          # Allow pkg-config to work with cross-compilation for native builds
-          PKG_CONFIG_ALLOW_CROSS: ${{ !contains(matrix.settings.target, 'musl') && '1' || '' }}
-          PKG_CONFIG_ALLOW_SYSTEM_LIBS: ${{ !contains(matrix.settings.target, 'musl') && '1' || '' }}
         run: |
           cd packages/bot
           if [ -n "${{ matrix.settings.use_native }}" ]; then
             # For x86_64-unknown-linux-gnu, build natively (runner is already x86_64 Linux)
             # No need for cross-compilation, use native build
-            pnpm napi build --release --esm --const-enum --output-dir dist --target ${{ matrix.settings.target }}
-          elif [ -n "${{ matrix.settings.use_musl }}" ]; then
-            # For musl targets, use cargo-zigbuild which handles cross-compilation better
-            # Create a pkg-config wrapper that returns CFLAGS but empty LIBS
-            # This allows bindgen to find headers while preventing linking to host libraries
-            mkdir -p /tmp/pkg-config-wrapper
-            echo '#!/bin/bash' > /tmp/pkg-config-wrapper/pkg-config
-            echo '# pkg-config wrapper for musl cross-compilation' >> /tmp/pkg-config-wrapper/pkg-config
-            echo '# Returns CFLAGS for headers, but empty LIBS to prevent linking host libraries' >> /tmp/pkg-config-wrapper/pkg-config
-            echo 'if [[ "$*" == *"--libs"* ]]; then' >> /tmp/pkg-config-wrapper/pkg-config
-            echo '  # Return empty libs to prevent linking to host system libraries' >> /tmp/pkg-config-wrapper/pkg-config
-            echo '  exit 0' >> /tmp/pkg-config-wrapper/pkg-config
-            echo 'elif [[ "$*" == *"--cflags"* ]]; then' >> /tmp/pkg-config-wrapper/pkg-config
-            echo '  # Return CFLAGS from real pkg-config for headers (bindgen needs these)' >> /tmp/pkg-config-wrapper/pkg-config
-            echo '  /usr/bin/pkg-config "$@"' >> /tmp/pkg-config-wrapper/pkg-config
-            echo 'else' >> /tmp/pkg-config-wrapper/pkg-config
-            echo '  # For other commands, use the real pkg-config' >> /tmp/pkg-config-wrapper/pkg-config
-            echo '  /usr/bin/pkg-config "$@"' >> /tmp/pkg-config-wrapper/pkg-config
-            echo 'fi' >> /tmp/pkg-config-wrapper/pkg-config
-            chmod +x /tmp/pkg-config-wrapper/pkg-config
-            export PATH="/tmp/pkg-config-wrapper:$PATH"
-            # Clear PKG_CONFIG_PATH to prevent finding host libraries
-            export PKG_CONFIG_PATH=""
-            pnpm napi build --release --esm --const-enum --output-dir dist --target ${{ matrix.settings.target }} -x
+            PKG_CONFIG_ALLOW_CROSS=1 pnpm napi build --release --esm --const-enum --output-dir dist --target ${{ matrix.settings.target }}
           else
+            # For other targets, use standard build
             pnpm napi build --release --esm --const-enum --output-dir dist --target ${{ matrix.settings.target }}
           fi
         shell: bash
@@ -215,15 +167,6 @@ jobs:
                     ;;
                   x86_64-unknown-linux-gnu)
                     dest_name="bot.linux-x64-gnu.node"
-                    ;;
-                  x86_64-unknown-linux-musl)
-                    dest_name="bot.linux-x64-musl.node"
-                    ;;
-                  aarch64-unknown-linux-musl)
-                    dest_name="bot.linux-arm64-musl.node"
-                    ;;
-                  armv7-unknown-linux-musleabihf)
-                    dest_name="bot.linux-arm-musleabihf.node"
                     ;;
                   *)
                     echo "Warning: Unknown target $target, using generic name"
