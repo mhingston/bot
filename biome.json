@@ -7,7 +7,14 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "includes": ["packages/**", "examples/**", "bench/**"]
+    "includes": [
+      "packages/**",
+      "examples/**",
+      "bench/**",
+      "*.mjs",
+      "*.js",
+      "*.json"
+    ]
   },
   "formatter": {
     "enabled": true,

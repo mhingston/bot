@@ -10,16 +10,28 @@
     "lint:fix": "biome lint --write",
     "check": "biome check",
     "check:fix": "biome check --write",
-
     "build": "pnpm rs:build --platform && pnpm ts:build",
     "rs:build": "pnpm --filter @tego/bot build",
     "ts:build": "pnpm --filter @tego/botjs build",
-
     "dev": "pnpm -r dev",
     "test": "pnpm -r test",
-
     "ex:run": "pnpm --filter examples ex:run",
-    "bench:run": "pnpm --filter bench bench:run"
+    "bench:run": "pnpm --filter bench bench:run",
+    "prepare": "simple-git-hooks",
+    "commitlint": "commitlint"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "pnpm lint-staged",
+    "commit-msg": "pnpm commitlint --edit ${1}"
+  },
+  "lint-staged": {
+    "*.rs": [
+      "cargo fmt -- --check",
+      "cargo clippy --all-targets -- -D warnings"
+    ],
+    "*.{js,ts,tsx,json,jsonc}": [
+      "pnpm biome check --write"
+    ]
   },
   "author": {
     "name": "sealday",
@@ -29,7 +41,11 @@
   "license": "MIT",
   "devDependencies": {
     "@biomejs/biome": "2.2.3",
+    "@commitlint/cli": "^20.1.0",
+    "@commitlint/config-conventional": "^20.0.0",
     "@types/node": "^24.5.2",
+    "lint-staged": "^16.2.7",
+    "simple-git-hooks": "^2.13.1",
     "typescript": "^5.9.2"
   }
 }

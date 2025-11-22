@@ -5,4 +5,5 @@ packages:
 onlyBuiltDependencies:
   - dtrace-provider
   - esbuild
+  - simple-git-hooks
   - skia-canvas
