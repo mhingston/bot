@@ -77,7 +77,7 @@ jobs:
           # 1. Uncomment the line below
           # 2. Ensure proper display server setup (Xvfb for Linux)
           # 3. Consider using self-hosted runners for better reliability
-          # ENABLE_INTEGRATION_TESTS: "false"
+          ENABLE_INTEGRATION_TESTS: "false"
 
   rust-test:
     name: Rust Tests
