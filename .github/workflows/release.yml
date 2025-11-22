@@ -81,7 +81,8 @@ jobs:
             libwayland-dev \
             libxcb1-dev \
             libxrandr-dev \
-            libdbus-1-dev
+            libdbus-1-dev \
+            libpipewire-0.3-dev
 
       - name: Setup zig (required for musl / cargo-zigbuild)
         if: ${{ contains(matrix.settings.target, 'musl') }}

@@ -48,7 +48,8 @@ jobs:
             libwayland-dev \
             libxcb1-dev \
             libxrandr-dev \
-            libdbus-1-dev
+            libdbus-1-dev \
+            libpipewire-0.3-dev
 
       - name: Install dependencies
         run: pnpm install -r
@@ -83,7 +84,8 @@ jobs:
             libwayland-dev \
             libxcb1-dev \
             libxrandr-dev \
-            libdbus-1-dev
+            libdbus-1-dev \
+            libpipewire-0.3-dev
 
       - name: Cache Rust dependencies
         uses: actions/cache@v4
