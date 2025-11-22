@@ -53,6 +53,7 @@ jobs:
             libegl1-mesa-dev \
             libgles2-mesa-dev \
             libgbm-dev \
+            xvfb \
             libxi-dev \
             libxtst-dev
 
@@ -61,14 +62,6 @@ jobs:
 
       - name: Build
         run: pnpm build
-
-      - name: Setup virtual display (Linux) - for potential integration tests
-        if: runner.os == 'Linux'
-        run: |
-          # Install Xvfb for virtual display (needed if running integration tests)
-          sudo apt-get install -y xvfb
-          # Note: Integration tests are disabled by default in CI
-          # To enable, uncomment ENABLE_INTEGRATION_TESTS below and ensure proper setup
 
       - name: Test TypeScript
         run: pnpm test
