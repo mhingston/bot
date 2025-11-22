@@ -31,7 +31,7 @@ pub fn bitmap_color_at(bitmap: Bitmap, x: u32, y: u32) -> Result<String> {
     // Decode PNG buffer to get pixel color
     // For now, return placeholder - would need to decode PNG buffer
     // This is a simplified implementation
-    Ok(format!("#000000"))
+    Ok("#000000".to_string())
 }
 
 /// Screen capture interface
@@ -66,6 +66,12 @@ impl Screen {
     }
 }
 
+impl Default for Screen {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Get global screen instance (exported as screen variable)
 #[napi]
 pub fn get_screen() -> Screen {
@@ -75,8 +81,9 @@ pub fn get_screen() -> Screen {
 /// Set keyboard delay
 #[napi]
 pub fn set_keyboard_delay(ms: u32) {
-    let mut delay = KEYBOARD_DELAY.lock().unwrap();
-    *delay = ms;
+    if let Ok(mut delay) = KEYBOARD_DELAY.lock() {
+        *delay = ms;
+    }
 }
 
 /// Tap a key
@@ -121,8 +128,9 @@ pub fn type_string_delayed(string: String, cpm: u32) -> Result<()> {
 /// Set mouse delay
 #[napi]
 pub fn set_mouse_delay(delay: u32) {
-    let mut delay_guard = MOUSE_DELAY.lock().unwrap();
-    *delay_guard = delay;
+    if let Ok(mut delay_guard) = MOUSE_DELAY.lock() {
+        *delay_guard = delay;
+    }
 }
 
 /// Update screen metrics (no-op for now, can be used to refresh screen info)

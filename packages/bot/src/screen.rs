@@ -56,8 +56,8 @@ pub(crate) async fn capture_screen_region(
         .capture_image()
         .map_err(|e| Error::from_reason(format!("Failed to capture screen: {}", e)))?;
 
-    let img_width = image.width() as u32;
-    let img_height = image.height() as u32;
+    let img_width = image.width();
+    let img_height = image.height();
 
     // Handle region capture
     let (x, y, width, height) = match (x, y, width, height) {
@@ -131,12 +131,10 @@ pub(crate) fn get_screen_size() -> Result<ScreenSize> {
     Ok(ScreenSize {
         width: monitor
             .width()
-            .map_err(|e| Error::from_reason(format!("Failed to get monitor width: {}", e)))?
-            as u32,
+            .map_err(|e| Error::from_reason(format!("Failed to get monitor width: {}", e)))?,
         height: monitor
             .height()
-            .map_err(|e| Error::from_reason(format!("Failed to get monitor height: {}", e)))?
-            as u32,
+            .map_err(|e| Error::from_reason(format!("Failed to get monitor height: {}", e)))?,
     })
 }
 
@@ -161,8 +159,8 @@ pub(crate) async fn get_pixel_color(x: u32, y: u32) -> Result<PixelColor> {
         .capture_image()
         .map_err(|e| Error::from_reason(format!("Failed to capture screen: {}", e)))?;
 
-    let img_width = image.width() as u32;
-    let img_height = image.height() as u32;
+    let img_width = image.width();
+    let img_height = image.height();
 
     if x >= img_width || y >= img_height {
         return Err(Error::from_reason(format!(

@@ -163,6 +163,8 @@ impl Keyboard {
             // Single character keys
             _ => {
                 if key.len() == 1 {
+                    // Safe unwrap: we've checked key.len() == 1
+                    #[allow(clippy::unwrap_used)]
                     let ch = key.chars().next().unwrap();
                     Ok(Key::Unicode(ch))
                 } else {
