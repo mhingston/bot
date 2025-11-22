@@ -38,6 +38,18 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pnpm-store-
 
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            pkg-config \
+            libwayland-dev \
+            libxcb1-dev \
+            libxrandr-dev \
+            libdbus-1-dev
+
       - name: Install dependencies
         run: pnpm install -r
 
@@ -61,6 +73,18 @@ jobs:
         with:
           toolchain: stable
 
+      - name: Install system dependencies (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            pkg-config \
+            libwayland-dev \
+            libxcb1-dev \
+            libxrandr-dev \
+            libdbus-1-dev
+
       - name: Cache Rust dependencies
         uses: actions/cache@v4
         with:
@@ -69,19 +93,19 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-            packages/core/target/
+            packages/bot/target/
           key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-
 
       - name: Run Rust tests
         run: cargo test --verbose
-        working-directory: packages/core
+        working-directory: packages/bot
 
       - name: Check Rust formatting
         run: cargo fmt -- --check
-        working-directory: packages/core
+        working-directory: packages/bot
 
       - name: Run Clippy
         run: cargo clippy -- -D warnings
-        working-directory: packages/core
+        working-directory: packages/bot
