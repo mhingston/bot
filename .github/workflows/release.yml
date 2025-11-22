@@ -85,13 +85,13 @@ jobs:
             libxtst-dev
 
       - name: Setup zig (required for musl / cargo-zigbuild)
-        if: ${{ contains(matrix.settings.target, 'musl') }}
+        if: ${{ contains(matrix.settings.target, 'musl') || contains(matrix.settings.target, 'aarch64-unknown-linux-gnu') || contains(matrix.settings.target, 'armv7-unknown-linux-gnueabihf') }}
         uses: mlugg/setup-zig@v2
         with:
           version: '0.15.2'
 
-      - name: Install cargo-zigbuild (musl only)
-        if: ${{ contains(matrix.settings.target, 'musl') }}
+      - name: Install cargo-zigbuild (for musl and ARM gnu targets)
+        if: ${{ contains(matrix.settings.target, 'musl') || contains(matrix.settings.target, 'aarch64-unknown-linux-gnu') || contains(matrix.settings.target, 'armv7-unknown-linux-gnueabihf') }}
         uses: taiki-e/install-action@v2
         with:
           tool: cargo-zigbuild
@@ -105,9 +105,15 @@ jobs:
         run: |
           cd packages/bot
           if [ -n "${{ matrix.settings.use_napi_cross }}" ]; then
-            # Set PKG_CONFIG_ALLOW_CROSS for cross-compilation
-            PKG_CONFIG_ALLOW_CROSS=1 pnpm napi build --release --esm --const-enum --output-dir dist --target ${{ matrix.settings.target }} --use-napi-cross
+            # For x86_64-unknown-linux-gnu, use napi-cross
+            if [[ "${{ matrix.settings.target }}" == "x86_64-unknown-linux-gnu" ]]; then
+              PKG_CONFIG_ALLOW_CROSS=1 pnpm napi build --release --esm --const-enum --output-dir dist --target ${{ matrix.settings.target }} --use-napi-cross
+            else
+              # For ARM gnu targets, use cargo-zigbuild via -x flag (zig handles cross-compilation better)
+              pnpm napi build --release --esm --const-enum --output-dir dist --target ${{ matrix.settings.target }} -x
+            fi
           elif [ -n "${{ matrix.settings.use_musl }}" ]; then
+            # For musl targets, use cargo-zigbuild which handles cross-compilation better
             pnpm napi build --release --esm --const-enum --output-dir dist --target ${{ matrix.settings.target }} -x
           else
             pnpm napi build --release --esm --const-enum --output-dir dist --target ${{ matrix.settings.target }}
