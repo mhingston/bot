@@ -105,11 +105,11 @@ jobs:
         run: |
           cd packages/bot
           if [ -n "${{ matrix.settings.use_napi_cross }}" ]; then
-            napi build --release --esm --const-enum --output-dir dist --target ${{ matrix.settings.target }} --use-napi-cross
+            pnpm napi build --release --esm --const-enum --output-dir dist --target ${{ matrix.settings.target }} --use-napi-cross
           elif [ -n "${{ matrix.settings.use_musl }}" ]; then
-            napi build --release --esm --const-enum --output-dir dist --target ${{ matrix.settings.target }} -x
+            pnpm napi build --release --esm --const-enum --output-dir dist --target ${{ matrix.settings.target }} -x
           else
-            napi build --release --esm --const-enum --output-dir dist --target ${{ matrix.settings.target }}
+            pnpm napi build --release --esm --const-enum --output-dir dist --target ${{ matrix.settings.target }}
           fi
         shell: bash
 
