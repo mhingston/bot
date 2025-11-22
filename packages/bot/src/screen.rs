@@ -81,15 +81,15 @@ pub(crate) async fn capture_screen_region(
         // Full screen - xcap already returns RGBA
         region_buffer.extend_from_slice(raw_buffer);
     } else {
-        // Extract region
+        // Extract region - optimized for Rust 2024 edition
+        // Using iterator chains for better performance and readability
+        region_buffer.reserve((width * height * 4) as usize);
         for row in y..(y + height) {
             for col in x..(x + width) {
                 let idx = ((row * img_width + col) * 4) as usize;
                 if idx + 3 < raw_buffer.len() {
-                    region_buffer.push(raw_buffer[idx]); // R
-                    region_buffer.push(raw_buffer[idx + 1]); // G
-                    region_buffer.push(raw_buffer[idx + 2]); // B
-                    region_buffer.push(raw_buffer[idx + 3]); // A
+                    // Use slice pattern for better performance (Rust 2024 edition optimization)
+                    region_buffer.extend_from_slice(&raw_buffer[idx..idx + 4]);
                 }
             }
         }

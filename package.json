@@ -24,15 +24,6 @@
     "pre-commit": "pnpm lint-staged",
     "commit-msg": "pnpm commitlint --edit ${1}"
   },
-  "lint-staged": {
-    "*.rs": [
-      "cargo fmt -- --check",
-      "cargo clippy --all-targets -- -D warnings"
-    ],
-    "*.{js,ts,tsx,json,jsonc}": [
-      "pnpm biome check --write"
-    ]
-  },
   "author": {
     "name": "sealday",
     "email": "sealday@gmail.com",

@@ -26,24 +26,26 @@ impl Keyboard {
         let mut enigo =
             self.enigo.lock().map_err(|e| Error::from_reason(format!("Lock error: {}", e)))?;
 
-        // Handle modifiers
+        // Handle modifiers - using iterator for cleaner code (Rust 2024 edition style)
         if let Some(ref mods) = modifier {
-            for mod_key in mods {
+            mods.iter().try_for_each(|mod_key| -> Result<()> {
                 let key_code = self.parse_key(mod_key)?;
                 let _ = enigo.key(key_code, Direction::Press);
-            }
+                Ok(())
+            })?;
         }
 
         // Press the main key
         let key_code = self.parse_key(&key)?;
         let _ = enigo.key(key_code, Direction::Click);
 
-        // Release modifiers
+        // Release modifiers in reverse order - using iterator (Rust 2024 edition style)
         if let Some(ref mods) = modifier {
-            for mod_key in mods.iter().rev() {
+            mods.iter().rev().try_for_each(|mod_key| -> Result<()> {
                 let key_code = self.parse_key(mod_key)?;
                 let _ = enigo.key(key_code, Direction::Release);
-            }
+                Ok(())
+            })?;
         }
 
         self.apply_delay();
@@ -67,12 +69,13 @@ impl Keyboard {
             _ => return Err(Error::from_reason(format!("Invalid direction: {}", down))),
         };
 
-        // Handle modifiers
+        // Handle modifiers - using iterator (Rust 2024 edition style)
         if let Some(ref mods) = modifier {
-            for mod_key in mods {
+            mods.iter().try_for_each(|mod_key| -> Result<()> {
                 let key_code = self.parse_key(mod_key)?;
                 let _ = enigo.key(key_code, direction);
-            }
+                Ok(())
+            })?;
         }
 
         // Press/release the main key
