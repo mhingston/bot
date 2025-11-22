@@ -59,54 +59,20 @@ describe("@tego/bot", () => {
   });
 
   describe("Keyboard class", () => {
-    it("should create Keyboard instance", () => {
-      const keyboard = new Keyboard();
-      expect(keyboard).toBeDefined();
-      expect(keyboard).toBeInstanceOf(Keyboard);
-    });
-
-    it("should have all required methods", () => {
-      const keyboard = new Keyboard();
-      expect(typeof keyboard.keyTap).toBe("function");
-      expect(typeof keyboard.keyToggle).toBe("function");
-      expect(typeof keyboard.typeString).toBe("function");
-      expect(typeof keyboard.typeStringDelayed).toBe("function");
-      expect(typeof keyboard.setKeyboardDelay).toBe("function");
-    });
-
-    it("should set keyboard delay", () => {
-      const keyboard = new Keyboard();
-      expect(() => {
-        keyboard.setKeyboardDelay(50);
-      }).not.toThrow();
+    // Note: Creating Keyboard instances requires system connection (Enigo)
+    // Actual instance creation tests are in bot.integration.test.ts
+    it("should have Keyboard class defined", () => {
+      expect(Keyboard).toBeDefined();
+      expect(typeof Keyboard).toBe("function");
     });
   });
 
   describe("Mouse class", () => {
-    it("should create Mouse instance", () => {
-      const mouse = new Mouse();
-      expect(mouse).toBeDefined();
-      expect(mouse).toBeInstanceOf(Mouse);
-    });
-
-    it("should have all required methods", () => {
-      const mouse = new Mouse();
-      expect(typeof mouse.moveMouse).toBe("function");
-      expect(typeof mouse.moveMouseSmooth).toBe("function");
-      expect(typeof mouse.moveMouseSmoothWithSpeed).toBe("function");
-      expect(typeof mouse.getMousePos).toBe("function");
-      expect(typeof mouse.mouseClick).toBe("function");
-      expect(typeof mouse.mouseToggle).toBe("function");
-      expect(typeof mouse.dragMouse).toBe("function");
-      expect(typeof mouse.scrollMouse).toBe("function");
-      expect(typeof mouse.setMouseDelay).toBe("function");
-    });
-
-    it("should set mouse delay", () => {
-      const mouse = new Mouse();
-      expect(() => {
-        mouse.setMouseDelay(50);
-      }).not.toThrow();
+    // Note: Creating Mouse instances requires system connection (Enigo)
+    // Actual instance creation tests are in bot.integration.test.ts
+    it("should have Mouse class defined", () => {
+      expect(Mouse).toBeDefined();
+      expect(typeof Mouse).toBe("function");
     });
   });
 

@@ -5,6 +5,13 @@
  * and will be skipped in CI environments by default.
  *
  * To run these tests locally, set ENABLE_INTEGRATION_TESTS=true
+ *
+ * Note: These tests can potentially run in GitHub Actions CI with proper setup:
+ * - Linux: Requires Xvfb (virtual display server) - see CI workflow
+ * - macOS: May work with proper permissions, but limited in headless environments
+ * - Windows: May work but requires proper configuration
+ *
+ * For CI environments, consider using self-hosted runners for full system access.
  */
 import type { Bitmap, MousePosition, ScreenSize } from "@tego/bot";
 import {
@@ -13,6 +20,7 @@ import {
   getPixelColor,
   getScreen,
   getScreenSize,
+  Keyboard,
   Mouse,
   moveMouse,
   moveMouseSmooth,
@@ -26,6 +34,58 @@ const ENABLE_INTEGRATION_TESTS =
 describe.skipIf(!ENABLE_INTEGRATION_TESTS)(
   "@tego/bot Integration Tests",
   () => {
+    describe("Keyboard class", () => {
+      it("should create Keyboard instance", () => {
+        const keyboard = new Keyboard();
+        expect(keyboard).toBeDefined();
+        expect(keyboard).toBeInstanceOf(Keyboard);
+      });
+
+      it("should have all required methods", () => {
+        const keyboard = new Keyboard();
+        expect(typeof keyboard.keyTap).toBe("function");
+        expect(typeof keyboard.keyToggle).toBe("function");
+        expect(typeof keyboard.typeString).toBe("function");
+        expect(typeof keyboard.typeStringDelayed).toBe("function");
+        expect(typeof keyboard.setKeyboardDelay).toBe("function");
+      });
+
+      it("should set keyboard delay", () => {
+        const keyboard = new Keyboard();
+        expect(() => {
+          keyboard.setKeyboardDelay(50);
+        }).not.toThrow();
+      });
+    });
+
+    describe("Mouse class", () => {
+      it("should create Mouse instance", () => {
+        const mouse = new Mouse();
+        expect(mouse).toBeDefined();
+        expect(mouse).toBeInstanceOf(Mouse);
+      });
+
+      it("should have all required methods", () => {
+        const mouse = new Mouse();
+        expect(typeof mouse.moveMouse).toBe("function");
+        expect(typeof mouse.moveMouseSmooth).toBe("function");
+        expect(typeof mouse.moveMouseSmoothWithSpeed).toBe("function");
+        expect(typeof mouse.getMousePos).toBe("function");
+        expect(typeof mouse.mouseClick).toBe("function");
+        expect(typeof mouse.mouseToggle).toBe("function");
+        expect(typeof mouse.dragMouse).toBe("function");
+        expect(typeof mouse.scrollMouse).toBe("function");
+        expect(typeof mouse.setMouseDelay).toBe("function");
+      });
+
+      it("should set mouse delay", () => {
+        const mouse = new Mouse();
+        expect(() => {
+          mouse.setMouseDelay(50);
+        }).not.toThrow();
+      });
+    });
+
     describe("Mouse operations", () => {
       it("should get mouse position", () => {
         const pos = getMousePos();
