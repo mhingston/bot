@@ -7,6 +7,7 @@ rust-version = "1.85"
 [lib]
 name = "bot"
 crate-type = ["cdylib"]
+test = false
 
 [dependencies]
 napi = { version = "3.2.4", default-features = false, features = ["async"] }
@@ -24,6 +25,13 @@ active-win-pos-rs = "0.9"
 
 [dev-dependencies]
 tokio-test = "0.4"
+
+# Don't run cargo test on this crate since it's a Node.js addon
+# Tests should be run via the Node.js test suite
+[[test]]
+name = "no_tests"
+path = "tests/integration_tests.rs"
+harness = false
 
 [build-dependencies]
 napi-build = "2.2.3"
