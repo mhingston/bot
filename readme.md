@@ -1,11 +1,11 @@
 <div align="center">
-  <h1>@tego/bot</h1>
-  
+  <h1>Tego Bot</h1>
+
   <br />
   <br />
-  
+
   <p>
-    <strong>High-performance</strong> desktop automation library for <strong>Node.js</strong>.  
+    <strong>High-performance</strong> desktop automation library for <strong>Node.js</strong>.
     Powered by <strong>Rust</strong> for extreme speed and memory safety.
   </p>
 </div>
@@ -23,25 +23,25 @@
 
 ## 🚀 Quick Start
 
-You can add **@tego/bot** to your project:
+You can add **Tego Bot** to your project via the `@tego/botjs` package:
 
 ```bash
-pnpm add @tego/bot
+pnpm add @tego/botjs
 
-# Or: npm/yarn/bun add @tego/bot
+# Or: npm/yarn/bun add @tego/botjs
 ```
 
 ### Minimal Example
 
 ```ts
-import { moveMouse, mouseClick, keyTap, typeString, captureScreen } from '@tego/bot';
+import { moveMouse, mouseClick, keyTap, typeString, captureScreen } from '@tego/botjs';
 
 // Move mouse and click
 moveMouse(100, 200);
 mouseClick('left');
 
 // Type text
-typeString('Hello from @tego/bot!');
+typeString('Hello from Tego Bot!');
 keyTap('enter');
 
 // Capture screen
@@ -56,7 +56,7 @@ const screenshot = await captureScreen();
 ### Mouse Operations
 
 ```ts
-import { moveMouse, moveMouseSmooth, mouseClick, getMousePos, dragMouse, scrollMouse } from '@tego/bot';
+import { moveMouse, moveMouseSmooth, mouseClick, getMousePos, dragMouse, scrollMouse } from '@tego/botjs';
 
 // Move mouse to coordinates
 moveMouse(100, 200);
@@ -85,7 +85,7 @@ scrollMouse(2, 0);  // Scroll right
 ### Keyboard Operations
 
 ```ts
-import { keyTap, keyToggle, typeString, typeStringDelayed, unicodeTap } from '@tego/bot';
+import { keyTap, keyToggle, typeString, typeStringDelayed, unicodeTap } from '@tego/botjs';
 
 // Tap a key
 keyTap('a');
@@ -110,7 +110,7 @@ unicodeTap(0x1F600); // 😀
 ### Screen Operations
 
 ```ts
-import { captureScreen, captureScreenRegion, getScreenSize, getPixelColor, screen } from '@tego/bot';
+import { captureScreen, captureScreenRegion, getScreenSize, getPixelColor, screen } from '@tego/botjs';
 import fs from 'fs';
 
 // Capture entire screen
@@ -137,7 +137,7 @@ const pixelColor = bitmap.colorAt(100, 200);
 ### Configuration
 
 ```ts
-import { setMouseDelay, setKeyboardDelay, updateScreenMetrics } from '@tego/bot';
+import { setMouseDelay, setKeyboardDelay, updateScreenMetrics } from '@tego/botjs';
 
 // Set delays (in milliseconds)
 setMouseDelay(50);
@@ -232,8 +232,8 @@ pnpm build
 
 ## 📊 Comparison with robotjs
 
-| Feature | robotjs | @tego/bot |
-|---------|---------|-----------|
+| Feature | robotjs | Tego Bot (@tego/botjs) |
+|---------|---------|------------------------|
 | Performance | Medium (C++ bindings) | ⚡ Extremely high (Rust native) |
 | Maintenance | ❌ No longer maintained | ✅ Actively maintained |
 | Memory Safety | ⚠️ C++ | ✅ Rust |

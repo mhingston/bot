@@ -1,7 +1,7 @@
 {
   "name": "@tego/bot-agent",
   "version": "0.0.1",
-  "description": "AI-powered CLI for generating and managing @tego/bot automation scripts",
+  "description": "AI-powered CLI for generating and managing Tego Bot automation scripts",
   "type": "module",
   "bin": {
     "bot-agent": "./dist/bin/bot-agent.js"

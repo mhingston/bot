@@ -1,11 +1,11 @@
 <div align="center">
   <h1>@tego/botjs</h1>
-  
+
   <br />
   <br />
-  
+
   <p>
-    <strong>Type-safe</strong> TypeScript wrapper for <strong>@tego/bot</strong>.  
+    <strong>Type-safe</strong> TypeScript wrapper for <strong>Tego Bot</strong>.
     High-performance desktop automation library powered by <strong>Rust</strong>.
   </p>
 </div>

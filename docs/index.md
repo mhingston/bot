@@ -2,7 +2,7 @@
 layout: home
 
 hero:
-  name: "@tego/bot"
+  name: "Tego Bot"
   text: "Desktop Automation for Node.js"
   tagline: "High-performance automation library powered by Rust"
   actions:
@@ -37,7 +37,7 @@ features:
     details: Comprehensive test coverage
 ---
 
-# @tego/bot
+# Tego Bot
 
 **High-performance desktop automation library for Node.js, powered by Rust**
 
@@ -74,7 +74,7 @@ moveMouse(100, 200);
 mouseClick('left');
 
 // Type text
-typeString('Hello from @tego/bot!');
+typeString('Hello from Tego Bot!');
 keyTap('enter');
 
 // Capture screen

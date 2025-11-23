@@ -4,51 +4,67 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-@tego/bot is a high-performance desktop automation library for Node.js, powered by a Rust core using N-API bindings. It provides robotjs-compatible APIs for mouse control, keyboard input, and screen capture with superior performance and memory safety.
+**Tego Bot** is a high-performance desktop automation library for Node.js, powered by a Rust core using N-API bindings. It provides robotjs-compatible APIs for mouse control, keyboard input, screen capture, clipboard operations, and window management with superior performance and memory safety.
+
+The project consists of three npm packages under the `@tego/*` namespace:
+- `@tego/bot` - Rust core with N-API bindings
+- `@tego/botjs` - TypeScript wrapper with full type safety
+- `@tego/bot-agent` - AI-powered CLI for script generation
 
 ## Architecture
 
 The project uses a **monorepo workspace** structure with three main packages:
 
-### 1. `packages/bot` - Rust Core (N-API bindings)
+### 1. `packages/bot` - Rust Core (`@tego/bot`)
 - **Language**: Rust 2024 edition (requires Rust 1.85+)
 - **Build system**: Cargo with napi-build
 - **Key dependencies**:
   - `napi` and `napi-derive` for Node.js bindings
-  - `enigo` for cross-platform input simulation
+  - `enigo` for cross-platform input simulation (mouse & keyboard)
   - `xcap` for screen capture
+  - `arboard` for clipboard operations
   - `rdev` for input event monitoring
+  - `window-shadows` for window management APIs
 - **Module structure**:
   - `api.rs` - Global API exports matching robotjs interface (uses `#[napi]` macros)
   - `mouse.rs` - Mouse control (Enigo-based, with smooth movement using easing functions)
   - `keyboard.rs` - Keyboard input (supports modifiers, Unicode, and delayed typing)
   - `screen.rs` - Screen capture (xcap-based, returns PNG-encoded buffers)
+  - `clipboard.rs` - Clipboard operations (text and image support)
+  - `window.rs` - Window management (find windows by title/process, get active window)
 - **Binary output**: Compiled to `cdylib` (native Node.js addon)
 
-### 2. `packages/botjs` - TypeScript Wrapper
+### 2. `packages/botjs` - TypeScript Wrapper (`@tego/botjs`)
 - **Language**: TypeScript (ESM)
-- **Purpose**: Re-exports the Rust bindings from `@tego/bot` with TypeScript types
+- **Purpose**: Re-exports the Rust bindings from `@tego/bot` with TypeScript types and additional utilities
 - **Build**: `tsdown` for TypeScript compilation
 - **Testing**: Vitest with optional integration tests (set `ENABLE_INTEGRATION_TESTS=true`)
-- **Documentation**: TypeDoc for API docs generation
+- **Documentation**: TypeDoc for API docs generation (output to markdown format)
+- **Key features**:
+  - Full TypeScript type definitions
+  - Enhanced screen capture utilities
+  - Convenience functions for common automation tasks
+  - Comprehensive test coverage
 
-### 3. `packages/bot-agent` - AI-Powered CLI
+### 3. `packages/bot-agent` - AI-Powered CLI (`@tego/bot-agent`)
 - **Language**: TypeScript (ESM)
-- **Purpose**: CLI tool for generating automation scripts using AI
+- **Purpose**: CLI tool for generating automation scripts using AI (OpenAI-compatible APIs)
 - **Binary**: `bot-agent` command-line tool
 - **Key features**:
   - Generate automation scripts from natural language descriptions
   - Edit existing scripts through conversational AI
   - Execute and manage saved scripts
   - Store scripts in `~/.tego/bot-scripts/` with conversation history
-- **Dependencies**: OpenAI API client, Commander.js, Inquirer, Chalk, Ora
+- **Dependencies**: OpenAI client, Commander.js, Inquirer prompts, Chalk, Ora, cli-highlight
 - **Configuration**: Uses environment variables (OPENAI_API_KEY, OPENAI_BASE_URL, OPENAI_MODEL)
+- **Script execution**: Uses `tsx` for direct TypeScript execution
 
 ### Key Design Patterns
-- **Thread-safe state**: Rust modules use `Arc<Mutex<>>` for shared state (Enigo instances, delay settings)
-- **Async operations**: Screen capture operations are async (use `tokio` runtime)
-- **Global delay settings**: Mouse and keyboard operations respect global delay values set via `set_mouse_delay()` and `set_keyboard_delay()`
+- **Thread-safe state**: Rust modules use `Arc<Mutex<>>` for shared state (Enigo instances, delay settings, clipboard)
+- **Async operations**: Screen capture and clipboard operations are async (use `tokio` runtime)
+- **Global delay settings**: Mouse and keyboard operations respect global delay values set via `setMouseDelay()` and `setKeyboardDelay()`
 - **Rust 2024 edition**: Code uses modern iterator patterns and edition-specific optimizations
+- **VitePress documentation**: Uses VitePress for documentation site with TypeDoc-generated markdown API docs
 
 ## Development Commands
 
@@ -129,14 +145,20 @@ pnpm ex:run
 
 ### Documentation
 ```bash
-# Generate TypeScript API docs
+# Generate TypeScript API docs (TypeDoc -> Markdown)
+pnpm docs:api
+
+# Or from botjs package
 pnpm --filter @tego/botjs docs
 
-# Watch mode for docs
-pnpm --filter @tego/botjs docs:watch
+# Build VitePress documentation site
+pnpm docs:build
 
-# Serve generated docs
-pnpm --filter @tego/botjs docs:serve
+# Develop documentation site (watch mode)
+pnpm docs:dev
+
+# Preview built documentation
+pnpm docs:preview
 ```
 
 ### AI Agent CLI
@@ -160,20 +182,22 @@ npx bot-agent execute [script-name]
 npx bot-agent list
 ```
 
-## Git Hooks (Lefthook)
+## Git Hooks
 
-The repository uses **Lefthook** for git hooks, NOT simple-git-hooks. Hook configuration is in `lefthook.yml`:
+The repository uses **Lefthook** for git hooks (configuration in `lefthook.yml`), along with **simple-git-hooks** and **lint-staged** for file-level linting.
 
-### Pre-commit Hooks (parallel)
-- **Rust**: `cargo fmt --check`, `cargo clippy`, `cargo check`
-- **TypeScript**: `biome check --write` on staged files
+### Pre-commit Hooks
+- **Lefthook** (parallel):
+  - **Rust**: `cargo fmt --check`, `cargo clippy`, `cargo check`
+- **lint-staged** (via simple-git-hooks):
+  - **TypeScript/JavaScript**: `biome check --write` on staged files
 
 ### Pre-push Hooks (sequential)
 - **Tests**: `cargo test --all-features`
 - **Security**: `cargo audit` and `pnpm audit --audit-level moderate`
 
 ### Commit Message Validation
-- Enforces **Conventional Commits** format: `<type>[optional scope]: <description>`
+- Enforces **Conventional Commits** format via `commitlint`: `<type>[optional scope]: <description>`
 - Valid types: `build`, `chore`, `ci`, `docs`, `feat`, `fix`, `perf`, `refactor`, `revert`, `style`, `test`
 - Max length: 72 characters
 - Requires imperative mood (e.g., "add" not "added")
@@ -206,9 +230,9 @@ The Rust release profile in `Cargo.toml` is optimized for maximum performance:
 - Full optimization (`opt-level = 3`)
 - Binary stripping enabled (`strip = true`)
 
-## AI Agent (@tego/bot-agent)
+## AI Agent CLI (`@tego/bot-agent`)
 
-The AI agent CLI generates automation scripts using OpenAI-compatible APIs. It provides a conversational interface for creating, editing, and executing automation scripts.
+The **bot-agent** CLI generates automation scripts using OpenAI-compatible APIs. It provides a conversational interface for creating, editing, and executing automation scripts.
 
 ### Configuration
 Set environment variables before using the agent:
@@ -243,7 +267,10 @@ The AI is instructed to:
 ## Important Notes
 
 - **N-API bindings**: The Rust code compiles to a native Node.js addon. Changes to Rust code require rebuilding with `pnpm rs:build`.
-- **Workspace structure**: Use `pnpm --filter` to run commands in specific packages, or `pnpm -r` for recursive execution across all packages.
+- **Workspace structure**: Use `pnpm --filter <package-name>` to run commands in specific packages, or `pnpm -r` for recursive execution across all packages.
 - **Async screen operations**: Screen capture functions (`captureScreen`, `getPixelColor`, etc.) are async and return Promises.
+- **Async clipboard operations**: Clipboard functions (`getClipboard`, `setClipboard`, `getClipboardImage`, etc.) are async.
 - **Binary distribution**: The `@tego/bot` package includes pre-built binaries in the `dist` directory after building.
 - **AI Agent**: Requires OpenAI API key set in environment variables. Scripts are stored locally in `~/.tego/bot-scripts/`.
+- **Documentation site**: Uses VitePress for documentation with TypeDoc-generated API docs. Run `pnpm docs:dev` to develop locally.
+- **Git hooks**: Uses both Lefthook (for Rust checks) and simple-git-hooks (for JS/TS linting). Install with `pnpm prepare`.
