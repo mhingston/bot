@@ -1,8 +1,8 @@
-[**Tego Bot API Documentation v0.0.2**](README.md)
+[**Tego Bot API Documentation v0.1.1**](README.md)
 
 ***
 
-# Tego Bot API Documentation v0.0.2
+# Tego Bot API Documentation v0.1.1
 
 ## Variables
 

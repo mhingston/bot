@@ -1,14 +1,14 @@
-[**Tego Bot API Documentation v0.0.2**](../README.md)
+[**Tego Bot API Documentation v0.1.1**](../README.md)
 
 ***
 
-[Tego Bot API documentation](../globals.md) / moveMouse
+[Tego Bot API Documentation](../globals.md) / moveMouse
 
 # Function: moveMouse()
 
 > **moveMouse**(`x`, `y`): `void`
 
-Defined in: [index.ts:86](https://github.com/tegojs/bot/blob/89ac2876df45d1ed1dcc5ecd1e596298cff0b31f/packages/botjs/src/index.ts#L86)
+Defined in: [index.ts:86](https://github.com/tegojs/bot/blob/aa4091be1d7458b4935a672a5a88161f598afbb1/packages/botjs/src/index.ts#L86)
 
 Move the mouse cursor to the specified coordinates instantly
 

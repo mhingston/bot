@@ -19,7 +19,7 @@ export default defineConfig({
     nav: [
       { text: "Home", link: "/" },
       { text: "Guide", link: "/guide/getting-started" },
-      { text: "API", link: "/api/" },
+      { text: "API", link: "/api/globals" },
       { text: "Development", link: "/developments/" },
       { text: "GitHub", link: "https://github.com/tegojs/bot" },
     ],
@@ -34,10 +34,7 @@ export default defineConfig({
       "/api/": [
         {
           text: "API Documentation",
-          items: [
-            { text: "Overview", link: "/api/" },
-            { text: "Full API Reference", link: "/api/index.html" },
-          ],
+          items: [{ text: "Full API Reference", link: "/api/globals" }],
         },
       ],
       "/developments/": [

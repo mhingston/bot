@@ -1,14 +1,14 @@
-[**Tego Bot API Documentation v0.0.2**](../README.md)
+[**Tego Bot API Documentation v0.1.1**](../README.md)
 
 ***
 
-[Tego Bot API documentation](../globals.md) / bitmapColorAt
+[Tego Bot API Documentation](../globals.md) / bitmapColorAt
 
 # Function: bitmapColorAt()
 
 > **bitmapColorAt**(`bitmap`, `x`, `y`): `string`
 
-Defined in: [index.ts:411](https://github.com/tegojs/bot/blob/89ac2876df45d1ed1dcc5ecd1e596298cff0b31f/packages/botjs/src/index.ts#L411)
+Defined in: [index.ts:411](https://github.com/tegojs/bot/blob/aa4091be1d7458b4935a672a5a88161f598afbb1/packages/botjs/src/index.ts#L411)
 
 Get the color at specific coordinates in a bitmap
 

@@ -1,14 +1,14 @@
-[**Tego Bot API Documentation v0.0.2**](../README.md)
+[**Tego Bot API Documentation v0.1.1**](../README.md)
 
 ***
 
-[Tego Bot API documentation](../globals.md) / getPixelColor
+[Tego Bot API Documentation](../globals.md) / getPixelColor
 
 # Function: getPixelColor()
 
 > **getPixelColor**(`x`, `y`): `Promise`\<`string`\>
 
-Defined in: [index.ts:485](https://github.com/tegojs/bot/blob/89ac2876df45d1ed1dcc5ecd1e596298cff0b31f/packages/botjs/src/index.ts#L485)
+Defined in: [index.ts:485](https://github.com/tegojs/bot/blob/aa4091be1d7458b4935a672a5a88161f598afbb1/packages/botjs/src/index.ts#L485)
 
 Get the color of a pixel at specific screen coordinates
 
