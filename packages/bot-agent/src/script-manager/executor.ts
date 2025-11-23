@@ -44,22 +44,31 @@ export async function executeScript(
   const Module = require("module");
   const originalResolveFilename = Module._resolveFilename;
 
-  // Find the botjs module path from bot-agent's node_modules
+  // Find the bot-agent binary location and locate @tego/botjs
+  // Global install structure:
+  // .volta/tools/image/packages/@tego/bot-agent/lib/node_modules/@tego/bot-agent/node_modules/@tego/botjs/
   const currentFileDir = path.dirname(fileURLToPath(import.meta.url));
   let botjsMainPath: string;
 
   try {
-    // Try to find @tego/botjs relative to the current module
+    // Try to resolve @tego/bot-agent to find its installation location
     const require2 = createRequire(import.meta.url);
-    const botjsPath = require2.resolve("@tego/botjs");
-    botjsMainPath = botjsPath;
-  } catch {
-    // Fallback: construct path manually
-    const botjsDir = path.join(
-      currentFileDir,
-      "../../node_modules/@tego/botjs",
+    const botAgentPkgPath = require2.resolve("@tego/bot-agent/package.json");
+    const botAgentDir = path.dirname(botAgentPkgPath);
+
+    // @tego/botjs should be in bot-agent's node_modules
+    botjsMainPath = path.join(
+      botAgentDir,
+      "node_modules/@tego/botjs/dist/index.mjs",
     );
-    botjsMainPath = path.join(botjsDir, "dist/index.mjs");
+  } catch {
+    // Fallback: construct path relative to current bundled file
+    // Current file is in dist/src-xxx.mjs (bundled)
+    const distDir = path.dirname(currentFileDir);
+    botjsMainPath = path.join(
+      distDir,
+      "node_modules/@tego/botjs/dist/index.mjs",
+    );
   }
 
   Module._resolveFilename = function (
