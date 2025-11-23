@@ -15,6 +15,16 @@ pub mod keyboard;
 /// Provides functionality to capture screenshots and read pixel colors
 pub mod screen;
 
+/// Clipboard operations module
+///
+/// Provides functionality to read and write clipboard contents
+pub mod clipboard;
+
+/// Window management module
+///
+/// Provides functionality to get and manipulate windows
+pub mod window;
+
 /// Global API module
 ///
 /// Provides global functions matching robotjs API

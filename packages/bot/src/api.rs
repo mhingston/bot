@@ -1,6 +1,8 @@
+use crate::clipboard;
 use crate::keyboard;
 use crate::mouse;
 use crate::screen;
+use crate::window;
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 use std::sync::{Arc, Mutex};
@@ -223,4 +225,66 @@ pub async fn capture_screen_region(
     height: u32,
 ) -> Result<screen::ScreenCapture> {
     screen::capture_screen_region(Some(x), Some(y), Some(width), Some(height)).await
+}
+
+// ============================================================================
+// Clipboard Operations
+// ============================================================================
+
+/// Get text from clipboard
+#[napi]
+pub fn get_clipboard() -> Result<String> {
+    clipboard::get_clipboard()
+}
+
+/// Set text to clipboard
+#[napi]
+pub fn set_clipboard(text: String) -> Result<()> {
+    clipboard::set_clipboard(text)
+}
+
+/// Get image from clipboard (returns PNG-encoded buffer)
+#[napi]
+pub fn get_clipboard_image() -> Result<Buffer> {
+    clipboard::get_clipboard_image()
+}
+
+/// Set image to clipboard (accepts PNG-encoded buffer)
+#[napi]
+pub fn set_clipboard_image(image_buffer: Buffer) -> Result<()> {
+    clipboard::set_clipboard_image(image_buffer)
+}
+
+/// Clear clipboard
+#[napi]
+pub fn clear_clipboard() -> Result<()> {
+    clipboard::clear_clipboard()
+}
+
+// ============================================================================
+// Window Management
+// ============================================================================
+
+/// Get the currently active (focused) window
+#[napi]
+pub fn get_active_window() -> Result<window::WindowInfo> {
+    window::get_active_window_info()
+}
+
+/// Get a list of all visible windows
+#[napi]
+pub fn get_all_windows() -> Result<Vec<window::WindowInfo>> {
+    window::get_all_windows()
+}
+
+/// Find windows by title (case-insensitive partial match)
+#[napi]
+pub fn find_windows_by_title(title: String) -> Result<Vec<window::WindowInfo>> {
+    window::find_windows_by_title(title)
+}
+
+/// Find windows by process name (case-insensitive partial match)
+#[napi]
+pub fn find_windows_by_process(process_name: String) -> Result<Vec<window::WindowInfo>> {
+    window::find_windows_by_process(process_name)
 }
