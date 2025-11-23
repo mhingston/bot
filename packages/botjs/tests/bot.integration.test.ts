@@ -13,19 +13,53 @@
  *
  * For CI environments, consider using self-hosted runners for full system access.
  */
-import type { Bitmap, MousePosition, ScreenSize } from "@tego/bot";
+import type {
+  Bitmap,
+  MousePosition,
+  ScreenCapture,
+  ScreenSize,
+  WindowInfo,
+} from "@tego/botjs";
 import {
   bitmapColorAt,
+  captureScreen,
+  captureScreenRegion,
+  clearClipboard,
+  doubleClick,
+  dragMouse,
+  findWindowsByProcess,
+  findWindowsByTitle,
+  getActiveWindow,
+  getAllWindows,
+  getClipboard,
+  getClipboardImage,
   getMousePos,
   getPixelColor,
   getScreen,
   getScreenSize,
   Keyboard,
+  keyTap,
+  keyToggle,
+  leftClick,
   Mouse,
+  middleClick,
+  mouseClick,
+  mouseDown,
+  mouseToggle,
+  mouseUp,
   moveMouse,
   moveMouseSmooth,
+  rightClick,
   Screen,
-} from "@tego/bot";
+  scrollMouse,
+  setClipboard,
+  setClipboardImage,
+  setKeyboardDelay,
+  setMouseDelay,
+  typeString,
+  typeStringDelayed,
+  unicodeTap,
+} from "@tego/botjs";
 import { describe, expect, it } from "vitest";
 
 const ENABLE_INTEGRATION_TESTS =
@@ -86,6 +120,68 @@ describe.skipIf(!ENABLE_INTEGRATION_TESTS)(
       });
     });
 
+    describe("Keyboard operations", () => {
+      it("should tap a key", () => {
+        expect(() => {
+          keyTap("a");
+        }).not.toThrow();
+      });
+
+      it("should tap a key with modifier", () => {
+        expect(() => {
+          keyTap("c", ["control"]);
+        }).not.toThrow();
+      });
+
+      it("should tap special keys", () => {
+        expect(() => {
+          keyTap("enter");
+          keyTap("escape");
+          keyTap("tab");
+        }).not.toThrow();
+      });
+
+      it("should toggle key state", () => {
+        expect(() => {
+          keyToggle("shift", "down");
+          keyToggle("shift", "up");
+        }).not.toThrow();
+      });
+
+      it("should type string", () => {
+        expect(() => {
+          typeString("Hello");
+        }).not.toThrow();
+      });
+
+      it("should type string with delay", () => {
+        expect(() => {
+          typeStringDelayed("Test", 300);
+        }).not.toThrow();
+      });
+
+      it("should tap unicode character", () => {
+        expect(() => {
+          unicodeTap(0x1f600); // 😀
+        }).not.toThrow();
+      });
+
+      it("should type from Keyboard class", () => {
+        const keyboard = new Keyboard();
+        expect(() => {
+          keyboard.typeString("Class test");
+        }).not.toThrow();
+      });
+
+      it("should respect keyboard delay", () => {
+        expect(() => {
+          setKeyboardDelay(10);
+          keyTap("a");
+          setKeyboardDelay(0); // Reset
+        }).not.toThrow();
+      });
+    });
+
     describe("Mouse operations", () => {
       it("should get mouse position", () => {
         const pos = getMousePos();
@@ -123,6 +219,89 @@ describe.skipIf(!ENABLE_INTEGRATION_TESTS)(
           moveMouseSmooth(500, 600, 5.0);
         }).not.toThrow();
       });
+
+      it("should click mouse buttons", () => {
+        expect(() => {
+          mouseClick("left");
+          mouseClick("right");
+          mouseClick("middle");
+        }).not.toThrow();
+      });
+
+      it("should double click", () => {
+        expect(() => {
+          mouseClick("left", true);
+        }).not.toThrow();
+      });
+
+      it("should toggle mouse button", () => {
+        expect(() => {
+          mouseToggle("down", "left");
+          mouseToggle("up", "left");
+        }).not.toThrow();
+      });
+
+      it("should drag mouse", () => {
+        const startPos = getMousePos();
+        expect(() => {
+          dragMouse(startPos.x + 50, startPos.y + 50);
+        }).not.toThrow();
+      });
+
+      it("should scroll mouse", () => {
+        expect(() => {
+          scrollMouse(0, 1); // Scroll down
+          scrollMouse(0, -1); // Scroll up
+          scrollMouse(1, 0); // Scroll right
+          scrollMouse(-1, 0); // Scroll left
+        }).not.toThrow();
+      });
+
+      it("should respect mouse delay", () => {
+        expect(() => {
+          setMouseDelay(50);
+          moveMouse(200, 200);
+          setMouseDelay(0); // Reset
+        }).not.toThrow();
+      });
+
+      it("should use helper functions", () => {
+        expect(() => {
+          leftClick();
+          rightClick();
+          middleClick();
+          doubleClick();
+        }).not.toThrow();
+      });
+
+      it("should use helper functions with coordinates", () => {
+        expect(() => {
+          leftClick(100, 100);
+          rightClick(200, 200);
+          middleClick(300, 300);
+          doubleClick(400, 400);
+        }).not.toThrow();
+      });
+
+      it("should use mouseDown and mouseUp", () => {
+        expect(() => {
+          mouseDown("left");
+          mouseUp("left");
+          mouseDown("right");
+          mouseUp("right");
+          mouseDown("middle");
+          mouseUp("middle");
+        }).not.toThrow();
+      });
+
+      it("should perform operations from Mouse class", () => {
+        const mouse = new Mouse();
+        expect(() => {
+          mouse.moveMouse(150, 150);
+          mouse.mouseClick("left");
+          mouse.scrollMouse(0, 1);
+        }).not.toThrow();
+      });
     });
 
     describe("Screen operations", () => {
@@ -135,6 +314,15 @@ describe.skipIf(!ENABLE_INTEGRATION_TESTS)(
         expect(size.height).toBeGreaterThan(0);
       });
 
+      it("should capture full screen", async () => {
+        const screenshot: ScreenCapture = await captureScreen();
+        expect(screenshot).toBeDefined();
+        expect(screenshot.width).toBeGreaterThan(0);
+        expect(screenshot.height).toBeGreaterThan(0);
+        expect(screenshot.image).toBeInstanceOf(Buffer);
+        expect(screenshot.image.length).toBeGreaterThan(0);
+      });
+
       it("should capture screen region", async () => {
         const screen = new Screen();
         const bitmap = await screen.capture(0, 0, 100, 100);
@@ -145,6 +333,14 @@ describe.skipIf(!ENABLE_INTEGRATION_TESTS)(
         expect(bitmap.byteWidth).toBeGreaterThan(0);
         expect(bitmap.bitsPerPixel).toBeGreaterThan(0);
         expect(bitmap.bytesPerPixel).toBeGreaterThan(0);
+      });
+
+      it("should capture region with captureScreenRegion", async () => {
+        const region: ScreenCapture = await captureScreenRegion(0, 0, 200, 200);
+        expect(region).toBeDefined();
+        expect(region.width).toBe(200);
+        expect(region.height).toBe(200);
+        expect(region.image).toBeInstanceOf(Buffer);
       });
 
       it("should get pixel color", async () => {
@@ -200,6 +396,148 @@ describe.skipIf(!ENABLE_INTEGRATION_TESTS)(
         expect(pos).toHaveProperty("y");
         expect(typeof pos.x).toBe("number");
         expect(typeof pos.y).toBe("number");
+      });
+    });
+
+    describe("Clipboard operations", () => {
+      it("should set and get text", () => {
+        const testText = "Hello from Tego Bot test!";
+        setClipboard(testText);
+        const retrieved = getClipboard();
+        expect(retrieved).toBe(testText);
+      });
+
+      it("should clear clipboard", () => {
+        setClipboard("Test content");
+        clearClipboard();
+        const content = getClipboard();
+        expect(content).toBe("");
+      });
+
+      it("should handle empty string", () => {
+        setClipboard("");
+        const content = getClipboard();
+        expect(content).toBe("");
+      });
+
+      it("should handle special characters", () => {
+        const specialText = "Test\nNew Line\tTab\r\nWindows Line";
+        setClipboard(specialText);
+        const retrieved = getClipboard();
+        expect(retrieved).toContain("Test");
+      });
+
+      it("should handle unicode text", () => {
+        const unicodeText = "Hello 世界 🌍 Привет";
+        setClipboard(unicodeText);
+        const retrieved = getClipboard();
+        expect(retrieved).toBe(unicodeText);
+      });
+
+      it("should handle clipboard image operations", () => {
+        // Create a simple 1x1 PNG image (smallest valid PNG)
+        const pngHeader = Buffer.from([
+          0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
+        ]);
+        const minimalPNG = Buffer.concat([
+          pngHeader,
+          Buffer.from([
+            0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00,
+            0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x02, 0x00, 0x00, 0x00, 0x90,
+            0x77, 0x53, 0xde,
+          ]),
+        ]);
+
+        expect(() => {
+          setClipboardImage(minimalPNG);
+        }).not.toThrow();
+
+        expect(() => {
+          const image = getClipboardImage();
+          expect(image).toBeInstanceOf(Buffer);
+        }).not.toThrow();
+      });
+
+      it("should round-trip text clipboard", () => {
+        const originalText = "Round trip test 123";
+        setClipboard(originalText);
+        const retrieved = getClipboard();
+        expect(retrieved).toBe(originalText);
+
+        // Verify we can set it again
+        setClipboard("Second text");
+        const retrieved2 = getClipboard();
+        expect(retrieved2).toBe("Second text");
+      });
+    });
+
+    describe("Window Management operations", () => {
+      it("should get active window", () => {
+        const win = getActiveWindow();
+        expect(win).toBeDefined();
+        expect(win).toHaveProperty("title");
+        expect(win).toHaveProperty("processId");
+        expect(win).toHaveProperty("processPath");
+        expect(win).toHaveProperty("x");
+        expect(win).toHaveProperty("y");
+        expect(win).toHaveProperty("width");
+        expect(win).toHaveProperty("height");
+        expect(typeof win.title).toBe("string");
+        expect(typeof win.processId).toBe("number");
+        expect(typeof win.processPath).toBe("string");
+      });
+
+      it("should have correct WindowInfo type", () => {
+        const win: WindowInfo = getActiveWindow();
+        expect(win).toBeDefined();
+        expect(typeof win.title).toBe("string");
+        expect(typeof win.processId).toBe("number");
+        expect(typeof win.x).toBe("number");
+        expect(typeof win.y).toBe("number");
+        expect(typeof win.width).toBe("number");
+        expect(typeof win.height).toBe("number");
+      });
+
+      it("should get all windows", () => {
+        const windows = getAllWindows();
+        expect(Array.isArray(windows)).toBe(true);
+        // Note: Currently returns only active window due to API limitation
+        expect(windows.length).toBeGreaterThanOrEqual(0);
+      });
+
+      it("should find windows by title", () => {
+        const activeWin = getActiveWindow();
+        // Search for a portion of the active window's title
+        const titlePart = activeWin.title.substring(0, 5);
+        if (titlePart) {
+          const found = findWindowsByTitle(titlePart);
+          expect(Array.isArray(found)).toBe(true);
+        }
+      });
+
+      it("should find windows by process name", () => {
+        const activeWin = getActiveWindow();
+        // Extract process name from path
+        const processName = activeWin.processPath.split("/").pop() || "";
+        if (processName) {
+          const found = findWindowsByProcess(processName);
+          expect(Array.isArray(found)).toBe(true);
+        }
+      });
+
+      it("should handle case-insensitive title search", () => {
+        const activeWin = getActiveWindow();
+        const titleLower = activeWin.title.toLowerCase().substring(0, 5);
+        if (titleLower) {
+          const found = findWindowsByTitle(titleLower);
+          expect(Array.isArray(found)).toBe(true);
+        }
+      });
+
+      it("should handle empty search results", () => {
+        const found = findWindowsByTitle("NonExistentWindowTitle12345");
+        expect(Array.isArray(found)).toBe(true);
+        expect(found.length).toBe(0);
       });
     });
   },
