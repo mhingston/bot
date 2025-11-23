@@ -1,12 +1,21 @@
 <div align="center">
   <h1>Tego Bot</h1>
 
-  <br />
-  <br />
-
   <p>
     <strong>High-performance</strong> desktop automation library for <strong>Node.js</strong>.
+    <br />
     Powered by <strong>Rust</strong> for extreme speed and memory safety.
+  </p>
+
+  <p>
+    <a href="https://www.npmjs.com/package/@tego/botjs"><img src="https://img.shields.io/npm/v/@tego/botjs?style=flat-square&logo=npm&color=cb3837" alt="npm version" /></a>
+    <a href="https://www.npmjs.com/package/@tego/botjs"><img src="https://img.shields.io/npm/dm/@tego/botjs?style=flat-square&logo=npm&color=cb3837" alt="npm downloads" /></a>
+    <a href="https://github.com/tegojs/bot/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/tegojs/bot/ci.yml?branch=main&style=flat-square&logo=github&label=CI" alt="CI status" /></a>
+    <a href="https://github.com/tegojs/bot/issues"><img src="https://img.shields.io/github/issues/tegojs/bot?style=flat-square&logo=github&color=yellow" alt="GitHub issues" /></a>
+    <a href="https://github.com/tegojs/bot"><img src="https://img.shields.io/github/stars/tegojs/bot?style=flat-square&logo=github&color=blue" alt="GitHub stars" /></a>
+    <a href="https://github.com/tegojs/bot/blob/main/LICENSE"><img src="https://img.shields.io/github/license/tegojs/bot?style=flat-square&color=green" alt="License" /></a>
+    <a href="https://nodejs.org"><img src="https://img.shields.io/node/v/@tego/botjs?style=flat-square&logo=node.js&color=339933" alt="Node version" /></a>
+    <a href="https://github.com/tegojs/bot/commits/main"><img src="https://img.shields.io/github/last-commit/tegojs/bot?style=flat-square&logo=git&color=orange" alt="Last commit" /></a>
   </p>
 </div>
 
