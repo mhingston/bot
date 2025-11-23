@@ -1,186 +1,194 @@
 # @tego/bot
 
-高性能的桌面自动化库，使用 Rust 编写并通过 N-API 绑定提供给 Node.js 使用。
+High-performance desktop automation library for Node.js, powered by Rust core with N-API bindings.
 
-## 特性
+> **💡 Recommended**: Use **[@tego/botjs](https://www.npmjs.com/package/@tego/botjs)** instead! It provides a type-safe TypeScript wrapper with enhanced APIs, better documentation, and additional utility functions.
 
-- 🚀 **高性能**: 使用 Rust 编写，性能远超 Node.js 原生实现
-- 🎯 **API 兼容**: 参考 robotjs 的 API 设计，易于迁移
-- 🔒 **内存安全**: Rust 的类型系统保证内存安全
-- 🌍 **跨平台**: 支持 Windows、macOS 和 Linux
-- 📦 **零依赖**: Node.js 端无需额外依赖
-- 🧪 **完整测试**: 包含单元测试和集成测试
+## Features
 
-## 安装
+- 🚀 **High performance** - Written in Rust for maximum speed and efficiency
+- 🎯 **API compatible** - Inspired by robotjs API design for easy migration
+- 🔒 **Memory safe** - Rust's type system guarantees memory safety
+- 🌍 **Cross-platform** - Supports Windows, macOS, and Linux
+- 📦 **Zero dependencies** - No additional Node.js dependencies required
+- 🧪 **Well tested** - Comprehensive unit and integration test coverage
+
+## Installation
 
 ```bash
 npm install @tego/bot
-# 或
+# or
 pnpm add @tego/bot
-# 或
+# or
 yarn add @tego/bot
 ```
 
-## 构建
+**However, we strongly recommend using [@tego/botjs](https://www.npmjs.com/package/@tego/botjs) for better TypeScript support and additional features:**
+
+```bash
+npm install @tego/botjs
+```
+
+## Building from Source
 
 ```bash
 cd packages/bot
 npm run build
 ```
 
-## API 文档
+## API Documentation
 
-### 鼠标操作
+### Mouse Operations
 
 ```typescript
 import { Mouse } from '@tego/bot';
 
 const mouse = new Mouse();
 
-// 移动鼠标到指定坐标
+// Move mouse to coordinates
 mouse.moveMouse(100, 200);
 
-// 平滑移动鼠标
+// Smooth movement
 mouse.moveMouseSmooth(300, 400);
-mouse.moveMouseSmoothWithSpeed(500, 600, 5.0); // 自定义速度
+mouse.moveMouseSmoothWithSpeed(500, 600, 5.0); // Custom speed
 
-// 点击鼠标
-mouse.mouseClick('left');           // 左键单击
-mouse.mouseClick('right', true);    // 右键双击
-mouse.mouseClick('middle');         // 中键单击
-mouse.mouseClick();                 // 默认左键单击
+// Click mouse buttons
+mouse.mouseClick('left');           // Left click
+mouse.mouseClick('right', true);    // Right double-click
+mouse.mouseClick('middle');         // Middle click
+mouse.mouseClick();                 // Default: left click
 
-// 获取鼠标位置
+// Get mouse position
 const pos = mouse.getMousePos();
 console.log(`Mouse at: ${pos.x}, ${pos.y}`);
 
-// 按下/释放鼠标按钮
-mouse.mouseToggle('down', 'left');  // 按下左键
-mouse.mouseToggle('up', 'left');    // 释放左键
-mouse.mouseToggle('down');          // 默认按下左键
+// Press/release mouse buttons
+mouse.mouseToggle('down', 'left');  // Press left button
+mouse.mouseToggle('up', 'left');    // Release left button
+mouse.mouseToggle('down');          // Default: press left button
 
-// 拖拽鼠标
+// Drag mouse
 mouse.dragMouse(500, 600);
 
-// 滚动鼠标
-mouse.scrollMouse(0, 3);  // 向下滚动 3 个单位
-mouse.scrollMouse(2, 0);  // 向右滚动 2 个单位
+// Scroll mouse
+mouse.scrollMouse(0, 3);  // Scroll down 3 units
+mouse.scrollMouse(2, 0);  // Scroll right 2 units
 
-// 设置鼠标操作延迟（毫秒）
+// Set mouse operation delay (milliseconds)
 mouse.setMouseDelay(50);
 ```
 
-### 键盘操作
+### Keyboard Operations
 
 ```typescript
-// 方式 1: 使用类实例
+// Method 1: Using class instance
 import { Keyboard } from '@tego/bot';
 
 const keyboard = new Keyboard();
 
-// 按键（按下并释放）
+// Tap key (press and release)
 keyboard.keyTap('a');
 keyboard.keyTap('enter');
 keyboard.keyTap('c', ['control']);        // Ctrl+C
 keyboard.keyTap('v', ['control', 'shift']); // Ctrl+Shift+V
 
-// 按下/释放按键
-keyboard.keyToggle('a', 'down');           // 按下 'a'
-keyboard.keyToggle('a', 'up');             // 释放 'a'
-keyboard.keyToggle('shift', 'down', ['control']); // Ctrl+Shift 按下
+// Press/release keys
+keyboard.keyToggle('a', 'down');           // Press 'a'
+keyboard.keyToggle('a', 'up');             // Release 'a'
+keyboard.keyToggle('shift', 'down', ['control']); // Ctrl+Shift down
 
-// 输入文本
+// Type text
 keyboard.typeString('Hello, World!');
 
-// 延迟输入文本（字符每分钟）
+// Type with delay (characters per minute)
 keyboard.typeStringDelayed('Hello', 300); // 300 CPM
 
-// 设置键盘操作延迟（毫秒）
+// Set keyboard operation delay (milliseconds)
 keyboard.setKeyboardDelay(10);
 ```
 
 ```typescript
-// 方式 2: 使用全局函数（推荐）
+// Method 2: Using global functions (Recommended)
 import { keyTap, keyToggle, typeString, typeStringDelayed, unicodeTap, setKeyboardDelay } from '@tego/bot';
 
-// 按键
+// Tap keys
 keyTap('a');
 keyTap('enter');
 keyTap('c', ['control']);                 // Ctrl+C
 keyTap('v', ['control', 'shift']);        // Ctrl+Shift+V
 
-// 按下/释放
-keyToggle('shift', 'down');               // 按下 Shift
-keyToggle('shift', 'up');                 // 释放 Shift
+// Press/release
+keyToggle('shift', 'down');               // Press Shift
+keyToggle('shift', 'up');                 // Release Shift
 
-// 输入文本
+// Type text
 typeString('Hello, World!');
 typeStringDelayed('Hello', 300);          // 300 CPM
 
-// Unicode 字符（如 emoji）
+// Unicode characters (e.g., emoji)
 unicodeTap(0x1f600);                      // 😀
 
-// 设置延迟
+// Set delay
 setKeyboardDelay(10);
 ```
 
-### 屏幕操作
+### Screen Operations
 
 ```typescript
 import { getScreen, getScreenSize, getPixelColor, bitmapColorAt } from '@tego/bot';
 import type { Bitmap } from '@tego/bot';
 import fs from 'fs';
 
-// 获取屏幕实例
+// Get screen instance
 const screen = getScreen();
 
-// 截取整个屏幕
+// Capture entire screen
 const fullScreen: Bitmap = await screen.capture();
 fs.writeFileSync('screenshot.png', fullScreen.image);
 console.log(`Captured: ${fullScreen.width}x${fullScreen.height}`);
 
-// 截取屏幕区域 (x, y, width, height)
+// Capture screen region (x, y, width, height)
 const region: Bitmap = await screen.capture(100, 100, 800, 600);
 fs.writeFileSync('region.png', region.image);
 
-// 获取屏幕尺寸
+// Get screen size
 const size = getScreenSize();
 console.log(`Screen size: ${size.width}x${size.height}`);
 
-// 获取指定坐标的像素颜色（返回 hex 字符串，如 "#FF0000"）
+// Get pixel color at coordinates (returns hex string like "#FF0000")
 const color = await getPixelColor(100, 200);
 console.log(`Pixel color: ${color}`);
 
-// 从 Bitmap 中获取指定坐标的颜色
+// Get color from bitmap at coordinates
 const bitmapColor = bitmapColorAt(region, 50, 50);
 console.log(`Color at (50, 50) in bitmap: ${bitmapColor}`);
 ```
 
-## 完整示例
+## Complete Example
 
 ```typescript
 import { Mouse, Keyboard, getScreen, moveMouse, keyTap, typeString } from '@tego/bot';
 import fs from 'fs';
 
 async function automationExample() {
-    // 使用类实例
+    // Using class instances
     const mouse = new Mouse();
     const keyboard = new Keyboard();
 
-    // 移动鼠标并点击
+    // Move mouse and click
     mouse.moveMouseSmooth(500, 300);
     mouse.mouseClick('left');
 
-    // 输入文本
+    // Type text
     keyboard.typeString('Hello from @tego/bot!');
     keyboard.keyTap('enter');
 
-    // 或使用全局函数
+    // Or use global functions
     moveMouse(600, 400);
     keyTap('enter');
     typeString('Using global functions');
 
-    // 截屏
+    // Capture screen
     const screen = getScreen();
     const screenshot = await screen.capture();
     fs.writeFileSync('automation.png', screenshot.image);
@@ -191,79 +199,97 @@ async function automationExample() {
 automationExample();
 ```
 
-## 支持的按键
+## Supported Keys
 
-### 修饰键
-- `control` / `ctrl` - Control 键
-- `shift` - Shift 键
-- `alt` - Alt 键
-- `command` / `cmd` / `meta` - Command/Meta 键
+### Modifier Keys
+- `control` / `ctrl` - Control key
+- `shift` - Shift key
+- `alt` - Alt key
+- `command` / `cmd` / `meta` - Command/Meta key
 
-### 功能键
-- `f1` - `f12` - F1 到 F12
+### Function Keys
+- `f1` - `f12` - F1 through F12
 
-### 特殊键
-- `enter` / `return` - 回车键
-- `escape` / `esc` - ESC 键
-- `backspace` - 退格键
-- `tab` - Tab 键
-- `space` - 空格键
-- `delete` / `del` - Delete 键
-- `up` / `down` / `left` / `right` - 方向键
-- `home` / `end` - Home/End 键
-- `pageup` / `page_down` - Page Up/Down 键
+### Special Keys
+- `enter` / `return` - Enter key
+- `escape` / `esc` - ESC key
+- `backspace` - Backspace key
+- `tab` - Tab key
+- `space` - Space key
+- `delete` / `del` - Delete key
+- `up` / `down` / `left` / `right` - Arrow keys
+- `home` / `end` - Home/End keys
+- `pageup` / `page_down` - Page Up/Down keys
 
-### 鼠标按钮
-- `left` - 左键
-- `right` - 右键
-- `middle` - 中键
+### Mouse Buttons
+- `left` - Left button
+- `right` - Right button
+- `middle` - Middle button
 
-## 测试
+## Comparison with robotjs
 
-运行测试：
+| Feature | robotjs | @tego/bot | @tego/botjs |
+|---------|---------|-----------|-------------|
+| Performance | Medium (C++ bindings) | ⚡ Extremely high (Rust native) | ⚡ Extremely high (Rust native) |
+| Maintenance | ❌ No longer maintained | ✅ Actively maintained | ✅ Actively maintained |
+| Memory Safety | ⚠️ C++ | ✅ Rust | ✅ Rust |
+| API Design | ✅ Simple | ✅ Compatible | ✅ Enhanced |
+| Cross-platform | ✅ | ✅ | ✅ |
+| Type Safety | ⚠️ Runtime checks | ✅ Compile-time guarantees | ✅ Full TypeScript support |
+| Test Coverage | ⚠️ Limited | ✅ Comprehensive | ✅ Comprehensive |
+| Additional APIs | ❌ | ❌ | ✅ Enhanced screen utilities |
+
+## Why Use @tego/botjs Instead?
+
+[@tego/botjs](https://www.npmjs.com/package/@tego/botjs) is the recommended wrapper that provides:
+
+- **Full TypeScript support** with complete type definitions
+- **Enhanced screen APIs** including `captureScreen()`, `captureScreenRegion()`, and more
+- **Better documentation** with extensive examples
+- **Utility functions** for common automation tasks
+- **Improved developer experience** with better error messages
+
+```typescript
+// @tego/botjs provides cleaner APIs:
+import { captureScreen, captureScreenRegion } from '@tego/botjs';
+
+const screenshot = await captureScreen();
+const region = await captureScreenRegion(0, 0, 800, 600);
+```
+
+## Testing
+
+Run tests:
 
 ```bash
-# Rust 单元测试
+# Rust unit tests
 cd packages/bot
 cargo test
 
-# 构建并测试 Node.js 绑定
+# Build and test Node.js bindings
 npm run build
 
-# 运行 JavaScript 测试（在 botjs 包中）
+# JavaScript tests (in botjs package)
 cd ../botjs
 pnpm test
 
-# 运行集成测试（需要系统交互，本地开发时）
+# Integration tests (requires system interaction)
 ENABLE_INTEGRATION_TESTS=true pnpm test:integration
 ```
 
-## 与 robotjs 的对比
-
-| 特性 | robotjs | @tego/bot |
-|------|---------|-----------|
-| 性能 | 中等（C++ 绑定） | ⚡ 极高（Rust 原生） |
-| 维护状态 | ❌ 已停止维护 | ✅ 活跃维护 |
-| 内存安全 | ⚠️ C++ | ✅ Rust |
-| API 设计 | ✅ 简洁 | ✅ 兼容 |
-| 跨平台 | ✅ | ✅ |
-| 类型安全 | ⚠️ 运行时检查 | ✅ 编译期保证 |
-| 测试覆盖 | ⚠️ 有限 | ✅ 完整 |
-| 包名 | `robotjs` | `@tego/bot` |
-
-## 系统要求
+## System Requirements
 
 ### macOS
 - macOS 10.13+ 
-- 需要屏幕录制权限（系统偏好设置 > 安全性与隐私 > 屏幕录制）
+- Screen recording permission required (System Preferences > Security & Privacy > Screen Recording)
 
 ### Windows
 - Windows 10+
-- 无需额外配置
+- No additional configuration needed
 
 ### Linux
-- X11 或 Wayland
-- 需要安装系统依赖：
+- X11 or Wayland
+- Required system dependencies:
   ```bash
   # Ubuntu/Debian
   sudo apt-get install -y \
@@ -296,24 +322,26 @@ ENABLE_INTEGRATION_TESTS=true pnpm test:integration
     libXtst-devel
   ```
 
-## 许可证
+## License
 
 MIT
 
-## 贡献
+## Contributing
 
-欢迎提交 Issue 和 Pull Request！
+Contributions are welcome! Please feel free to submit Issues and Pull Requests.
 
-## 📚 额外资源
+## Related Projects
 
-### API 参考文档
+- [@tego/botjs](https://www.npmjs.com/package/@tego/botjs) - **Recommended TypeScript wrapper** with enhanced APIs
+- [@tego/bot-agent](https://www.npmjs.com/package/@tego/bot-agent) - AI-powered CLI for generating automation scripts
+- [robotjs](https://github.com/octalmage/robotjs) - Original Node.js automation library
+- [enigo](https://github.com/enigo-rs/enigo) - Rust keyboard and mouse control library
+- [xcap](https://github.com/nashaofu/xcap) - Rust screen capture library
 
-- **[AutoHotkey API 参考](./docs/autohotkey-api-reference.md)** - AutoHotkey 的 API 参考，可作为功能扩展的灵感来源
-- **[Hammerspoon API 参考](./docs/hammerspoon-api-reference.md)** - Hammerspoon (macOS) 的 API 参考，可作为功能扩展的灵感来源
-- **[Python 自动化库参考](./docs/python-automation-libraries.md)** - Python 生态系统中类似的桌面自动化库参考
+## 📚 Additional Resources
 
-### 相关项目
+### API References
 
-- [robotjs](https://github.com/octalmage/robotjs) - 原始 Node.js 自动化库
-- [enigo](https://github.com/enigo-rs/enigo) - Rust 键盘鼠标控制库
-- [xcap](https://github.com/nashaofu/xcap) - Rust 屏幕捕获库
+- **[AutoHotkey API Reference](./docs/autohotkey-api-reference.md)** - Inspiration for feature expansion
+- **[Hammerspoon API Reference](./docs/hammerspoon-api-reference.md)** - macOS automation API reference
+- **[Python Automation Libraries](./docs/python-automation-libraries.md)** - Similar libraries in Python ecosystem
