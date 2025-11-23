@@ -1,6 +1,6 @@
 # Python 桌面自动化库参考
 
-本文档列出了 Python 中用于桌面自动化的主要库，这些库提供了类似于 `robotjs` 和 `@tego/bot` 的功能。
+本文档列出了 Python 中用于桌面自动化的主要库，这些库提供了类似于 `robotjs` 和 `Tego Bot` 的功能。
 
 ## 主要库对比
 
@@ -487,7 +487,6 @@ window.resizeTo(800, 600)
 
 ## 总结
 
-Python 生态系统中有多个优秀的桌面自动化库，其中 **PyAutoGUI** 是最流行和最全面的选择，功能最接近 `robotjs` 和 `@tego/bot`。
+Python 生态系统中有多个优秀的桌面自动化库，其中 **PyAutoGUI** 是最流行和最全面的选择，功能最接近 `robotjs` 和 `Tego Bot`。
 
-对于需要高性能的场景，可以考虑使用 Rust 实现的 `@tego/bot`，它提供了更好的性能和类型安全。
-
+对于需要高性能的场景，可以考虑使用 Rust 实现的 `Tego Bot`，它提供了更好的性能和类型安全。

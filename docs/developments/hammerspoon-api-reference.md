@@ -2,7 +2,7 @@
 
 Hammerspoon is a powerful automation tool for macOS that allows users to interact with system APIs through Lua scripts. It provides extensive control over applications, windows, mouse, keyboard, file system, audio devices, battery, screen, clipboard, location services, Wi-Fi, and more.
 
-The following APIs serve as a reference for potential future enhancements to `@tego/bot`, especially for macOS-specific features:
+The following APIs serve as a reference for potential future enhancements to `Tego Bot`, especially for macOS-specific features:
 
 ## Core Modules
 
@@ -449,7 +449,6 @@ Hammerspoon also supports a plugin system called "Spoons" that extends functiona
 
 ## Notes
 
-Hammerspoon is macOS-specific and provides deep integration with macOS system APIs. While `@tego/bot` focuses on cross-platform automation, many of these concepts (especially window management, screen operations, and system integration) could serve as inspiration for platform-specific enhancements or future cross-platform abstractions.
+Hammerspoon is macOS-specific and provides deep integration with macOS system APIs. While `Tego Bot` focuses on cross-platform automation, many of these concepts (especially window management, screen operations, and system integration) could serve as inspiration for platform-specific enhancements or future cross-platform abstractions.
 
 For more information, refer to the [Hammerspoon official documentation](https://www.hammerspoon.org/docs/).
-

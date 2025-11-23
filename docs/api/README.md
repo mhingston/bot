@@ -1,9 +1,9 @@
-**@tego/bot API Documentation v0.0.2**
+**Tego Bot API documentation v0.0.2**
 
 ***
 
 <div align="center">
-  <h1>@tego/bot</h1>
+  <h1>Tego Bot</h1>
   
   <br />
   <br />

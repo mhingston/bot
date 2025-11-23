@@ -1,6 +1,6 @@
 # API Documentation
 
-Welcome to the **@tego/bot API documentation**. This section provides complete API reference with detailed descriptions and examples.
+Welcome to the **Tego Bot API documentation**. This section provides complete API reference with detailed descriptions and examples.
 
 [**View Full API Documentation →**](./README.md)
 

@@ -1,6 +1,6 @@
 # AutoHotkey API Reference (for Inspiration)
 
-AutoHotkey is a powerful automation scripting language for Windows that provides many additional features beyond basic mouse and keyboard control. The following APIs serve as a reference for potential future enhancements to `@tego/bot`:
+AutoHotkey is a powerful automation scripting language for Windows that provides many additional features beyond basic mouse and keyboard control. The following APIs serve as a reference for potential future enhancements to `Tego Bot`:
 
 ## Window Management
 
@@ -149,7 +149,6 @@ AutoHotkey provides extensive window manipulation capabilities:
 
 ## Notes
 
-While `@tego/bot` currently focuses on cross-platform mouse, keyboard, and screen automation, many of these AutoHotkey features could serve as inspiration for future enhancements. However, some features (like Windows-specific window management) may not be applicable to cross-platform libraries.
+While `Tego Bot` currently focuses on cross-platform mouse, keyboard, and screen automation, many of these AutoHotkey features could serve as inspiration for future enhancements. However, some features (like Windows-specific window management) may not be applicable to cross-platform libraries.
 
 For more information, refer to the [AutoHotkey official documentation](https://www.autohotkey.com/docs/).
-

@@ -1,8 +1,8 @@
-[**@tego/bot API Documentation v0.0.2**](../README.md)
+[**Tego Bot API Documentation v0.0.2**](../README.md)
 
 ***
 
-[@tego/bot API Documentation](../globals.md) / getClipboard
+[Tego Bot API documentation](../globals.md) / getClipboard
 
 # Function: getClipboard()
 

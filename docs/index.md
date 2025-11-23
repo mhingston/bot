@@ -147,7 +147,7 @@ The project uses a **monorepo workspace** structure:
 
 ### Packages
 
-1. **`@tego/bot`** - Rust core with N-API bindings
+1. **`Tego Bot`** - Rust core with N-API bindings
    - Cross-platform input simulation
    - Screen capture
    - High-performance native operations

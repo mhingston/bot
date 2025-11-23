@@ -2,7 +2,7 @@
 
 ## Overview
 
-Integration tests for `@tego/bot` require actual system interaction (mouse, keyboard, screen access). These tests are **disabled by default** in CI environments because:
+Integration tests for `Tego Bot` require actual system interaction (mouse, keyboard, screen access). These tests are **disabled by default** in CI environments because:
 
 1. **GitHub Actions runners are typically headless** - No graphical interface available
 2. **Limited system access** - Virtualized environments may not support hardware interaction
@@ -159,4 +159,3 @@ env:
 3. **Consider self-hosted runners** - For projects requiring reliable integration testing
 4. **Mock when possible** - Use mocks for unit tests, real interaction for integration tests
 5. **Document limitations** - Clearly document what works and what doesn't in CI
-
