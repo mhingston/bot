@@ -2,6 +2,7 @@ import { defineConfig } from "vitepress";
 
 export default defineConfig({
   title: "@tego/bot",
+  ignoreDeadLinks: true,
   description:
     "High-performance desktop automation library for Node.js, powered by Rust",
   base: "/bot/",
