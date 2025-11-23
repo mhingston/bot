@@ -2,15 +2,6 @@
 // Explicit exports from @tego/bot for better TypeDoc documentation
 // ============================================================================
 
-// Types/Interfaces
-export type {
-  Bitmap,
-  MousePosition,
-  PixelColor,
-  ScreenCapture,
-  ScreenSize,
-  WindowInfo,
-} from "@tego/bot";
 /**
  * Keyboard automation class for simulating keyboard input
  * @example
@@ -20,6 +11,8 @@ export type {
  * keyboard.typeString('Hello World');
  * ```
  */
+export { Keyboard } from "@tego/bot";
+
 /**
  * Mouse automation class for controlling mouse movements and clicks
  * @example
@@ -29,6 +22,8 @@ export type {
  * mouse.mouseClick('left');
  * ```
  */
+export { Mouse } from "@tego/bot";
+
 /**
  * Screen capture class for taking screenshots
  * @example
@@ -37,7 +32,17 @@ export type {
  * const bitmap = await screen.capture(0, 0, 800, 600);
  * ```
  */
-export { Keyboard, Mouse, Screen } from "@tego/bot";
+export { Screen } from "@tego/bot";
+
+// Types/Interfaces
+export type {
+  Bitmap,
+  MousePosition,
+  PixelColor,
+  ScreenCapture,
+  ScreenSize,
+  WindowInfo,
+} from "@tego/bot";
 
 // ============================================================================
 // Mouse Functions
@@ -52,6 +57,8 @@ export { Keyboard, Mouse, Screen } from "@tego/bot";
  * moveMouse(100, 200);
  * ```
  */
+export { moveMouse } from "@tego/bot";
+
 /**
  * Move the mouse cursor smoothly to the specified coordinates with easing
  * @param x - X coordinate
@@ -63,6 +70,8 @@ export { Keyboard, Mouse, Screen } from "@tego/bot";
  * moveMouseSmooth(500, 500, 5.0); // faster movement
  * ```
  */
+export { moveMouseSmooth } from "@tego/bot";
+
 /**
  * Click the mouse button at the current position
  * @param button - Mouse button: "left", "right", or "middle" (default: "left")
@@ -73,6 +82,8 @@ export { Keyboard, Mouse, Screen } from "@tego/bot";
  * mouseClick('right', true); // right double-click
  * ```
  */
+export { mouseClick } from "@tego/bot";
+
 /**
  * Toggle mouse button state (press or release)
  * @param down - "down" to press, "up" to release
@@ -84,6 +95,8 @@ export { Keyboard, Mouse, Screen } from "@tego/bot";
  * mouseToggle('up', 'left');
  * ```
  */
+export { mouseToggle } from "@tego/bot";
+
 /**
  * Drag the mouse from current position to target coordinates
  * @param x - Target X coordinate
@@ -94,6 +107,8 @@ export { Keyboard, Mouse, Screen } from "@tego/bot";
  * dragMouse(500, 500); // drag from (100,100) to (500,500)
  * ```
  */
+export { dragMouse } from "@tego/bot";
+
 /**
  * Scroll the mouse wheel
  * @param x - Horizontal scroll amount (positive = right, negative = left)
@@ -105,6 +120,8 @@ export { Keyboard, Mouse, Screen } from "@tego/bot";
  * scrollMouse(2, 0);  // scroll right
  * ```
  */
+export { scrollMouse } from "@tego/bot";
+
 /**
  * Get the current mouse cursor position
  * @returns Object with x and y coordinates
@@ -114,6 +131,8 @@ export { Keyboard, Mouse, Screen } from "@tego/bot";
  * console.log(`Mouse at: ${pos.x}, ${pos.y}`);
  * ```
  */
+export { getMousePos } from "@tego/bot";
+
 /**
  * Set the delay between mouse operations in milliseconds
  * @param delay - Delay in milliseconds
@@ -122,16 +141,7 @@ export { Keyboard, Mouse, Screen } from "@tego/bot";
  * setMouseDelay(50); // 50ms delay between operations
  * ```
  */
-export {
-  dragMouse,
-  getMousePos,
-  mouseClick,
-  mouseToggle,
-  moveMouse,
-  moveMouseSmooth,
-  scrollMouse,
-  setMouseDelay,
-} from "@tego/bot";
+export { setMouseDelay } from "@tego/bot";
 
 // ============================================================================
 // Keyboard Functions
@@ -148,6 +158,8 @@ export {
  * keyTap('v', ['control', 'shift']); // Ctrl+Shift+V
  * ```
  */
+export { keyTap } from "@tego/bot";
+
 /**
  * Toggle a key state (press or release)
  * @param key - Key to toggle
@@ -160,6 +172,8 @@ export {
  * keyToggle('shift', 'up');
  * ```
  */
+export { keyToggle } from "@tego/bot";
+
 /**
  * Type a string of text
  * @param string - Text to type
@@ -169,6 +183,8 @@ export {
  * typeString('user@example.com');
  * ```
  */
+export { typeString } from "@tego/bot";
+
 /**
  * Type a string with a specified delay between characters
  * @param string - Text to type
@@ -179,6 +195,8 @@ export {
  * typeStringDelayed('Fast typing', 1000); // 1000 CPM
  * ```
  */
+export { typeStringDelayed } from "@tego/bot";
+
 /**
  * Tap a Unicode character by its code point
  * @param value - Unicode code point (e.g., 0x1F600 for 😀)
@@ -188,6 +206,8 @@ export {
  * unicodeTap(0x2764);  // types ❤
  * ```
  */
+export { unicodeTap } from "@tego/bot";
+
 /**
  * Set the delay between keyboard operations in milliseconds
  * @param ms - Delay in milliseconds
@@ -196,14 +216,7 @@ export {
  * setKeyboardDelay(10); // 10ms delay between key presses
  * ```
  */
-export {
-  keyTap,
-  keyToggle,
-  setKeyboardDelay,
-  typeString,
-  typeStringDelayed,
-  unicodeTap,
-} from "@tego/bot";
+export { setKeyboardDelay } from "@tego/bot";
 
 // ============================================================================
 // Screen Functions
@@ -222,6 +235,8 @@ export {
  * console.log(color); // "#FF0000"
  * ```
  */
+export { bitmapColorAt } from "@tego/bot";
+
 /**
  * Capture the entire screen
  * @returns Promise resolving to screen capture data with PNG buffer
@@ -231,6 +246,8 @@ export {
  * fs.writeFileSync('screenshot.png', screenshot.image);
  * ```
  */
+export { captureScreen } from "@tego/bot";
+
 /**
  * Capture a specific region of the screen
  * @param x - X coordinate of top-left corner
@@ -244,6 +261,8 @@ export {
  * fs.writeFileSync('region.png', region.image);
  * ```
  */
+export { captureScreenRegion } from "@tego/bot";
+
 /**
  * Get the color of a pixel at specific coordinates
  * @param x - X coordinate
@@ -255,6 +274,8 @@ export {
  * console.log(color); // "#FF0000"
  * ```
  */
+export { getPixelColor } from "@tego/bot";
+
 /**
  * Get the global screen instance
  * @returns Screen object for capture operations
@@ -264,6 +285,8 @@ export {
  * const bitmap = await screen.capture();
  * ```
  */
+export { getScreen } from "@tego/bot";
+
 /**
  * Get the screen dimensions
  * @returns Object with width and height in pixels
@@ -273,6 +296,8 @@ export {
  * console.log(`Screen: ${size.width}x${size.height}`);
  * ```
  */
+export { getScreenSize } from "@tego/bot";
+
 /**
  * Update screen metrics (refresh monitor information)
  * @example
@@ -281,15 +306,7 @@ export {
  * const size = getScreenSize(); // get updated size
  * ```
  */
-export {
-  bitmapColorAt,
-  captureScreen,
-  captureScreenRegion,
-  getPixelColor,
-  getScreen,
-  getScreenSize,
-  updateScreenMetrics,
-} from "@tego/bot";
+export { updateScreenMetrics } from "@tego/bot";
 
 // ============================================================================
 // Clipboard Functions
@@ -304,6 +321,8 @@ export {
  * console.log('Clipboard:', text);
  * ```
  */
+export { getClipboard } from "@tego/bot";
+
 /**
  * Set text content to the clipboard
  * @param text - Text to copy to clipboard
@@ -312,6 +331,8 @@ export {
  * setClipboard('Hello from @tego/bot!');
  * ```
  */
+export { setClipboard } from "@tego/bot";
+
 /**
  * Clear the clipboard contents
  * @example
@@ -319,6 +340,8 @@ export {
  * clearClipboard();
  * ```
  */
+export { clearClipboard } from "@tego/bot";
+
 /**
  * Get image from clipboard as PNG buffer
  * @returns PNG-encoded image buffer
@@ -328,6 +351,8 @@ export {
  * fs.writeFileSync('clipboard.png', image);
  * ```
  */
+export { getClipboardImage } from "@tego/bot";
+
 /**
  * Set image to clipboard from PNG buffer
  * @param imageBuffer - PNG-encoded image buffer
@@ -337,13 +362,7 @@ export {
  * setClipboardImage(imageData);
  * ```
  */
-export {
-  clearClipboard,
-  getClipboard,
-  getClipboardImage,
-  setClipboard,
-  setClipboardImage,
-} from "@tego/bot";
+export { setClipboardImage } from "@tego/bot";
 
 // ============================================================================
 // Window Management Functions
@@ -361,6 +380,8 @@ export {
  * console.log(`Size: ${activeWindow.width}x${activeWindow.height}`);
  * ```
  */
+export { getActiveWindow } from "@tego/bot";
+
 /**
  * Get a list of all visible windows
  * Note: Currently returns only the active window due to API limitations
@@ -372,6 +393,8 @@ export {
  * windows.forEach(win => console.log(win.title));
  * ```
  */
+export { getAllWindows } from "@tego/bot";
+
 /**
  * Find windows by title using case-insensitive partial match
  * Note: Currently searches only the active window due to API limitations
@@ -383,6 +406,8 @@ export {
  * chromeWindows.forEach(win => console.log(win.title));
  * ```
  */
+export { findWindowsByTitle } from "@tego/bot";
+
 /**
  * Find windows by process name using case-insensitive partial match
  * Note: Currently searches only the active window due to API limitations
@@ -394,12 +419,7 @@ export {
  * vscodeWindows.forEach(win => console.log(win.title));
  * ```
  */
-export {
-  findWindowsByProcess,
-  findWindowsByTitle,
-  getActiveWindow,
-  getAllWindows,
-} from "@tego/bot";
+export { findWindowsByProcess } from "@tego/bot";
 
 // ============================================================================
 // Mouse Shortcut Methods (botjs-specific helpers)
