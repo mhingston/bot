@@ -1,6 +1,6 @@
 {
   "name": "@tego/bot-agent",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "AI-powered CLI for generating and managing Tego Bot automation scripts",
   "type": "module",
   "bin": {
@@ -21,7 +21,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@tego/botjs": "workspace:*",
+    "@tego/botjs": "^0.0.7",
     "commander": "^13.0.0",
     "@inquirer/prompts": "^7.8.4",
     "openai": "^4.77.3",
