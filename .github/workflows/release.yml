@@ -7,7 +7,7 @@ permissions:
 on:
   push:
     tags:
-      - "v*"
+      - "*.*.*"
   workflow_dispatch:
 
 jobs:
@@ -264,28 +264,37 @@ jobs:
 
       - name: Extract version from tag
         id: version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          name: Release ${{ github.ref_name }}
+          name: Release ${{ steps.version.outputs.VERSION }}
           body: |
-            ## 🐺 @tego/bot ${{ steps.version.outputs.VERSION }}
+            ## 🚀 Tego Bot v${{ steps.version.outputs.VERSION }}
+
+            High-performance desktop automation library for Node.js, powered by Rust.
 
             ### Installation
             ```bash
-            npm install @tego/bot@${{ steps.version.outputs.VERSION }}
+            npm install @tego/botjs@${{ steps.version.outputs.VERSION }}
             # or
-            pnpm add @tego/bot@${{ steps.version.outputs.VERSION }}
+            pnpm add @tego/botjs@${{ steps.version.outputs.VERSION }}
             ```
 
+            ### Packages
+            - `@tego/bot@${{ steps.version.outputs.VERSION }}` - Rust core with N-API bindings
+            - `@tego/botjs@${{ steps.version.outputs.VERSION }}` - TypeScript wrapper (recommended)
+            - `@tego/bot-agent@${{ steps.version.outputs.VERSION }}` - AI-powered CLI tool
+
             ### What's Changed
-            See the changelog for details.
+            See the [CHANGELOG](https://github.com/tegojs/bot/blob/main/CHANGELOG.md) for details.
 
             ### Documentation
-            Visit https://github.com/tegojs/bot#readme for full documentation.
+            - 📖 [Full Documentation](https://tegojs.github.io/bot/)
+            - 📚 [API Reference](https://tegojs.github.io/bot/api/)
+            - 🚀 [Getting Started](https://tegojs.github.io/bot/guide/getting-started)
           draft: false
           prerelease: ${{ contains(github.ref_name, 'alpha') || contains(github.ref_name, 'beta') || contains(github.ref_name, 'rc') }}
         env:
