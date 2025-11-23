@@ -2,7 +2,8 @@
  * Script execution
  */
 
-import { pathToFileURL } from "node:url";
+import { createRequire } from "node:module";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import path from "path";
 
 export interface ExecutionResult {
@@ -39,6 +40,40 @@ export async function executeScript(
     return originalStderrWrite(chunk, ...args);
   }) as any;
 
+  // Setup module resolution hook for @tego/botjs
+  const Module = require("module");
+  const originalResolveFilename = Module._resolveFilename;
+
+  // Find the botjs module path from bot-agent's node_modules
+  const currentFileDir = path.dirname(fileURLToPath(import.meta.url));
+  let botjsMainPath: string;
+
+  try {
+    // Try to find @tego/botjs relative to the current module
+    const require2 = createRequire(import.meta.url);
+    const botjsPath = require2.resolve("@tego/botjs");
+    botjsMainPath = botjsPath;
+  } catch {
+    // Fallback: construct path manually
+    const botjsDir = path.join(
+      currentFileDir,
+      "../../node_modules/@tego/botjs",
+    );
+    botjsMainPath = path.join(botjsDir, "dist/index.mjs");
+  }
+
+  Module._resolveFilename = function (
+    request: string,
+    parent: any,
+    isMain: boolean,
+  ) {
+    // Redirect @tego/botjs imports to the resolved path
+    if (request === "@tego/botjs") {
+      return botjsMainPath;
+    }
+    return originalResolveFilename.call(this, request, parent, isMain);
+  };
+
   try {
     // Register tsx to enable TypeScript loading
     await import("tsx");
@@ -46,6 +81,9 @@ export async function executeScript(
     // Add timestamp to force fresh import
     const fileUrl = `${pathToFileURL(absolutePath).href}?t=${Date.now()}`;
     await import(fileUrl);
+
+    // Restore module resolution
+    Module._resolveFilename = originalResolveFilename;
 
     // Restore stdout/stderr
     process.stdout.write = originalStdoutWrite;
@@ -57,6 +95,9 @@ export async function executeScript(
       stderr,
     };
   } catch (error) {
+    // Restore module resolution
+    Module._resolveFilename = originalResolveFilename;
+
     // Restore stdout/stderr
     process.stdout.write = originalStdoutWrite;
     process.stderr.write = originalStderrWrite;
