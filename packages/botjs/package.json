@@ -54,5 +54,8 @@
     "dist",
     "readme.md",
     "package.json"
-  ]
+  ],
+  "engines": {
+    "node": ">= 20"
+  }
 }

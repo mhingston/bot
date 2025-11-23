@@ -56,5 +56,8 @@
     "name": "sealday",
     "email": "sealday@gmail.com",
     "url": "https://github.com/sealday"
+  },
+  "engines": {
+    "node": ">= 20"
   }
 }
