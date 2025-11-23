@@ -1,6 +1,6 @@
 # Documentation
 
-This directory contains the VitePress documentation site for @tego/bot.
+This directory contains the VitePress documentation site for Tego Bot.
 
 ## Structure
 
@@ -52,7 +52,7 @@ cd docs
 pnpm dev
 ```
 
-Visit http://localhost:5173
+Visit [http://localhost:5173](http://localhost:5173)
 
 ### Build Documentation
 

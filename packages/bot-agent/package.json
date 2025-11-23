@@ -1,17 +1,17 @@
 {
   "name": "@tego/bot-agent",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "AI-powered CLI for generating and managing Tego Bot automation scripts",
   "type": "module",
   "bin": {
-    "bot-agent": "./dist/bin/bot-agent.js"
+    "bot-agent": "./dist/bin/bot-agent.mjs"
   },
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./dist/src/index.js",
+  "types": "./dist/src/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "import": "./dist/src/index.js",
+      "types": "./dist/src/index.d.ts"
     }
   },
   "scripts": {

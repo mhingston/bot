@@ -2,13 +2,24 @@ import { defineConfig } from "vitepress";
 
 export default defineConfig({
   title: "Tego Bot",
-  ignoreDeadLinks: true,
+  ignoreDeadLinks: [
+    // ignore exact url "/playground"
+    "/playground",
+    // ignore all localhost links
+    /^https?:\/\/localhost/,
+    // ignore all links include "/repl/""
+    /\/repl\//,
+    // custom function, ignore all links include "ignore"
+    (url) => {
+      return url.toLowerCase().includes("ignore");
+    },
+  ],
   description:
     "High-performance desktop automation library for Node.js, powered by Rust",
   base: "/bot/",
 
   // Exclude api directory from VitePress processing
-  srcExclude: ["api/**"],
+  srcExclude: [],
 
   themeConfig: {
     logo: "/logo.svg",

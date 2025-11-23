@@ -249,7 +249,7 @@ pnpm build
 
 ## 📄 License
 
-Licensed under the [MIT License](_media/LICENSE).
+Licensed under the MIT License.
 
 ---
 
