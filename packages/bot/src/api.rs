@@ -207,3 +207,20 @@ pub async fn get_pixel_color(x: u32, y: u32) -> Result<String> {
 pub fn get_screen_size() -> Result<screen::ScreenSize> {
     screen::get_screen_size()
 }
+
+/// Capture entire screen
+#[napi]
+pub async fn capture_screen() -> Result<screen::ScreenCapture> {
+    screen::capture_screen_region(None, None, None, None).await
+}
+
+/// Capture screen region
+#[napi]
+pub async fn capture_screen_region(
+    x: u32,
+    y: u32,
+    width: u32,
+    height: u32,
+) -> Result<screen::ScreenCapture> {
+    screen::capture_screen_region(Some(x), Some(y), Some(width), Some(height)).await
+}

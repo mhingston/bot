@@ -1,0 +1,60 @@
+{
+  "name": "@tego/bot-agent",
+  "version": "0.0.1",
+  "description": "AI-powered CLI for generating and managing @tego/bot automation scripts",
+  "type": "module",
+  "bin": {
+    "bot-agent": "./dist/bin/bot-agent.js"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@tego/botjs": "workspace:*",
+    "commander": "^13.0.0",
+    "@inquirer/prompts": "^7.8.4",
+    "openai": "^4.77.3",
+    "chalk": "^5.4.1",
+    "ora": "^8.1.1",
+    "boxen": "^8.0.1",
+    "cli-highlight": "^2.1.11",
+    "tsx": "^4.20.6"
+  },
+  "devDependencies": {
+    "@types/node": "^24.5.2",
+    "tsdown": "^0.16.6",
+    "typescript": "^5.9.2",
+    "vitest": "^4.0.9"
+  },
+  "files": [
+    "dist",
+    "readme.md",
+    "package.json"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tegojs/bot.git",
+    "directory": "packages/bot-agent"
+  },
+  "homepage": "https://github.com/tegojs/bot#readme",
+  "bugs": {
+    "url": "https://github.com/tegojs/bot/issues"
+  },
+  "license": "MIT",
+  "author": {
+    "name": "sealday",
+    "email": "sealday@gmail.com",
+    "url": "https://github.com/sealday"
+  }
+}
