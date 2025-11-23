@@ -9,6 +9,8 @@ export default defineConfig({
     /^https?:\/\/localhost/,
     // ignore all links include "/repl/""
     /\/repl\//,
+    // ignore /api/ links (handled by TypeDoc)
+    /^\/api\//,
     // custom function, ignore all links include "ignore"
     (url) => {
       return url.toLowerCase().includes("ignore");
@@ -19,19 +21,28 @@ export default defineConfig({
   base: "/bot/",
 
   // Exclude api directory from VitePress processing
-  srcExclude: [],
+  srcExclude: ["api/**"],
 
   themeConfig: {
     logo: "/logo.svg",
 
     nav: [
       { text: "Home", link: "/" },
+      { text: "Guide", link: "/guide/getting-started" },
       { text: "API", link: "/api/" },
       { text: "Development", link: "/developments/" },
       { text: "GitHub", link: "https://github.com/tegojs/bot" },
     ],
 
     sidebar: {
+      "/guide/": [
+        {
+          text: "Guide",
+          items: [
+            { text: "Getting Started", link: "/guide/getting-started" },
+          ],
+        },
+      ],
       "/api/": [
         {
           text: "API Documentation",
