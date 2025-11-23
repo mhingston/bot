@@ -20,6 +20,9 @@
     "test": "pnpm -r test",
     "ex:run": "pnpm --filter examples ex:run",
     "bench:run": "pnpm --filter bench bench:run",
+    "docs:api": "pnpm --filter @tego/botjs docs",
+    "docs:serve": "cd docs && bundle exec jekyll serve",
+    "docs:build": "cd docs && bundle exec jekyll build",
     "prepare": "simple-git-hooks",
     "commitlint": "commitlint"
   },
