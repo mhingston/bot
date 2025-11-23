@@ -1,40 +1,13 @@
 // ============================================================================
-// Explicit exports from @tego/bot for better TypeDoc documentation
+// Re-export all types and implementations from @tego/bot with enhanced JSDoc
 // ============================================================================
 
-/**
- * Keyboard automation class for simulating keyboard input
- * @example
- * ```typescript
- * const keyboard = new Keyboard();
- * keyboard.keyTap('a');
- * keyboard.typeString('Hello World');
- * ```
- */
-export { Keyboard } from "@tego/bot";
+import * as bot from "@tego/bot";
 
-/**
- * Mouse automation class for controlling mouse movements and clicks
- * @example
- * ```typescript
- * const mouse = new Mouse();
- * mouse.moveMouse(100, 200);
- * mouse.mouseClick('left');
- * ```
- */
-export { Mouse } from "@tego/bot";
+// ============================================================================
+// Type Exports
+// ============================================================================
 
-/**
- * Screen capture class for taking screenshots
- * @example
- * ```typescript
- * const screen = new Screen();
- * const bitmap = await screen.capture(0, 0, 800, 600);
- * ```
- */
-export { Screen } from "@tego/bot";
-
-// Types/Interfaces
 export type {
   Bitmap,
   MousePosition,
@@ -45,324 +18,615 @@ export type {
 } from "@tego/bot";
 
 // ============================================================================
+// Class Exports
+// ============================================================================
+
+/**
+ * Keyboard automation class for simulating keyboard input
+ *
+ * @example
+ * ```typescript
+ * import { Keyboard } from "@tego/botjs";
+ *
+ * const keyboard = new Keyboard();
+ * keyboard.keyTap('a');
+ * keyboard.typeString('Hello World');
+ * keyboard.keyTap('c', ['control']); // Ctrl+C
+ * ```
+ */
+export const Keyboard = bot.Keyboard;
+
+/**
+ * Mouse automation class for controlling mouse movements and clicks
+ *
+ * @example
+ * ```typescript
+ * import { Mouse } from "@tego/botjs";
+ *
+ * const mouse = new Mouse();
+ * mouse.moveMouse(100, 200);
+ * mouse.mouseClick('left');
+ * mouse.dragMouse(500, 500);
+ * ```
+ */
+export const Mouse = bot.Mouse;
+
+/**
+ * Screen capture class for taking screenshots and getting pixel colors
+ *
+ * @example
+ * ```typescript
+ * import { Screen } from "@tego/botjs";
+ *
+ * const screen = new Screen();
+ * const bitmap = await screen.capture(0, 0, 800, 600);
+ * console.log(`Captured ${bitmap.width}x${bitmap.height} region`);
+ * ```
+ */
+export const Screen = bot.Screen;
+
+// ============================================================================
 // Mouse Functions
 // ============================================================================
 
 /**
  * Move the mouse cursor to the specified coordinates instantly
- * @param x - X coordinate
- * @param y - Y coordinate
+ *
+ * @param x - X coordinate in pixels
+ * @param y - Y coordinate in pixels
+ *
  * @example
  * ```typescript
+ * import { moveMouse } from "@tego/botjs";
+ *
+ * // Move to absolute position
  * moveMouse(100, 200);
  * ```
  */
-export { moveMouse } from "@tego/bot";
+export function moveMouse(x: number, y: number): void {
+  bot.moveMouse(x, y);
+}
 
 /**
- * Move the mouse cursor smoothly to the specified coordinates with easing
- * @param x - X coordinate
- * @param y - Y coordinate
- * @param speed - Optional movement speed (default: 3.0)
+ * Move the mouse cursor smoothly to the specified coordinates with easing animation
+ *
+ * @param x - X coordinate in pixels
+ * @param y - Y coordinate in pixels
+ * @param speed - Optional movement speed multiplier (default: 3.0, higher = faster)
+ *
  * @example
  * ```typescript
+ * import { moveMouseSmooth } from "@tego/botjs";
+ *
+ * // Smooth movement with default speed
  * moveMouseSmooth(500, 500);
- * moveMouseSmooth(500, 500, 5.0); // faster movement
+ *
+ * // Faster smooth movement
+ * moveMouseSmooth(500, 500, 5.0);
  * ```
  */
-export { moveMouseSmooth } from "@tego/bot";
+export function moveMouseSmooth(x: number, y: number, speed?: number): void {
+  bot.moveMouseSmooth(x, y, speed);
+}
 
 /**
- * Click the mouse button at the current position
+ * Click the mouse button at the current cursor position
+ *
  * @param button - Mouse button: "left", "right", or "middle" (default: "left")
  * @param double - Whether to perform a double click (default: false)
+ *
  * @example
  * ```typescript
+ * import { mouseClick } from "@tego/botjs";
+ *
+ * // Single left click
  * mouseClick('left');
- * mouseClick('right', true); // right double-click
+ *
+ * // Double right click
+ * mouseClick('right', true);
+ *
+ * // Single middle click
+ * mouseClick('middle');
  * ```
  */
-export { mouseClick } from "@tego/bot";
+export function mouseClick(button?: string, double?: boolean): void {
+  bot.mouseClick(button, double);
+}
 
 /**
- * Toggle mouse button state (press or release)
- * @param down - "down" to press, "up" to release
+ * Toggle mouse button state (press down or release up)
+ *
+ * @param down - "down" to press the button, "up" to release it
  * @param button - Mouse button: "left", "right", or "middle" (default: "left")
+ *
  * @example
  * ```typescript
+ * import { mouseToggle } from "@tego/botjs";
+ *
+ * // Press and hold left button
  * mouseToggle('down', 'left');
- * // ... do something ...
+ *
+ * // Perform some actions while button is held...
+ *
+ * // Release left button
  * mouseToggle('up', 'left');
  * ```
  */
-export { mouseToggle } from "@tego/bot";
+export function mouseToggle(down: string, button?: string): void {
+  bot.mouseToggle(down, button);
+}
 
 /**
  * Drag the mouse from current position to target coordinates
- * @param x - Target X coordinate
- * @param y - Target Y coordinate
+ *
+ * @param x - Target X coordinate in pixels
+ * @param y - Target Y coordinate in pixels
+ *
  * @example
  * ```typescript
+ * import { moveMouse, dragMouse } from "@tego/botjs";
+ *
+ * // Move to start position
  * moveMouse(100, 100);
- * dragMouse(500, 500); // drag from (100,100) to (500,500)
+ *
+ * // Drag to end position
+ * dragMouse(500, 500);
  * ```
  */
-export { dragMouse } from "@tego/bot";
+export function dragMouse(x: number, y: number): void {
+  bot.dragMouse(x, y);
+}
 
 /**
- * Scroll the mouse wheel
+ * Scroll the mouse wheel in horizontal and/or vertical directions
+ *
  * @param x - Horizontal scroll amount (positive = right, negative = left)
  * @param y - Vertical scroll amount (positive = down, negative = up)
+ *
  * @example
  * ```typescript
- * scrollMouse(0, 3);  // scroll down
- * scrollMouse(0, -3); // scroll up
- * scrollMouse(2, 0);  // scroll right
+ * import { scrollMouse } from "@tego/botjs";
+ *
+ * // Scroll down
+ * scrollMouse(0, 3);
+ *
+ * // Scroll up
+ * scrollMouse(0, -3);
+ *
+ * // Scroll right
+ * scrollMouse(2, 0);
  * ```
  */
-export { scrollMouse } from "@tego/bot";
+export function scrollMouse(x: number, y: number): void {
+  bot.scrollMouse(x, y);
+}
 
 /**
  * Get the current mouse cursor position
- * @returns Object with x and y coordinates
+ *
+ * @returns Object containing x and y coordinates
+ *
  * @example
  * ```typescript
+ * import { getMousePos } from "@tego/botjs";
+ *
  * const pos = getMousePos();
- * console.log(`Mouse at: ${pos.x}, ${pos.y}`);
+ * console.log(`Mouse is at: ${pos.x}, ${pos.y}`);
  * ```
  */
-export { getMousePos } from "@tego/bot";
+export function getMousePos(): bot.MousePosition {
+  return bot.getMousePos();
+}
 
 /**
  * Set the delay between mouse operations in milliseconds
- * @param delay - Delay in milliseconds
+ *
+ * @param delay - Delay in milliseconds (applied after each mouse operation)
+ *
  * @example
  * ```typescript
- * setMouseDelay(50); // 50ms delay between operations
+ * import { setMouseDelay, moveMouse } from "@tego/botjs";
+ *
+ * // Set 50ms delay between operations
+ * setMouseDelay(50);
+ *
+ * // These will have 50ms delay between them
+ * moveMouse(100, 100);
+ * moveMouse(200, 200);
  * ```
  */
-export { setMouseDelay } from "@tego/bot";
+export function setMouseDelay(delay: number): void {
+  bot.setMouseDelay(delay);
+}
 
 // ============================================================================
 // Keyboard Functions
 // ============================================================================
 
 /**
- * Tap a key (press and release)
- * @param key - Key to tap (e.g., 'a', 'enter', 'f1')
- * @param modifier - Optional modifier keys array (e.g., ['control', 'shift'])
+ * Tap a key (press and immediately release)
+ *
+ * @param key - Key to tap (e.g., 'a', 'enter', 'escape', 'f1')
+ * @param modifier - Optional array of modifier keys: 'control', 'shift', 'alt', 'command'
+ *
  * @example
  * ```typescript
+ * import { keyTap } from "@tego/botjs";
+ *
+ * // Type a single character
  * keyTap('a');
- * keyTap('c', ['control']); // Ctrl+C
- * keyTap('v', ['control', 'shift']); // Ctrl+Shift+V
+ *
+ * // Press Enter
+ * keyTap('enter');
+ *
+ * // Ctrl+C (copy)
+ * keyTap('c', ['control']);
+ *
+ * // Ctrl+Shift+V (paste without formatting)
+ * keyTap('v', ['control', 'shift']);
  * ```
  */
-export { keyTap } from "@tego/bot";
+export function keyTap(key: string, modifier?: string[]): void {
+  bot.keyTap(key, modifier);
+}
 
 /**
- * Toggle a key state (press or release)
+ * Toggle a key state (press down or release up)
+ *
  * @param key - Key to toggle
  * @param down - "down" to press, "up" to release
- * @param modifier - Optional modifier keys array
+ * @param modifier - Optional array of modifier keys
+ *
  * @example
  * ```typescript
+ * import { keyToggle, keyTap } from "@tego/botjs";
+ *
+ * // Hold Shift
  * keyToggle('shift', 'down');
- * keyTap('a'); // types 'A'
+ *
+ * // Type 'HELLO' (all caps due to Shift being held)
+ * keyTap('h');
+ * keyTap('e');
+ * keyTap('l');
+ * keyTap('l');
+ * keyTap('o');
+ *
+ * // Release Shift
  * keyToggle('shift', 'up');
  * ```
  */
-export { keyToggle } from "@tego/bot";
+export function keyToggle(
+  key: string,
+  down: string,
+  modifier?: string[],
+): void {
+  bot.keyToggle(key, down, modifier);
+}
 
 /**
- * Type a string of text
- * @param string - Text to type
+ * Type a string of text by simulating individual keystrokes
+ *
+ * @param text - Text string to type
+ *
  * @example
  * ```typescript
+ * import { typeString } from "@tego/botjs";
+ *
+ * // Type text
  * typeString('Hello, World!');
+ *
+ * // Type email address
  * typeString('user@example.com');
+ *
+ * // Type with special characters
+ * typeString('Password123!@#');
  * ```
  */
-export { typeString } from "@tego/bot";
+export function typeString(text: string): void {
+  bot.typeString(text);
+}
 
 /**
- * Type a string with a specified delay between characters
- * @param string - Text to type
+ * Type a string with a specified delay between characters (simulates human typing speed)
+ *
+ * @param text - Text string to type
  * @param cpm - Characters per minute (typing speed)
+ *
  * @example
  * ```typescript
- * typeStringDelayed('Hello', 300); // 300 CPM (slow typing)
- * typeStringDelayed('Fast typing', 1000); // 1000 CPM
+ * import { typeStringDelayed } from "@tego/botjs";
+ *
+ * // Slow typing (300 characters per minute)
+ * typeStringDelayed('Hello', 300);
+ *
+ * // Fast typing (1000 characters per minute)
+ * typeStringDelayed('Fast typing!', 1000);
  * ```
  */
-export { typeStringDelayed } from "@tego/bot";
+export function typeStringDelayed(text: string, cpm: number): void {
+  bot.typeStringDelayed(text, cpm);
+}
 
 /**
  * Tap a Unicode character by its code point
- * @param value - Unicode code point (e.g., 0x1F600 for 😀)
+ *
+ * @param codePoint - Unicode code point (e.g., 0x1F600 for 😀)
+ *
  * @example
  * ```typescript
- * unicodeTap(0x1F600); // types 😀
- * unicodeTap(0x2764);  // types ❤
+ * import { unicodeTap } from "@tego/botjs";
+ *
+ * // Type emoji
+ * unicodeTap(0x1F600); // 😀
+ * unicodeTap(0x2764);  // ❤
+ * unicodeTap(0x1F44D); // 👍
  * ```
  */
-export { unicodeTap } from "@tego/bot";
+export function unicodeTap(codePoint: number): void {
+  bot.unicodeTap(codePoint);
+}
 
 /**
  * Set the delay between keyboard operations in milliseconds
+ *
  * @param ms - Delay in milliseconds
+ *
  * @example
  * ```typescript
- * setKeyboardDelay(10); // 10ms delay between key presses
+ * import { setKeyboardDelay, keyTap } from "@tego/botjs";
+ *
+ * // Set 10ms delay between key presses
+ * setKeyboardDelay(10);
+ *
+ * // These will have 10ms delay between them
+ * keyTap('h');
+ * keyTap('i');
  * ```
  */
-export { setKeyboardDelay } from "@tego/bot";
+export function setKeyboardDelay(ms: number): void {
+  bot.setKeyboardDelay(ms);
+}
 
 // ============================================================================
 // Screen Functions
 // ============================================================================
 
 /**
- * Get color at specific coordinates in a bitmap
- * @param bitmap - Bitmap object
- * @param x - X coordinate
- * @param y - Y coordinate
- * @returns Hex color string (e.g., "#FF0000")
+ * Get the color at specific coordinates in a bitmap
+ *
+ * @param bitmap - Bitmap object from screen capture
+ * @param x - X coordinate in the bitmap
+ * @param y - Y coordinate in the bitmap
+ * @returns Hex color string (e.g., "#FF0000" for red)
+ *
  * @example
  * ```typescript
- * const bitmap = await captureScreen();
- * const color = bitmapColorAt(bitmap, 100, 200);
- * console.log(color); // "#FF0000"
+ * import { captureScreen, bitmapColorAt } from "@tego/botjs";
+ *
+ * const screenshot = await captureScreen();
+ * const color = bitmapColorAt(screenshot, 100, 200);
+ * console.log(`Color at (100, 200): ${color}`);
  * ```
  */
-export { bitmapColorAt } from "@tego/bot";
+export function bitmapColorAt(
+  bitmap: bot.Bitmap,
+  x: number,
+  y: number,
+): string {
+  return bot.bitmapColorAt(bitmap, x, y);
+}
 
 /**
- * Capture the entire screen
- * @returns Promise resolving to screen capture data with PNG buffer
+ * Capture the entire screen as a PNG image
+ *
+ * @returns Promise resolving to screen capture with PNG buffer
+ *
  * @example
  * ```typescript
+ * import { captureScreen } from "@tego/botjs";
+ * import fs from "fs";
+ *
  * const screenshot = await captureScreen();
  * fs.writeFileSync('screenshot.png', screenshot.image);
+ * console.log(`Captured ${screenshot.width}x${screenshot.height} screenshot`);
  * ```
  */
-export { captureScreen } from "@tego/bot";
+export function captureScreen(): Promise<bot.ScreenCapture> {
+  return bot.captureScreen();
+}
 
 /**
- * Capture a specific region of the screen
- * @param x - X coordinate of top-left corner
- * @param y - Y coordinate of top-left corner
- * @param width - Width of the region
- * @param height - Height of the region
- * @returns Promise resolving to screen capture data with PNG buffer
+ * Capture a specific region of the screen as a PNG image
+ *
+ * @param x - X coordinate of the top-left corner
+ * @param y - Y coordinate of the top-left corner
+ * @param width - Width of the region in pixels
+ * @param height - Height of the region in pixels
+ * @returns Promise resolving to screen capture with PNG buffer
+ *
  * @example
  * ```typescript
+ * import { captureScreenRegion } from "@tego/botjs";
+ * import fs from "fs";
+ *
+ * // Capture 800x600 region starting at (100, 100)
  * const region = await captureScreenRegion(100, 100, 800, 600);
  * fs.writeFileSync('region.png', region.image);
  * ```
  */
-export { captureScreenRegion } from "@tego/bot";
+export function captureScreenRegion(
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+): Promise<bot.ScreenCapture> {
+  return bot.captureScreenRegion(x, y, width, height);
+}
 
 /**
- * Get the color of a pixel at specific coordinates
- * @param x - X coordinate
- * @param y - Y coordinate
+ * Get the color of a pixel at specific screen coordinates
+ *
+ * @param x - X coordinate on screen
+ * @param y - Y coordinate on screen
  * @returns Promise resolving to hex color string (e.g., "#FF0000")
+ *
  * @example
  * ```typescript
+ * import { getPixelColor } from "@tego/botjs";
+ *
  * const color = await getPixelColor(100, 200);
- * console.log(color); // "#FF0000"
+ * console.log(`Pixel color: ${color}`);
+ *
+ * if (color === "#FF0000") {
+ *   console.log("Pixel is red!");
+ * }
  * ```
  */
-export { getPixelColor } from "@tego/bot";
+export function getPixelColor(x: number, y: number): Promise<string> {
+  return bot.getPixelColor(x, y);
+}
 
 /**
- * Get the global screen instance
- * @returns Screen object for capture operations
+ * Get the global Screen instance for capture operations
+ *
+ * @returns Screen object
+ *
  * @example
  * ```typescript
+ * import { getScreen } from "@tego/botjs";
+ *
  * const screen = getScreen();
- * const bitmap = await screen.capture();
+ * const bitmap = await screen.capture(0, 0, 800, 600);
  * ```
  */
-export { getScreen } from "@tego/bot";
+export function getScreen(): bot.Screen {
+  return bot.getScreen();
+}
 
 /**
- * Get the screen dimensions
- * @returns Object with width and height in pixels
+ * Get the dimensions of the primary screen
+ *
+ * @returns Object containing width and height in pixels
+ *
  * @example
  * ```typescript
+ * import { getScreenSize } from "@tego/botjs";
+ *
  * const size = getScreenSize();
- * console.log(`Screen: ${size.width}x${size.height}`);
+ * console.log(`Screen resolution: ${size.width}x${size.height}`);
  * ```
  */
-export { getScreenSize } from "@tego/bot";
+export function getScreenSize(): bot.ScreenSize {
+  return bot.getScreenSize();
+}
 
 /**
  * Update screen metrics (refresh monitor information)
+ * Call this after display configuration changes
+ *
  * @example
  * ```typescript
+ * import { updateScreenMetrics, getScreenSize } from "@tego/botjs";
+ *
+ * // After connecting/disconnecting monitors
  * updateScreenMetrics();
- * const size = getScreenSize(); // get updated size
+ * const newSize = getScreenSize();
+ * console.log(`Updated screen size: ${newSize.width}x${newSize.height}`);
  * ```
  */
-export { updateScreenMetrics } from "@tego/bot";
+export function updateScreenMetrics(): void {
+  bot.updateScreenMetrics();
+}
 
 // ============================================================================
 // Clipboard Functions
 // ============================================================================
 
 /**
- * Get text content from the clipboard
- * @returns Current clipboard text
+ * Get text content from the system clipboard
+ *
+ * @returns Current clipboard text content
+ *
  * @example
  * ```typescript
+ * import { getClipboard } from "@tego/botjs";
+ *
  * const text = getClipboard();
- * console.log('Clipboard:', text);
+ * console.log(`Clipboard contains: ${text}`);
  * ```
  */
-export { getClipboard } from "@tego/bot";
+export function getClipboard(): string {
+  return bot.getClipboard();
+}
 
 /**
- * Set text content to the clipboard
+ * Set text content to the system clipboard
+ *
  * @param text - Text to copy to clipboard
+ *
  * @example
  * ```typescript
+ * import { setClipboard } from "@tego/botjs";
+ *
  * setClipboard('Hello from @tego/bot!');
+ * setClipboard('user@example.com');
  * ```
  */
-export { setClipboard } from "@tego/bot";
+export function setClipboard(text: string): void {
+  bot.setClipboard(text);
+}
 
 /**
- * Clear the clipboard contents
+ * Clear the system clipboard contents
+ *
  * @example
  * ```typescript
+ * import { clearClipboard } from "@tego/botjs";
+ *
  * clearClipboard();
+ * console.log('Clipboard cleared');
  * ```
  */
-export { clearClipboard } from "@tego/bot";
+export function clearClipboard(): void {
+  bot.clearClipboard();
+}
 
 /**
- * Get image from clipboard as PNG buffer
+ * Get image from clipboard as a PNG-encoded buffer
+ *
  * @returns PNG-encoded image buffer
+ *
  * @example
  * ```typescript
- * const image = getClipboardImage();
- * fs.writeFileSync('clipboard.png', image);
+ * import { getClipboardImage } from "@tego/botjs";
+ * import fs from "fs";
+ *
+ * const imageBuffer = getClipboardImage();
+ * fs.writeFileSync('clipboard.png', imageBuffer);
  * ```
  */
-export { getClipboardImage } from "@tego/bot";
+export function getClipboardImage(): Buffer {
+  return bot.getClipboardImage();
+}
 
 /**
- * Set image to clipboard from PNG buffer
+ * Set image to clipboard from a PNG-encoded buffer
+ *
  * @param imageBuffer - PNG-encoded image buffer
+ *
  * @example
  * ```typescript
+ * import { setClipboardImage } from "@tego/botjs";
+ * import fs from "fs";
+ *
  * const imageData = fs.readFileSync('image.png');
  * setClipboardImage(imageData);
+ * console.log('Image copied to clipboard');
  * ```
  */
-export { setClipboardImage } from "@tego/bot";
+export function setClipboardImage(imageBuffer: Buffer): void {
+  bot.setClipboardImage(imageBuffer);
+}
 
 // ============================================================================
 // Window Management Functions
@@ -370,173 +634,230 @@ export { setClipboardImage } from "@tego/bot";
 
 /**
  * Get information about the currently active (focused) window
- * @returns WindowInfo object with title, process, position, and size
+ *
+ * @returns WindowInfo object with title, process, position, and dimensions
+ *
  * @example
  * ```typescript
- * const activeWindow = getActiveWindow();
- * console.log(`Active: ${activeWindow.title}`);
- * console.log(`Process: ${activeWindow.processPath}`);
- * console.log(`Position: ${activeWindow.x}, ${activeWindow.y}`);
- * console.log(`Size: ${activeWindow.width}x${activeWindow.height}`);
+ * import { getActiveWindow } from "@tego/botjs";
+ *
+ * const win = getActiveWindow();
+ * console.log(`Active window: ${win.title}`);
+ * console.log(`Process: ${win.processPath} (PID: ${win.processId})`);
+ * console.log(`Position: (${win.x}, ${win.y})`);
+ * console.log(`Size: ${win.width}x${win.height}`);
  * ```
  */
-export { getActiveWindow } from "@tego/bot";
+export function getActiveWindow(): bot.WindowInfo {
+  return bot.getActiveWindow();
+}
 
 /**
  * Get a list of all visible windows
- * Note: Currently returns only the active window due to API limitations
+ *
+ * **Note:** Currently returns only the active window due to API limitations of the underlying library.
+ * Future versions may support enumerating all windows.
+ *
  * @returns Array of WindowInfo objects
+ *
  * @example
  * ```typescript
+ * import { getAllWindows } from "@tego/botjs";
+ *
  * const windows = getAllWindows();
  * console.log(`Found ${windows.length} windows`);
- * windows.forEach(win => console.log(win.title));
+ * windows.forEach(win => {
+ *   console.log(`- ${win.title}`);
+ * });
  * ```
  */
-export { getAllWindows } from "@tego/bot";
+export function getAllWindows(): bot.WindowInfo[] {
+  return bot.getAllWindows();
+}
 
 /**
- * Find windows by title using case-insensitive partial match
- * Note: Currently searches only the active window due to API limitations
- * @param title - Title text to search for
+ * Find windows by title using case-insensitive partial matching
+ *
+ * **Note:** Currently searches only the active window due to API limitations of the underlying library.
+ * Future versions may support searching all windows.
+ *
+ * @param title - Title text to search for (case-insensitive partial match)
  * @returns Array of matching WindowInfo objects
+ *
  * @example
  * ```typescript
+ * import { findWindowsByTitle } from "@tego/botjs";
+ *
+ * // Find Chrome windows
  * const chromeWindows = findWindowsByTitle('chrome');
  * chromeWindows.forEach(win => console.log(win.title));
+ *
+ * // Find Visual Studio Code windows
+ * const vscodeWindows = findWindowsByTitle('Visual Studio Code');
  * ```
  */
-export { findWindowsByTitle } from "@tego/bot";
+export function findWindowsByTitle(title: string): bot.WindowInfo[] {
+  return bot.findWindowsByTitle(title);
+}
 
 /**
- * Find windows by process name using case-insensitive partial match
- * Note: Currently searches only the active window due to API limitations
- * @param processName - Process name to search for
+ * Find windows by process name using case-insensitive partial matching
+ *
+ * **Note:** Currently searches only the active window due to API limitations of the underlying library.
+ * Future versions may support searching all windows.
+ *
+ * @param processName - Process name to search for (case-insensitive partial match)
  * @returns Array of matching WindowInfo objects
+ *
  * @example
  * ```typescript
+ * import { findWindowsByProcess } from "@tego/botjs";
+ *
+ * // Find VS Code windows by process
  * const vscodeWindows = findWindowsByProcess('code');
- * vscodeWindows.forEach(win => console.log(win.title));
+ * vscodeWindows.forEach(win => {
+ *   console.log(`${win.title} - ${win.processPath}`);
+ * });
  * ```
  */
-export { findWindowsByProcess } from "@tego/bot";
+export function findWindowsByProcess(processName: string): bot.WindowInfo[] {
+  return bot.findWindowsByProcess(processName);
+}
 
 // ============================================================================
-// Mouse Shortcut Methods (botjs-specific helpers)
+// Mouse Shortcut Helper Functions (botjs-specific)
 // ============================================================================
-
-// Import required functions for internal use
-import {
-  mouseClick as _mouseClick,
-  mouseToggle as _mouseToggle,
-  moveMouse as _moveMouse,
-} from "@tego/bot";
 
 /**
- * Perform a double click at the current mouse position or specified coordinates
- * @param x - Optional X coordinate
- * @param y - Optional Y coordinate
+ * Perform a double-click at the current mouse position or at specified coordinates
+ *
+ * @param x - Optional X coordinate to move to before double-clicking
+ * @param y - Optional Y coordinate to move to before double-clicking
+ *
  * @example
  * ```typescript
- * // Double click at current position
+ * import { doubleClick } from "@tego/botjs";
+ *
+ * // Double-click at current position
  * doubleClick();
  *
- * // Double click at specific coordinates
+ * // Move to (100, 200) and double-click
  * doubleClick(100, 200);
  * ```
  */
 export function doubleClick(x?: number, y?: number): void {
   if (x !== undefined && y !== undefined) {
-    _moveMouse(x, y);
+    bot.moveMouse(x, y);
   }
-  _mouseClick(undefined, true);
+  bot.mouseClick(undefined, true);
 }
 
 /**
- * Perform a right click at the current mouse position or specified coordinates
- * @param x - Optional X coordinate
- * @param y - Optional Y coordinate
+ * Perform a right-click at the current mouse position or at specified coordinates
+ *
+ * @param x - Optional X coordinate to move to before right-clicking
+ * @param y - Optional Y coordinate to move to before right-clicking
+ *
  * @example
  * ```typescript
- * // Right click at current position
+ * import { rightClick } from "@tego/botjs";
+ *
+ * // Right-click at current position
  * rightClick();
  *
- * // Right click at specific coordinates
+ * // Move to (300, 400) and right-click
  * rightClick(300, 400);
  * ```
  */
 export function rightClick(x?: number, y?: number): void {
   if (x !== undefined && y !== undefined) {
-    _moveMouse(x, y);
+    bot.moveMouse(x, y);
   }
-  _mouseClick("right", false);
+  bot.mouseClick("right", false);
 }
 
 /**
- * Perform a middle click at the current mouse position or specified coordinates
- * @param x - Optional X coordinate
- * @param y - Optional Y coordinate
+ * Perform a middle-click at the current mouse position or at specified coordinates
+ *
+ * @param x - Optional X coordinate to move to before middle-clicking
+ * @param y - Optional Y coordinate to move to before middle-clicking
+ *
  * @example
  * ```typescript
- * // Middle click at current position
+ * import { middleClick } from "@tego/botjs";
+ *
+ * // Middle-click at current position
  * middleClick();
  *
- * // Middle click at specific coordinates
+ * // Move to (500, 600) and middle-click
  * middleClick(500, 600);
  * ```
  */
 export function middleClick(x?: number, y?: number): void {
   if (x !== undefined && y !== undefined) {
-    _moveMouse(x, y);
+    bot.moveMouse(x, y);
   }
-  _mouseClick("middle", false);
+  bot.mouseClick("middle", false);
 }
 
 /**
- * Perform a left click at the current mouse position or specified coordinates
- * @param x - Optional X coordinate
- * @param y - Optional Y coordinate
+ * Perform a left-click at the current mouse position or at specified coordinates
+ *
+ * @param x - Optional X coordinate to move to before left-clicking
+ * @param y - Optional Y coordinate to move to before left-clicking
+ *
  * @example
  * ```typescript
- * // Left click at current position
+ * import { leftClick } from "@tego/botjs";
+ *
+ * // Left-click at current position
  * leftClick();
  *
- * // Left click at specific coordinates
+ * // Move to (150, 250) and left-click
  * leftClick(150, 250);
  * ```
  */
 export function leftClick(x?: number, y?: number): void {
   if (x !== undefined && y !== undefined) {
-    _moveMouse(x, y);
+    bot.moveMouse(x, y);
   }
-  _mouseClick("left", false);
+  bot.mouseClick("left", false);
 }
 
 /**
- * Click and hold the mouse button down
- * @param button - Mouse button to hold ("left", "right", or "middle"), defaults to "left"
+ * Press and hold a mouse button down
+ *
+ * @param button - Mouse button to hold: "left", "right", or "middle" (default: "left")
+ *
  * @example
  * ```typescript
+ * import { mouseDown, mouseUp, moveMouse } from "@tego/botjs";
+ *
  * // Hold left button
  * mouseDown("left");
- * // ... perform drag operation ...
- * mouseUp("left");
  *
- * // Hold right button
- * mouseDown("right");
+ * // Perform drag operation
+ * moveMouse(500, 500);
+ *
+ * // Release left button
+ * mouseUp("left");
  * ```
  */
 export function mouseDown(button: "left" | "right" | "middle" = "left"): void {
-  _mouseToggle("down", button);
+  bot.mouseToggle("down", button);
 }
 
 /**
- * Release the mouse button
- * @param button - Mouse button to release ("left", "right", or "middle"), defaults to "left"
+ * Release a held mouse button
+ *
+ * @param button - Mouse button to release: "left", "right", or "middle" (default: "left")
+ *
  * @example
  * ```typescript
+ * import { mouseDown, mouseUp } from "@tego/botjs";
+ *
  * mouseDown("left");
- * // ... perform drag operation ...
+ * // ... perform actions while button is held ...
  * mouseUp("left");
  *
  * // Release right button
@@ -544,5 +865,5 @@ export function mouseDown(button: "left" | "right" | "middle" = "left"): void {
  * ```
  */
 export function mouseUp(button: "left" | "right" | "middle" = "left"): void {
-  _mouseToggle("up", button);
+  bot.mouseToggle("up", button);
 }
