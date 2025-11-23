@@ -10,6 +10,7 @@
   <p>
     <a href="https://www.npmjs.com/package/@tego/botjs"><img src="https://img.shields.io/npm/v/@tego/botjs?style=flat-square&logo=npm&color=cb3837" alt="npm version" /></a>
     <a href="https://www.npmjs.com/package/@tego/botjs"><img src="https://img.shields.io/npm/dm/@tego/botjs?style=flat-square&logo=npm&color=cb3837" alt="npm downloads" /></a>
+    <a href="https://github.com/tegojs/bot"><img src="https://img.shields.io/badge/code-3.5k%20lines-blue?style=flat-square" alt="Lines of code" /></a>
     <a href="https://github.com/tegojs/bot/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/tegojs/bot/ci.yml?branch=main&style=flat-square&logo=github&label=CI" alt="CI status" /></a>
     <a href="https://github.com/tegojs/bot/issues"><img src="https://img.shields.io/github/issues/tegojs/bot?style=flat-square&logo=github&color=yellow" alt="GitHub issues" /></a>
     <a href="https://github.com/tegojs/bot"><img src="https://img.shields.io/github/stars/tegojs/bot?style=flat-square&logo=github&color=blue" alt="GitHub stars" /></a>
