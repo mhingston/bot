@@ -1,5 +1,5 @@
 <div align="center">
-  <h1>Tego Bot</h1>
+  <img src="assets/logo.png" alt="TegoBot Logo" width="400"/>
 
   <p>
     <strong>High-performance</strong> desktop automation library for <strong>Node.js</strong>.
