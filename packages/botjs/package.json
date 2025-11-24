@@ -1,6 +1,6 @@
 {
   "name": "@tego/botjs",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Type-safe TypeScript wrapper for Tego Bot - High-performance desktop automation library powered by Rust",
   "scripts": {
     "build": "tsdown",
@@ -13,9 +13,7 @@
     "docs:serve": "pnpm dlx serve docs"
   },
   "dependencies": {
-    "@tego/bot": "workspace:*",
-    "acorn": "^8.15.0",
-    "acorn-walk": "^8.3.4"
+    "@tego/bot": "workspace:*"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^4.0.9",
