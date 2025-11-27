@@ -78,14 +78,15 @@ fn configure_macos_window(window: &Window) {
             // NSWindowCollectionBehaviorCanJoinAllSpaces = 128
             let _: () = msg_send![ns_window, setCollectionBehavior: 128u64];
             
-            // Make window background completely transparent
-            // We'll handle the overlay effect in the rendering code
+            // Make window background semi-transparent black (80% opacity)
+            // This creates the overlay effect - we can see through it
             let ns_color_class = match Class::get("NSColor") {
                 Some(c) => c,
                 None => return,
             };
-            let clear_color: *mut Object = msg_send![ns_color_class, clearColor];
-            let _: () = msg_send![ns_window, setBackgroundColor: clear_color];
+            // Create black color with 0.8 alpha (80% opacity)
+            let overlay_color: *mut Object = msg_send![ns_color_class, colorWithCalibratedWhite:0.0 alpha:0.8];
+            let _: () = msg_send![ns_window, setBackgroundColor: overlay_color];
             
             // Make window non-opaque to allow transparency
             let _: () = msg_send![ns_window, setOpaque: false];

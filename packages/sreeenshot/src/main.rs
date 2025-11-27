@@ -83,12 +83,46 @@ impl ApplicationHandler for App {
             }
         };
 
-        let renderer = match Renderer::new(window, screenshot.clone()) {
-            Ok(r) => r,
-            Err(e) => {
-                eprintln!("Failed to create renderer: {}", e);
-                event_loop.exit();
-                return;
+        // Choose renderer backend based on environment variable or default to pixels
+        let use_pixels = std::env::var("USE_PIXELS")
+            .unwrap_or_else(|_| "true".to_string())
+            .parse::<bool>()
+            .unwrap_or(true);
+        
+        // Create Rc<Window> first so we can reuse it in fallback
+        let window_rc = std::rc::Rc::new(window);
+        
+        let renderer = if use_pixels {
+            match Renderer::new_pixels(window_rc.clone(), screenshot.clone()) {
+                Ok(r) => r,
+                Err(e) => {
+                    eprintln!("Failed to create pixels renderer: {}, falling back to softbuffer", e);
+                    // Fallback to softbuffer
+                    match Renderer::new_softbuffer(window_rc, screenshot.clone()) {
+                        Ok(r) => r,
+                        Err(e2) => {
+                            eprintln!("Failed to create softbuffer renderer: {}", e2);
+                            event_loop.exit();
+                            return;
+                        }
+                    }
+                }
+            }
+        } else {
+            match Renderer::new_softbuffer(window_rc.clone(), screenshot.clone()) {
+                Ok(r) => r,
+                Err(e) => {
+                    eprintln!("Failed to create softbuffer renderer: {}, falling back to pixels", e);
+                    // Fallback to pixels
+                    match Renderer::new_pixels(window_rc, screenshot.clone()) {
+                        Ok(r) => r,
+                        Err(e2) => {
+                            eprintln!("Failed to create pixels renderer: {}", e2);
+                            event_loop.exit();
+                            return;
+                        }
+                    }
+                }
             }
         };
 
@@ -120,6 +154,16 @@ impl ApplicationHandler for App {
                     };
                     if let Err(e) = renderer.render(rect) {
                         eprintln!("Render error: {}", e);
+                    }
+                }
+            }
+            WindowEvent::Resized(new_size) => {
+                // Handle window resize for pixels renderer
+                if let Some(renderer) = &mut self.renderer {
+                    if let Renderer::Pixels(pixels_renderer) = renderer {
+                        if let Err(e) = pixels_renderer.pixels().resize_surface(new_size.width, new_size.height) {
+                            eprintln!("Failed to resize pixels surface: {}", e);
+                        }
                     }
                 }
             }
