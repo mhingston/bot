@@ -26,10 +26,8 @@ impl Selection {
     }
 
     pub fn finish(&mut self) -> Option<((u32, u32), (u32, u32))> {
-        let coords = self.coords()?;
-        self.start = None;
-        self.end = None;
-        Some(coords)
+        self.coords()
+        // Don't clear start and end - keep selection visible after completion
     }
 
     pub fn cancel(&mut self) {

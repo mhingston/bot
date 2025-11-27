@@ -11,7 +11,7 @@ pub use softbuffer_renderer::SoftbufferRenderer;
 pub use pixels_renderer::PixelsRenderer;
 
 pub trait RendererTrait {
-    fn render(&mut self, selection: Option<(f32, f32, f32, f32)>) -> anyhow::Result<()>;
+    fn render(&mut self, selection: Option<(f32, f32, f32, f32)>, toolbar: Option<&crate::ui::Toolbar>) -> anyhow::Result<()>;
     fn window(&self) -> &Rc<Window>;
 }
 
@@ -37,10 +37,10 @@ impl Renderer {
 }
 
 impl RendererTrait for Renderer {
-    fn render(&mut self, selection: Option<(f32, f32, f32, f32)>) -> anyhow::Result<()> {
+    fn render(&mut self, selection: Option<(f32, f32, f32, f32)>, toolbar: Option<&crate::ui::Toolbar>) -> anyhow::Result<()> {
         match self {
-            Self::Softbuffer(r) => r.render(selection),
-            Self::Pixels(r) => r.render(selection),
+            Self::Softbuffer(r) => r.render(selection, toolbar),
+            Self::Pixels(r) => r.render(selection, toolbar),
         }
     }
 
@@ -53,8 +53,8 @@ impl RendererTrait for Renderer {
 }
 
 impl Renderer {
-    pub fn render(&mut self, selection: Option<(f32, f32, f32, f32)>) -> anyhow::Result<()> {
-        RendererTrait::render(self, selection)
+    pub fn render(&mut self, selection: Option<(f32, f32, f32, f32)>, toolbar: Option<&crate::ui::Toolbar>) -> anyhow::Result<()> {
+        RendererTrait::render(self, selection, toolbar)
     }
 
     pub fn window(&self) -> &Rc<Window> {

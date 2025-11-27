@@ -9,11 +9,16 @@ mod window;
 mod renderer;
 mod selection;
 mod capture;
+mod ui;
+mod plugins;
 
 use window::create_fullscreen_window;
 use renderer::Renderer;
 use selection::Selection;
 use capture::capture_and_save_to_clipboard;
+use ui::Toolbar;
+use plugins::{PluginRegistry, PluginContext, PluginResult};
+use plugins::{SavePlugin, CopyPlugin, CancelPlugin, AnnotatePlugin};
 
 struct App {
     renderer: Option<Renderer>,
@@ -22,6 +27,9 @@ struct App {
     screenshot: Option<image::ImageBuffer<image::Rgba<u8>, Vec<u8>>>,
     mouse_pos: Vec2,
     should_exit: bool,
+    selection_completed: bool,
+    toolbar: Option<Toolbar>,
+    plugin_registry: PluginRegistry,
 }
 
 impl ApplicationHandler for App {
@@ -147,12 +155,19 @@ impl ApplicationHandler for App {
         match event {
             WindowEvent::RedrawRequested => {
                 if let Some(renderer) = &mut self.renderer {
-                    let rect = if self.selection.is_active() {
+                    // Show selection if active (during dragging) or completed
+                    let rect = if self.selection.is_active() || self.selection_completed {
                         self.selection.rect()
                     } else {
                         None
                     };
-                    if let Err(e) = renderer.render(rect) {
+                    // Only show toolbar and info when selection is completed
+                    let toolbar = if self.selection_completed {
+                        self.toolbar.as_ref()
+                    } else {
+                        None
+                    };
+                    if let Err(e) = renderer.render(rect, toolbar) {
                         eprintln!("Render error: {}", e);
                     }
                 }
@@ -169,7 +184,8 @@ impl ApplicationHandler for App {
             }
             WindowEvent::CursorMoved { position, .. } => {
                 self.mouse_pos = Vec2::new(position.x as f32, position.y as f32);
-                if self.selection.is_active() {
+                // Only update selection if not completed (allow dragging during selection)
+                if self.selection.is_active() && !self.selection_completed {
                     self.selection.update(self.mouse_pos);
                     if let Some(renderer) = &self.renderer {
                         renderer.window().request_redraw();
@@ -179,30 +195,82 @@ impl ApplicationHandler for App {
             WindowEvent::MouseInput { state, button, .. } => {
                 match (state, button) {
                     (ElementState::Pressed, MouseButton::Left) => {
-                        self.selection.start(self.mouse_pos);
-                        if let Some(renderer) = &self.renderer {
-                            renderer.window().request_redraw();
+                        // Only allow starting new selection if not completed
+                        if !self.selection_completed {
+                            self.selection.start(self.mouse_pos);
+                            if let Some(renderer) = &self.renderer {
+                                renderer.window().request_redraw();
+                            }
                         }
                     }
                     (ElementState::Released, MouseButton::Left) => {
-                        if let Some(coords) = self.selection.finish() {
-                            if let Some(monitor) = &self.monitor {
-                                match capture_and_save_to_clipboard(monitor, coords) {
-                                    Ok(_) => {
-                                        // Successfully saved to clipboard, exit
+                        // Check if clicking on toolbar button
+                        if let Some(toolbar) = &self.toolbar {
+                            if let Some(button_id) = toolbar.check_click(self.mouse_pos) {
+                                // Execute plugin
+                                let context = PluginContext {
+                                    selection_coords: self.selection.coords(),
+                                    screenshot: self.screenshot.clone(),
+                                    monitor: self.monitor.clone(),
+                                };
+                                
+                                let result = self.plugin_registry.execute_plugin(button_id, &context);
+                                
+                                match result {
+                                    PluginResult::Exit => {
                                         self.should_exit = true;
                                         event_loop.exit();
                                     }
-                                    Err(e) => {
-                                        eprintln!("Failed to save to clipboard: {}", e);
-                                        event_loop.exit();
+                                    PluginResult::Continue => {
+                                        // Handle cancel plugin
+                                        if button_id == "cancel" {
+                                            self.selection.cancel();
+                                            self.selection_completed = false;
+                                            self.toolbar = None;
+                                            if let Some(renderer) = &self.renderer {
+                                                renderer.window().request_redraw();
+                                            }
+                                        }
+                                    }
+                                    PluginResult::Success => {
+                                        // Plugin executed successfully
+                                        if let Some(renderer) = &self.renderer {
+                                            renderer.window().request_redraw();
+                                        }
+                                    }
+                                    PluginResult::Failure(msg) => {
+                                        eprintln!("Plugin error: {}", msg);
                                     }
                                 }
+                                return;
+                            }
+                        }
+                        
+                        if let Some(_coords) = self.selection.finish() {
+                            // Selection completed, but don't exit - allow further operations
+                            self.selection_completed = true;
+                            
+                            // Create toolbar when selection is completed
+                            if let Some(rect) = self.selection.rect() {
+                                // Get screen height for toolbar positioning
+                                let screen_height = if let Some(renderer) = &self.renderer {
+                                    renderer.window().inner_size().height as f32
+                                } else {
+                                    1920.0 // Fallback
+                                };
+                                let plugin_info = self.plugin_registry.get_enabled_plugin_info();
+                                self.toolbar = Some(Toolbar::new(rect.0, rect.1, rect.2, rect.3, screen_height, &plugin_info));
+                            }
+                            
+                            if let Some(renderer) = &self.renderer {
+                                renderer.window().request_redraw();
                             }
                         }
                     }
                     (_, MouseButton::Right) => {
                         self.selection.cancel();
+                        self.selection_completed = false;
+                        self.toolbar = None;
                         if let Some(renderer) = &self.renderer {
                             renderer.window().request_redraw();
                         }
@@ -226,17 +294,10 @@ impl ApplicationHandler for App {
                     }
                     Key::Named(NamedKey::Enter) | Key::Named(NamedKey::Space) => {
                         if let Some(coords) = self.selection.coords() {
-                            if let Some(monitor) = &self.monitor {
-                                match capture_and_save_to_clipboard(monitor, coords) {
-                                    Ok(_) => {
-                                        self.should_exit = true;
-                                        event_loop.exit();
-                                    }
-                                    Err(e) => {
-                                        eprintln!("Failed to save to clipboard: {}", e);
-                                        event_loop.exit();
-                                    }
-                                }
+                            // Mark selection as completed, but don't exit
+                            self.selection_completed = true;
+                            if let Some(renderer) = &self.renderer {
+                                renderer.window().request_redraw();
                             }
                         }
                     }
@@ -253,6 +314,21 @@ impl ApplicationHandler for App {
 }
 
 fn main() -> anyhow::Result<()> {
+    // Initialize plugin registry and register plugins
+    let mut plugin_registry = PluginRegistry::new();
+    
+    // Register plugins
+    plugin_registry.register(Box::new(SavePlugin::new()));
+    plugin_registry.register(Box::new(CopyPlugin::new()));
+    plugin_registry.register(Box::new(CancelPlugin::new()));
+    plugin_registry.register(Box::new(AnnotatePlugin::new()));
+    
+    // Enable plugins via configuration array
+    let enabled_plugins = vec!["save", "copy", "cancel", "annotate"];
+    for plugin_id in enabled_plugins {
+        plugin_registry.enable(plugin_id);
+    }
+    
     let mut app = App {
         renderer: None,
         selection: Selection::new(),
@@ -260,6 +336,9 @@ fn main() -> anyhow::Result<()> {
         screenshot: None,
         mouse_pos: Vec2::ZERO,
         should_exit: false,
+        selection_completed: false,
+        toolbar: None,
+        plugin_registry,
     };
 
     let event_loop = winit::event_loop::EventLoop::new()?;

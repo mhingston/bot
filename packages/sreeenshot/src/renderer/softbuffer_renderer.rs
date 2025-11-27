@@ -42,6 +42,7 @@ impl RendererTrait for SoftbufferRenderer {
     fn render(
         &mut self,
         selection: Option<(f32, f32, f32, f32)>,
+        _toolbar: Option<&crate::ui::Toolbar>,
     ) -> anyhow::Result<()> {
         let width = NonZeroU32::new(self.width)
             .ok_or_else(|| anyhow::anyhow!("Width must be non-zero"))?;
