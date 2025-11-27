@@ -57,59 +57,58 @@ impl RendererTrait for PixelsRenderer {
     ) -> anyhow::Result<()> {
         let frame = self.pixels.frame_mut();
         
-        // First, draw the original screenshot across the entire screen (fully opaque)
-        // This ensures we can see the original content everywhere
+        // Pre-calculate the darkening factor (80% opacity = 20% brightness)
+        const ALPHA: f32 = 204.0 / 255.0; // 80% opacity
+        const DARKEN_FACTOR: f32 = 1.0 - ALPHA; // 0.2 (20% brightness)
+        
+        // Calculate selection bounds if present
+        let (start_x, start_y, end_x, end_y) = if let Some((x, y, width, height)) = selection {
+            (
+                x.max(0.0).floor() as u32,
+                y.max(0.0).floor() as u32,
+                (x + width).min(self.width as f32).floor() as u32,
+                (y + height).min(self.height as f32).floor() as u32,
+            )
+        } else {
+            (0, 0, 0, 0) // No selection, will darken entire screen
+        };
+        
+        // Single pass: draw screenshot and apply darkening in one loop
+        // This is much faster than two separate loops
         for py in 0..self.height {
             for px in 0..self.width {
                 if let Some(pixel) = self.screenshot.get_pixel_checked(px, py) {
                     let idx = ((py * self.width + px) * 4) as usize;
                     if idx + 3 < frame.len() {
-                        frame[idx] = pixel[0];     // R
-                        frame[idx + 1] = pixel[1]; // G
-                        frame[idx + 2] = pixel[2]; // B
-                        frame[idx + 3] = 255;      // A (fully opaque)
+                        // Check if this pixel is in the selection area
+                        let in_selection = selection.is_some() 
+                            && px >= start_x && px < end_x 
+                            && py >= start_y && py < end_y;
+                        
+                        if in_selection {
+                            // Selection area: show original screenshot (fully opaque)
+                            frame[idx] = pixel[0];     // R
+                            frame[idx + 1] = pixel[1]; // G
+                            frame[idx + 2] = pixel[2]; // B
+                            frame[idx + 3] = 255;      // A (fully opaque)
+                        } else {
+                            // Non-selection area: darken by 80% (multiply by 0.2)
+                            frame[idx] = (pixel[0] as f32 * DARKEN_FACTOR) as u8;
+                            frame[idx + 1] = (pixel[1] as f32 * DARKEN_FACTOR) as u8;
+                            frame[idx + 2] = (pixel[2] as f32 * DARKEN_FACTOR) as u8;
+                            frame[idx + 3] = 255; // Keep fully opaque
+                        }
                     }
                 }
             }
         }
-
-        // Then, overlay 80% transparent black on non-selected areas
-        // This creates the darkening effect while keeping selection area clear
-        let overlay_color = [0u8, 0u8, 0u8, 204u8]; // Black with 80% opacity (204/255)
         
+        // Draw selection border if there's a selection
         if let Some((x, y, width, height)) = selection {
             let start_x = x.max(0.0).floor() as u32;
             let start_y = y.max(0.0).floor() as u32;
             let end_x = (x + width).min(self.width as f32).floor() as u32;
             let end_y = (y + height).min(self.height as f32).floor() as u32;
-
-            // Apply overlay to non-selected areas
-            for py in 0..self.height {
-                for px in 0..self.width {
-                    // Skip the selection area
-                    if px >= start_x && px < end_x && py >= start_y && py < end_y {
-                        continue;
-                    }
-                    
-                    let idx = ((py * self.width + px) * 4) as usize;
-                    if idx + 3 < frame.len() {
-                        // Blend: overlay 80% transparent black on top of original screenshot
-                        // Since we already have the original screenshot, we just need to darken it
-                        // by blending with black at 80% opacity
-                        let r = frame[idx] as f32;
-                        let g = frame[idx + 1] as f32;
-                        let b = frame[idx + 2] as f32;
-                        let alpha = 204.0 / 255.0; // 80% opacity
-                        
-                        // Blend: result = original * (1 - alpha) + overlay * alpha
-                        // Since overlay is black (0, 0, 0), this simplifies to: original * (1 - alpha)
-                        frame[idx] = (r * (1.0 - alpha)) as u8;
-                        frame[idx + 1] = (g * (1.0 - alpha)) as u8;
-                        frame[idx + 2] = (b * (1.0 - alpha)) as u8;
-                        frame[idx + 3] = 255; // Keep fully opaque
-                    }
-                }
-            }
 
             // Draw selection border (white, fully opaque)
             let border_color = [255u8, 255u8, 255u8, 255u8];
