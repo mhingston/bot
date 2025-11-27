@@ -8,11 +8,24 @@ pub fn create_fullscreen_window(
     event_loop: &winit::event_loop::ActiveEventLoop,
     size: PhysicalSize<u32>,
 ) -> anyhow::Result<Window> {
+    // Get primary monitor to get its position
+    let primary_monitor = event_loop
+        .primary_monitor()
+        .or_else(|| event_loop.available_monitors().next());
+    
+    let position = if let Some(monitor) = primary_monitor {
+        // Get monitor position (logical coordinates)
+        monitor.position()
+    } else {
+        // Fallback to (0, 0)
+        PhysicalPosition::new(0, 0)
+    };
+    
     let window = event_loop
         .create_window(
             WindowAttributes::default()
                 .with_inner_size(size)
-                .with_position(PhysicalPosition::new(0, 0))
+                .with_position(position)
                 .with_title("Screenshot")
                 .with_resizable(false)
                 .with_decorations(false)
@@ -65,8 +78,8 @@ fn configure_macos_window(window: &Window) {
             // NSWindowCollectionBehaviorCanJoinAllSpaces = 128
             let _: () = msg_send![ns_window, setCollectionBehavior: 128u64];
             
-            // Make window background transparent/clear so we can see through
-            // Set backgroundColor to clear color
+            // Make window background completely transparent
+            // We'll handle the overlay effect in the rendering code
             let ns_color_class = match Class::get("NSColor") {
                 Some(c) => c,
                 None => return,
@@ -74,8 +87,17 @@ fn configure_macos_window(window: &Window) {
             let clear_color: *mut Object = msg_send![ns_color_class, clearColor];
             let _: () = msg_send![ns_window, setBackgroundColor: clear_color];
             
-            // Make window opaque for better performance
+            // Make window non-opaque to allow transparency
             let _: () = msg_send![ns_window, setOpaque: false];
+            
+            // Enable window transparency
+            let _: () = msg_send![ns_window, setHasShadow: false];
+            
+            // Set contentView to be transparent
+            let content_view: *mut Object = msg_send![ns_window, contentView];
+            if !content_view.is_null() {
+                let _: () = msg_send![content_view, setWantsLayer: true];
+            }
         }
     }
 }

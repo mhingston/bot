@@ -53,30 +53,46 @@ impl Renderer {
         
         let mut pixels = vec![0u32; (self.width * self.height) as usize];
 
-        // Gray overlay color (RGBA)
-        let overlay_color = 0x80808080u32; // Gray with ~50% alpha
-
-        // Fill with gray overlay
-        for pixel in pixels.iter_mut() {
-            *pixel = overlay_color;
+        // First, draw the entire screenshot
+        for py in 0..self.height {
+            for px in 0..self.width {
+                if let Some(pixel) = self.screenshot.get_pixel_checked(px, py) {
+                    let r = pixel[0] as u32;
+                    let g = pixel[1] as u32;
+                    let b = pixel[2] as u32;
+                    let a = pixel[3] as u32;
+                    let rgba = (a << 24) | (r << 16) | (g << 8) | b;
+                    pixels[(py * self.width + px) as usize] = rgba;
+                }
+            }
         }
 
-        // If there's a selection, show the original screenshot in that area
+        // If there's a selection, apply 80% black overlay to non-selected areas
         if let Some((x, y, width, height)) = selection {
             let start_x = x.max(0.0).floor() as u32;
             let start_y = y.max(0.0).floor() as u32;
             let end_x = (x + width).min(self.width as f32).floor() as u32;
             let end_y = (y + height).min(self.height as f32).floor() as u32;
 
-            for py in start_y..end_y.min(self.height) {
-                for px in start_x..end_x.min(self.width) {
-                    if let Some(pixel) = self.screenshot.get_pixel_checked(px, py) {
-                        let r = pixel[0] as u32;
-                        let g = pixel[1] as u32;
-                        let b = pixel[2] as u32;
-                        let a = pixel[3] as u32;
-                        let rgba = (a << 24) | (r << 16) | (g << 8) | b;
-                        pixels[(py * self.width + px) as usize] = rgba;
+            // Apply 80% black overlay to areas outside selection
+            // This means we darken the pixels by 80%
+            for py in 0..self.height {
+                for px in 0..self.width {
+                    let is_in_selection = px >= start_x && px < end_x && py >= start_y && py < end_y;
+                    if !is_in_selection {
+                        // Get current pixel
+                        let pixel = pixels[(py * self.width + px) as usize];
+                        // Extract RGB components (ARGB format)
+                        let a = (pixel >> 24) & 0xFF;
+                        let r = (pixel >> 16) & 0xFF;
+                        let g = (pixel >> 8) & 0xFF;
+                        let b = pixel & 0xFF;
+                        // Darken by 80% (multiply by 0.2)
+                        let new_r = ((r as f32) * 0.2) as u32;
+                        let new_g = ((g as f32) * 0.2) as u32;
+                        let new_b = ((b as f32) * 0.2) as u32;
+                        // Reconstruct pixel
+                        pixels[(py * self.width + px) as usize] = (a << 24) | (new_r << 16) | (new_g << 8) | new_b;
                     }
                 }
             }

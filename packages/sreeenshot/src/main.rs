@@ -57,9 +57,22 @@ impl ApplicationHandler for App {
             }
         };
 
-        let width = monitor.width().unwrap_or(1920);
-        let height = monitor.height().unwrap_or(1080);
-        let size = winit::dpi::PhysicalSize::new(width, height);
+        // Get primary monitor from winit to get correct logical size (DPI-aware)
+        let primary_monitor = event_loop
+            .primary_monitor()
+            .or_else(|| event_loop.available_monitors().next());
+        
+        let size = if let Some(winit_monitor) = primary_monitor {
+            // Use winit's monitor size (logical pixels, DPI-aware)
+            winit_monitor.size()
+        } else {
+            // Fallback: convert physical pixels to logical pixels
+            // On macOS Retina displays, DPI scale is typically 2.0
+            let width = monitor.width().unwrap_or(1920);
+            let height = monitor.height().unwrap_or(1080);
+            // Assume 2x scale for Retina, but this is a fallback
+            winit::dpi::PhysicalSize::new(width / 2, height / 2)
+        };
 
         let window = match create_fullscreen_window(event_loop, size) {
             Ok(w) => w,
