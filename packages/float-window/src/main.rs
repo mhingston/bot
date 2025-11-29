@@ -10,15 +10,17 @@ fn main() {
     let window = FloatingWindow::builder()
         .title("Float Window Demo")
         .size(50, 50)
-        .position(100.0, 100.0)
+        .position(500.0, 500.0)
         .shape(WindowShape::Circle)
         .draggable(true)
         .always_on_top(true)
         // .content(Content::text("Hello!"))
         .effect(
-            PresetEffect::RotatingHalo,
+            PresetEffect::SilkRibbon,
             PresetEffectOptions::default()
-                .with_intensity(0.8)
+                .with_intensity(1.0)
+                .with_ribbon_count(3)
+                .with_petal_amplitude(9.0)
                 .with_colors(vec![
                     [0.4, 0.8, 1.0, 1.0], // Cyan
                     [0.8, 0.4, 1.0, 1.0], // Purple

@@ -153,7 +153,8 @@ impl FloatingWindow {
             .frame(transparent_frame)
             .show(ctx, |ui| {
                 // Draw background based on shape (only the shape, rest is transparent)
-                let bg_color = Color32::from_rgba_unmultiplied(50, 50, 80, 220);
+                // Use full alpha (255) to avoid compositor blending artifacts
+                let bg_color = Color32::from_rgba_unmultiplied(50, 50, 80, 255);
                 match &self.config.shape {
                     WindowShape::Rectangle => {
                         ui.painter().rect_filled(content_rect, 0.0, bg_color);
@@ -307,14 +308,23 @@ impl GpuState {
 
         // Configure surface
         let surface_caps = surface.get_capabilities(&adapter);
+
+        // Prefer non-sRGB format for proper alpha blending with transparent windows
+        // egui prefers Rgba8Unorm or Bgra8Unorm over sRGB variants
         let surface_format = surface_caps
             .formats
             .iter()
-            .find(|f| f.is_srgb())
+            .find(|f| **f == wgpu::TextureFormat::Bgra8Unorm || **f == wgpu::TextureFormat::Rgba8Unorm)
             .copied()
-            .unwrap_or(surface_caps.formats[0]);
+            .unwrap_or_else(|| {
+                // Fallback to first non-sRGB, or just first format
+                surface_caps.formats.iter()
+                    .find(|f| !f.is_srgb())
+                    .copied()
+                    .unwrap_or(surface_caps.formats[0])
+            });
 
-        // Choose best alpha mode for transparency
+        // Use PreMultiplied alpha mode for proper compositing with transparent windows
         let alpha_mode = if surface_caps.alpha_modes.contains(&wgpu::CompositeAlphaMode::PreMultiplied) {
             wgpu::CompositeAlphaMode::PreMultiplied
         } else if surface_caps.alpha_modes.contains(&wgpu::CompositeAlphaMode::PostMultiplied) {
@@ -323,7 +333,7 @@ impl GpuState {
             surface_caps.alpha_modes[0]
         };
 
-        log::info!("Using alpha mode: {:?}", alpha_mode);
+        log::info!("Using surface format: {:?}, alpha mode: {:?}", surface_format, alpha_mode);
 
         let surface_config = wgpu::SurfaceConfiguration {
             usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
@@ -446,11 +456,20 @@ struct FloatingWindowApp {
 
 impl FloatingWindowApp {
     fn new(floating_window: FloatingWindow) -> Self {
+        let egui_ctx = Context::default();
+
+        // Disable feathering (anti-aliasing) to avoid compositor artifacts
+        // on transparent windows. Semi-transparent edge pixels cause
+        // white ring artifacts with macOS compositor.
+        egui_ctx.tessellation_options_mut(|opts| {
+            opts.feathering = false;
+        });
+
         Self {
             floating_window,
             window: None,
             gpu_state: None,
-            egui_ctx: Context::default(),
+            egui_ctx,
             egui_state: None,
         }
     }

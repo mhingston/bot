@@ -1,6 +1,7 @@
 //! Window painter - unified rendering interface
 
 use crate::content::{Content, ImageDisplayOptions, ScaleMode, TextAlign, TextDisplayOptions};
+use crate::effect::particle::ParticleStyle;
 use crate::effect::ParticleSystem;
 use crate::shape::WindowShape;
 use egui::{Color32, Pos2, Rect, Stroke, StrokeKind, Vec2};
@@ -147,19 +148,96 @@ impl WindowPainter {
         let painter = ui.painter();
 
         for particle in system.particles() {
-            let pos = Pos2::new(
-                offset.x + particle.position.0,
-                offset.y + particle.position.1,
-            );
+            // Skip dead particles
+            if particle.alpha < 0.1 {
+                continue;
+            }
 
-            let color = Color32::from_rgba_unmultiplied(
-                (particle.color[0] * 255.0) as u8,
-                (particle.color[1] * 255.0) as u8,
-                (particle.color[2] * 255.0) as u8,
-                (particle.alpha * 255.0) as u8,
-            );
+            // Fade by adjusting brightness, not alpha
+            // This avoids compositor blending artifacts on transparent windows
+            let fade = particle.alpha;
+            let r = (particle.color[0] * fade * 255.0) as u8;
+            let g = (particle.color[1] * fade * 255.0) as u8;
+            let b = (particle.color[2] * fade * 255.0) as u8;
 
-            painter.circle_filled(pos, particle.size, color);
+            // IMPORTANT: Use full alpha (255) to avoid compositor artifacts
+            let color = Color32::from_rgba_unmultiplied(r, g, b, 255);
+
+            match particle.style {
+                ParticleStyle::Dot => {
+                    // Skip tiny dots
+                    if particle.size < 2.0 {
+                        continue;
+                    }
+
+                    let pos = Pos2::new(
+                        offset.x + particle.position.0,
+                        offset.y + particle.position.1,
+                    );
+
+                    let size = particle.size.max(2.0);
+
+                    // Use rect_filled with high rounding for dots
+                    let rect = Rect::from_center_size(pos, Vec2::splat(size * 2.0));
+                    painter.rect_filled(rect, size, color);
+                }
+
+                ParticleStyle::Line => {
+                    // Draw line from previous position to current position
+                    let from = Pos2::new(
+                        offset.x + particle.prev_position.0,
+                        offset.y + particle.prev_position.1,
+                    );
+                    let to = Pos2::new(
+                        offset.x + particle.position.0,
+                        offset.y + particle.position.1,
+                    );
+
+                    let stroke = Stroke::new(particle.size.max(1.0), color);
+                    painter.line_segment([from, to], stroke);
+                }
+
+                ParticleStyle::Trail => {
+                    // Draw trail as connected line segments with fading
+                    if particle.trail.len() >= 2 {
+                        let trail_len = particle.trail.len();
+                        for i in 1..trail_len {
+                            // Calculate fade for this segment (older = more faded)
+                            let segment_fade = (i as f32 / trail_len as f32) * fade;
+                            let sr = (particle.color[0] * segment_fade * 255.0) as u8;
+                            let sg = (particle.color[1] * segment_fade * 255.0) as u8;
+                            let sb = (particle.color[2] * segment_fade * 255.0) as u8;
+                            let segment_color = Color32::from_rgba_unmultiplied(sr, sg, sb, 255);
+
+                            // Line width also fades (thinner at tail)
+                            let segment_width = particle.size * (i as f32 / trail_len as f32);
+
+                            let from = Pos2::new(
+                                offset.x + particle.trail[i - 1].0,
+                                offset.y + particle.trail[i - 1].1,
+                            );
+                            let to = Pos2::new(
+                                offset.x + particle.trail[i].0,
+                                offset.y + particle.trail[i].1,
+                            );
+
+                            let stroke = Stroke::new(segment_width.max(0.5), segment_color);
+                            painter.line_segment([from, to], stroke);
+                        }
+
+                        // Draw final segment to current position
+                        if let Some(&last) = particle.trail.last() {
+                            let from = Pos2::new(offset.x + last.0, offset.y + last.1);
+                            let to = Pos2::new(
+                                offset.x + particle.position.0,
+                                offset.y + particle.position.1,
+                            );
+                            let stroke = Stroke::new(particle.size, color);
+                            painter.line_segment([from, to], stroke);
+                        }
+                    }
+                }
+            }
         }
     }
 

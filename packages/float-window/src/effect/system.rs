@@ -15,11 +15,25 @@ pub struct ParticleSystem {
     last_update: Instant,
     time: f32,
     active: bool,
+    /// Delay before effect starts (in seconds)
+    start_delay: f32,
+    /// Time elapsed since system creation
+    elapsed_since_creation: f32,
+    /// Whether particles have been initialized after delay
+    initialized: bool,
 }
+
+/// Default delay before effect starts (500ms)
+const DEFAULT_START_DELAY: f32 = 0.5;
 
 impl ParticleSystem {
     pub fn new(effect: PresetEffect, options: PresetEffectOptions, width: f32, height: f32) -> Self {
-        let mut system = Self {
+        Self::with_delay(effect, options, width, height, DEFAULT_START_DELAY)
+    }
+
+    /// Create a particle system with a custom start delay
+    pub fn with_delay(effect: PresetEffect, options: PresetEffectOptions, width: f32, height: f32, delay: f32) -> Self {
+        Self {
             particles: Vec::new(),
             effect,
             options,
@@ -28,8 +42,17 @@ impl ParticleSystem {
             last_update: Instant::now(),
             time: 0.0,
             active: true,
-        };
+            start_delay: delay,
+            elapsed_since_creation: 0.0,
+            initialized: false,
+        }
+    }
+
+    /// Create a particle system with no delay (starts immediately)
+    pub fn immediate(effect: PresetEffect, options: PresetEffectOptions, width: f32, height: f32) -> Self {
+        let mut system = Self::with_delay(effect, options, width, height, 0.0);
         system.initialize();
+        system.initialized = true;
         system
     }
 
@@ -57,6 +80,16 @@ impl ParticleSystem {
                 let circumference = std::f32::consts::PI * self.width.min(self.height);
                 let base_count = (circumference / 5.0) as usize; // One particle every 5 pixels
                 ((base_count as f32 * self.options.intensity * 3.0) as usize).max(30)
+            }
+            PresetEffect::ElectricSpark => {
+                // More particles - 1.5x more than before
+                let circumference = std::f32::consts::PI * self.width.min(self.height);
+                let base_count = (circumference / 10.0) as usize; // One particle every 10 pixels
+                ((base_count as f32 * self.options.intensity * 1.5) as usize).max(15).min(60)
+            }
+            PresetEffect::SilkRibbon => {
+                // 120 segments per ribbon × ribbon_count
+                120 * self.options.ribbon_count.max(1)
             }
             _ => {
                 let perimeter = 2.0 * (self.width + self.height);
@@ -87,6 +120,39 @@ impl ParticleSystem {
             PresetEffect::SmokeWisp => {
                 presets::smoke_wisp::spawn(edge_position, &self.options, self.width, self.height)
             }
+            PresetEffect::RainDrop => {
+                presets::rain_drop::spawn(edge_position, &self.options, self.width, self.height)
+            }
+            PresetEffect::LaserBeam => {
+                presets::laser_beam::spawn(edge_position, &self.options, self.width, self.height)
+            }
+            PresetEffect::LightningArc => {
+                presets::lightning_arc::spawn(edge_position, &self.options, self.width, self.height)
+            }
+            PresetEffect::MeteorShower => {
+                presets::meteor_shower::spawn(edge_position, &self.options, self.width, self.height)
+            }
+            PresetEffect::SonarPulse => {
+                presets::sonar_pulse::spawn(edge_position, &self.options, self.width, self.height)
+            }
+            PresetEffect::MatrixRain => {
+                presets::matrix_rain::spawn(edge_position, &self.options, self.width, self.height)
+            }
+            PresetEffect::AuroraWave => {
+                presets::aurora_wave::spawn(edge_position, &self.options, self.width, self.height)
+            }
+            PresetEffect::OrbitRings => {
+                presets::orbit_rings::spawn(edge_position, &self.options, self.width, self.height)
+            }
+            PresetEffect::HeartbeatPulse => {
+                presets::heartbeat_pulse::spawn(edge_position, &self.options, self.width, self.height)
+            }
+            PresetEffect::CosmicStrings => {
+                presets::cosmic_strings::spawn(edge_position, &self.options, self.width, self.height)
+            }
+            PresetEffect::SilkRibbon => {
+                presets::silk_ribbon::spawn(edge_position, &self.options, self.width, self.height)
+            }
         }
     }
 
@@ -99,6 +165,21 @@ impl ParticleSystem {
         let now = Instant::now();
         let dt = now.duration_since(self.last_update).as_secs_f32();
         self.last_update = now;
+
+        // Track time since creation for delay
+        self.elapsed_since_creation += dt;
+
+        // Check if we should initialize particles after delay
+        if !self.initialized && self.elapsed_since_creation >= self.start_delay {
+            self.initialize();
+            self.initialized = true;
+        }
+
+        // Don't update particles until initialized
+        if !self.initialized {
+            return;
+        }
+
         self.time += dt;
 
         // Update each particle based on effect type
@@ -121,6 +202,39 @@ impl ParticleSystem {
                 }
                 PresetEffect::SmokeWisp => {
                     presets::smoke_wisp::update(particle, dt, self.time, &self.options, self.width, self.height);
+                }
+                PresetEffect::RainDrop => {
+                    presets::rain_drop::update(particle, dt, self.time, &self.options, self.width, self.height);
+                }
+                PresetEffect::LaserBeam => {
+                    presets::laser_beam::update(particle, dt, self.time, &self.options, self.width, self.height);
+                }
+                PresetEffect::LightningArc => {
+                    presets::lightning_arc::update(particle, dt, self.time, &self.options, self.width, self.height);
+                }
+                PresetEffect::MeteorShower => {
+                    presets::meteor_shower::update(particle, dt, self.time, &self.options, self.width, self.height);
+                }
+                PresetEffect::SonarPulse => {
+                    presets::sonar_pulse::update(particle, dt, self.time, &self.options, self.width, self.height);
+                }
+                PresetEffect::MatrixRain => {
+                    presets::matrix_rain::update(particle, dt, self.time, &self.options, self.width, self.height);
+                }
+                PresetEffect::AuroraWave => {
+                    presets::aurora_wave::update(particle, dt, self.time, &self.options, self.width, self.height);
+                }
+                PresetEffect::OrbitRings => {
+                    presets::orbit_rings::update(particle, dt, self.time, &self.options, self.width, self.height);
+                }
+                PresetEffect::HeartbeatPulse => {
+                    presets::heartbeat_pulse::update(particle, dt, self.time, &self.options, self.width, self.height);
+                }
+                PresetEffect::CosmicStrings => {
+                    presets::cosmic_strings::update(particle, dt, self.time, &self.options, self.width, self.height);
+                }
+                PresetEffect::SilkRibbon => {
+                    presets::silk_ribbon::update(particle, dt, self.time, &self.options, self.width, self.height);
                 }
             }
         }
@@ -169,7 +283,24 @@ impl ParticleSystem {
     /// Reset the effect
     pub fn reset(&mut self) {
         self.time = 0.0;
+        self.elapsed_since_creation = 0.0;
+        self.initialized = false;
         self.last_update = Instant::now();
-        self.initialize();
+        self.particles.clear();
+    }
+
+    /// Set the start delay
+    pub fn set_delay(&mut self, delay: f32) {
+        self.start_delay = delay;
+    }
+
+    /// Get the start delay
+    pub fn delay(&self) -> f32 {
+        self.start_delay
+    }
+
+    /// Check if the effect has started (after delay)
+    pub fn has_started(&self) -> bool {
+        self.initialized
     }
 }

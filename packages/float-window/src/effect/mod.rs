@@ -1,10 +1,10 @@
 //! Particle effect system
 
-mod particle;
+pub mod particle;
 mod system;
 pub mod presets;
 
-pub use particle::Particle;
+pub use particle::{Particle, ParticleStyle};
 pub use system::ParticleSystem;
 
 /// Preset particle effects
@@ -23,6 +23,28 @@ pub enum PresetEffect {
     ElectricSpark,
     /// Slow rising particles with horizontal sway
     SmokeWisp,
+    /// Vertical rain falling outside the circle
+    RainDrop,
+    /// Rotating laser lines emanating from circle edge
+    LaserBeam,
+    /// Electric arcs jumping around the circle perimeter
+    LightningArc,
+    /// Diagonal streaking meteors passing by the circle
+    MeteorShower,
+    /// Expanding ring pulses radiating from circle edge
+    SonarPulse,
+    /// Falling digital particles like Matrix movie
+    MatrixRain,
+    /// Flowing waves of color around the circle
+    AuroraWave,
+    /// Particles orbiting in rings around the circle
+    OrbitRings,
+    /// Rhythmic pulsing particles like a heartbeat
+    HeartbeatPulse,
+    /// Ethereal string-like trails weaving around the circle
+    CosmicStrings,
+    /// Smooth flowing ribbon bands waving around the circle
+    SilkRibbon,
 }
 
 /// Options for preset effects
@@ -42,6 +64,10 @@ pub struct PresetEffectOptions {
     pub loop_effect: bool,
     /// Edge width for particle generation
     pub edge_width: f32,
+    /// Number of ribbons for SilkRibbon effect (default: 2)
+    pub ribbon_count: usize,
+    /// Petal amplitude for SilkRibbon effect (default: 20.0)
+    pub petal_amplitude: f32,
 }
 
 impl Default for PresetEffectOptions {
@@ -59,6 +85,8 @@ impl Default for PresetEffectOptions {
             intensity: 1.0,
             loop_effect: true,
             edge_width: 10.0,
+            ribbon_count: 2,
+            petal_amplitude: 20.0,
         }
     }
 }
@@ -86,6 +114,16 @@ impl PresetEffectOptions {
 
     pub fn with_particle_size(mut self, min: f32, max: f32) -> Self {
         self.particle_size = (min, max);
+        self
+    }
+
+    pub fn with_ribbon_count(mut self, count: usize) -> Self {
+        self.ribbon_count = count.max(1);
+        self
+    }
+
+    pub fn with_petal_amplitude(mut self, amplitude: f32) -> Self {
+        self.petal_amplitude = amplitude.max(0.0);
         self
     }
 }

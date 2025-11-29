@@ -1,6 +1,7 @@
 //! Smoke Wisp effect - slow rising particles with horizontal sway
+//! Particles spawn OUTSIDE the circle and drift outward/upward
 
-use super::{edge_position, random_color, random_size};
+use super::{circle_edge_outside, outward_direction, random_color};
 use crate::effect::particle::Particle;
 use crate::effect::PresetEffectOptions;
 use rand::Rng;
@@ -8,28 +9,31 @@ use std::f32::consts::PI;
 
 /// Spawn a particle for the smoke wisp effect
 pub fn spawn(pos: f32, options: &PresetEffectOptions, width: f32, height: f32) -> Particle {
-    // Spawn from bottom edge primarily
+    // Spawn from bottom half of circle primarily (pos 0.25-0.75 is bottom half)
     let spawn_pos = if rand::rng().random::<f32>() > 0.3 {
-        // Bottom edge (0.5 - 0.75 of perimeter)
-        rand::rng().random_range(0.5..0.75)
+        rand::rng().random_range(0.25..0.75)
     } else {
         pos
     };
 
-    let (x, y) = edge_position(spawn_pos, width, height);
+    // Spawn OUTSIDE the circle
+    let gap = 6.0;
+    let (x, y) = circle_edge_outside(spawn_pos, width, height, gap);
 
-    // Upward velocity with slight random horizontal
-    let vy = -rand::rng().random_range(15.0..30.0) * options.speed;
-    let vx = rand::rng().random_range(-5.0..5.0) * options.speed;
+    // Get outward direction and add upward bias
+    let (out_x, out_y) = outward_direction(spawn_pos);
 
-    // Smoke gray colors
+    // Upward velocity with slight outward drift
+    let speed = rand::rng().random_range(15.0..30.0) * options.speed;
+    let vx = out_x * speed * 0.3 + rand::rng().random_range(-5.0..5.0) * options.speed;
+    let vy = -speed.abs() + out_y * speed * 0.3; // Upward bias
+
+    // Smoke gray colors or user colors
     let color = if options.particle_colors.is_empty() {
         let gray = rand::rng().random_range(0.4..0.7);
-        [gray, gray, gray, options.intensity * 0.6]
+        [gray, gray, gray, 1.0]
     } else {
-        let mut c = random_color(options);
-        c[3] *= options.intensity * 0.6;
-        c
+        random_color(options)
     };
 
     // Longer lifetime for slow drift
@@ -38,8 +42,12 @@ pub fn spawn(pos: f32, options: &PresetEffectOptions, width: f32, height: f32) -
     // Random phase for horizontal sway
     let phase = rand::rng().random_range(0.0..2.0 * PI);
 
+    // Particle size
+    let (size_min, size_max) = options.particle_size;
+    let size = rand::rng().random_range(size_min * 0.5..size_max * 0.8).max(3.0);
+
     let mut particle = Particle::new(x, y)
-        .with_size(random_size(options))
+        .with_size(size)
         .with_color(color)
         .with_velocity(vx, vy)
         .with_lifetime(lifetime);
@@ -54,9 +62,13 @@ pub fn update(
     dt: f32,
     time: f32,
     options: &PresetEffectOptions,
-    _width: f32,
-    _height: f32,
+    width: f32,
+    height: f32,
 ) {
+    let cx = width / 2.0;
+    let cy = height / 2.0;
+    let circle_radius = width.min(height) / 2.0;
+
     let phase = particle.custom;
 
     // Horizontal sway using sine wave
@@ -73,11 +85,26 @@ pub fn update(
     // Standard physics update
     particle.update(dt);
 
-    // Fade out non-linearly
-    let age = particle.age();
-    particle.alpha = particle.color[3] * (1.0 - age * age);
+    // Keep particle outside the circle
+    let px = particle.position.0 - cx;
+    let py = particle.position.1 - cy;
+    let pdist = (px * px + py * py).sqrt();
+    let min_dist = circle_radius + particle.size * 0.5 + 4.0;
+
+    if pdist < min_dist && pdist > 0.001 {
+        let push_x = px / pdist;
+        let push_y = py / pdist;
+        particle.position.0 = cx + push_x * min_dist;
+        particle.position.1 = cy + push_y * min_dist;
+    }
+
+    // Keep alpha high - fade only near end of life
+    let life_ratio = (particle.lifetime / 0.5).min(1.0);
+    particle.alpha = life_ratio.max(0.3);
 
     // Size grows as smoke disperses
-    let base_size = (particle.size + particle.size) / 2.0;
-    particle.size = base_size * (1.0 + age * 2.0);
+    let age = particle.age();
+    let (size_min, size_max) = options.particle_size;
+    let base_size = rand::rng().random_range(size_min * 0.5..size_max * 0.8).max(3.0);
+    particle.size = base_size * (1.0 + age * 1.5);
 }
