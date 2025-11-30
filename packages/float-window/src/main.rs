@@ -1,4 +1,4 @@
-//! Float Window Demo Application
+//! Float Window Demo Application - Controller Mode
 
 use float_window::prelude::*;
 
@@ -6,47 +6,19 @@ fn main() {
     // Initialize logging
     env_logger::init();
 
-    // Create a circular floating window with particle effects
-    let window = FloatingWindow::builder()
-        .title("Float Window Demo")
-        .size(50, 50)
-        .position(500.0, 500.0)
-        .shape(WindowShape::Circle)
+    // Create controller window (rectangular, with egui UI)
+    let controller = FloatingWindow::builder()
+        .title("Flow Window Controller")
+        .size(350, 450)
+        .position(100.0, 100.0)
+        .shape(WindowShape::Rectangle)
         .draggable(true)
         .always_on_top(true)
-        // .content(Content::text("Hello!"))
-        .effect(
-            PresetEffect::SilkRibbon,
-            PresetEffectOptions::default()
-                .with_intensity(1.0)
-                .with_ribbon_count(3)
-                .with_petal_amplitude(9.0)
-                .with_colors(vec![
-                    [0.4, 0.8, 1.0, 1.0], // Cyan
-                    [0.8, 0.4, 1.0, 1.0], // Purple
-                    [1.0, 0.8, 0.4, 1.0], // Gold
-                ]),
-        )
-        .on_event(|event| match event {
-            FloatingWindowEvent::Click { x, y } => {
-                println!("Clicked at ({}, {})", x, y);
-            }
-            FloatingWindowEvent::DragStart { .. } => {
-                println!("Drag started");
-            }
-            FloatingWindowEvent::DragEnd { .. } => {
-                println!("Drag ended");
-            }
-            FloatingWindowEvent::Close => {
-                println!("Window closing");
-            }
-            _ => {}
-        })
         .build()
-        .expect("Failed to create window");
+        .expect("Failed to create controller window");
 
-    // Run the window (blocking)
-    if let Err(e) = window.run() {
-        eprintln!("Error running window: {}", e);
+    // Run as controller - this enables dynamic window creation/management
+    if let Err(e) = FloatingWindow::run_controller(controller) {
+        eprintln!("Error running controller: {}", e);
     }
 }

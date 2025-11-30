@@ -1,9 +1,11 @@
 //! FloatingWindow implementation with GPU rendering
 
 use super::builder::FloatingWindowBuilder;
-use super::config::{Position, WindowConfig, WindowLevel};
+use super::commands::{CommandReceiver, CommandSender, WindowCommand, WindowRegistry};
+use super::config::{Position, Size, WindowConfig, WindowLevel};
+use super::controller::ControllerState;
 use crate::animation::AnimationController;
-use crate::effect::ParticleSystem;
+use crate::effect::{ParticleSystem, PresetEffect, PresetEffectOptions};
 use crate::event::{EventHandler, FloatingWindowEvent};
 use crate::render::WindowPainter;
 use crate::shape::{ShapeMask, WindowShape};
@@ -94,6 +96,30 @@ impl FloatingWindow {
         event_loop.set_control_flow(ControlFlow::Poll);
 
         let mut app = FloatingWindowApp::new(self);
+        event_loop.run_app(&mut app).map_err(|e| e.to_string())
+    }
+
+    /// Run multiple windows together (blocking)
+    pub fn run_multiple(windows: Vec<FloatingWindow>) -> Result<(), String> {
+        if windows.is_empty() {
+            return Err("No windows provided".to_string());
+        }
+
+        let event_loop = EventLoop::new().map_err(|e| e.to_string())?;
+        event_loop.set_control_flow(ControlFlow::Poll);
+
+        let mut app = FloatingWindowApp::new_multi(windows);
+        event_loop.run_app(&mut app).map_err(|e| e.to_string())
+    }
+
+    /// Run as a controller window that can create/manage other windows (blocking)
+    pub fn run_controller(controller: FloatingWindow) -> Result<(), String> {
+        let (tx, rx) = super::commands::create_command_channel();
+
+        let event_loop = EventLoop::new().map_err(|e| e.to_string())?;
+        event_loop.set_control_flow(ControlFlow::Poll);
+
+        let mut app = FloatingWindowApp::new_controller(controller, tx, rx);
         event_loop.run_app(&mut app).map_err(|e| e.to_string())
     }
 
@@ -445,123 +471,331 @@ impl GpuState {
     }
 }
 
+/// State for a single window instance
+struct WindowState {
+    floating_window: FloatingWindow,
+    window: Arc<Window>,
+    gpu_state: GpuState,
+    egui_ctx: Context,
+    egui_state: egui_winit::State,
+    /// Controller state if this is a controller window
+    controller_state: Option<ControllerState>,
+    /// Whether this window is a managed flow window (not the controller)
+    is_managed: bool,
+}
+
 /// Application handler for the floating window
 struct FloatingWindowApp {
-    floating_window: FloatingWindow,
-    window: Option<Arc<Window>>,
-    gpu_state: Option<GpuState>,
-    egui_ctx: Context,
-    egui_state: Option<egui_winit::State>,
+    /// Pending windows to create
+    pending_windows: Vec<FloatingWindow>,
+    /// Active windows keyed by WindowId
+    windows: std::collections::HashMap<WindowId, WindowState>,
+    /// Command receiver for controller commands
+    command_receiver: Option<CommandReceiver>,
+    /// Command sender to pass to new controller windows
+    command_sender: Option<CommandSender>,
+    /// Window registry shared with controller
+    registry: WindowRegistry,
+    /// ID of the controller window (if any)
+    controller_window_id: Option<WindowId>,
+    /// Pending configs to create (from controller commands)
+    pending_configs: Vec<(WindowConfig, Option<(PresetEffect, PresetEffectOptions)>)>,
 }
 
 impl FloatingWindowApp {
     fn new(floating_window: FloatingWindow) -> Self {
-        let egui_ctx = Context::default();
+        Self {
+            pending_windows: vec![floating_window],
+            windows: std::collections::HashMap::new(),
+            command_receiver: None,
+            command_sender: None,
+            registry: WindowRegistry::new(),
+            controller_window_id: None,
+            pending_configs: Vec::new(),
+        }
+    }
 
+    fn new_multi(windows: Vec<FloatingWindow>) -> Self {
+        Self {
+            pending_windows: windows,
+            windows: std::collections::HashMap::new(),
+            command_receiver: None,
+            command_sender: None,
+            registry: WindowRegistry::new(),
+            controller_window_id: None,
+            pending_configs: Vec::new(),
+        }
+    }
+
+    fn new_controller(controller_window: FloatingWindow, command_sender: CommandSender, command_receiver: CommandReceiver) -> Self {
+        Self {
+            pending_windows: vec![controller_window],
+            windows: std::collections::HashMap::new(),
+            command_receiver: Some(command_receiver),
+            command_sender: Some(command_sender),
+            registry: WindowRegistry::new(),
+            controller_window_id: None,
+            pending_configs: Vec::new(),
+        }
+    }
+
+    fn create_egui_context() -> Context {
+        let egui_ctx = Context::default();
         // Disable feathering (anti-aliasing) to avoid compositor artifacts
         // on transparent windows. Semi-transparent edge pixels cause
         // white ring artifacts with macOS compositor.
         egui_ctx.tessellation_options_mut(|opts| {
             opts.feathering = false;
         });
+        egui_ctx
+    }
 
-        Self {
-            floating_window,
-            window: None,
-            gpu_state: None,
-            egui_ctx,
-            egui_state: None,
+    /// Process pending commands from the controller
+    fn process_commands(&mut self, event_loop: &ActiveEventLoop) {
+        if let Some(ref receiver) = self.command_receiver {
+            while let Ok(command) = receiver.try_recv() {
+                match command {
+                    WindowCommand::Create { config, effect } => {
+                        log::info!("Creating new window from controller: {:?}", config.title);
+                        self.pending_configs.push((config, effect));
+                    }
+                    WindowCommand::Close { id } => {
+                        log::info!("Closing window {:?}", id);
+                        if let Some(_state) = self.windows.remove(&id) {
+                            self.registry.unregister(id);
+                        }
+                        if self.windows.is_empty() {
+                            event_loop.exit();
+                        }
+                    }
+                    WindowCommand::CloseByName { name } => {
+                        log::info!("Closing window by name: {}", name);
+                        if let Some(id) = self.registry.find_by_name(&name) {
+                            if let Some(_state) = self.windows.remove(&id) {
+                                self.registry.unregister(id);
+                            }
+                        }
+                    }
+                    WindowCommand::UpdateEffectOptions { id, options } => {
+                        log::info!("Updating effect options for {:?}", id);
+                        if let Some(state) = self.windows.get_mut(&id) {
+                            if let Some(ref mut system) = state.floating_window.particle_system {
+                                // Recreate particle system with new options
+                                let width = state.floating_window.config.size.width as f32;
+                                let height = state.floating_window.config.size.height as f32;
+                                if let Some((effect, _)) = &state.floating_window.config.effect {
+                                    *system = ParticleSystem::immediate(*effect, options.clone(), width, height);
+                                }
+                            }
+                            self.registry.update_options(id, options);
+                        }
+                    }
+                    WindowCommand::CloseAll => {
+                        log::info!("Closing all managed windows");
+                        let managed_ids: Vec<WindowId> = self.windows.iter()
+                            .filter(|(_, state)| state.is_managed)
+                            .map(|(id, _)| *id)
+                            .collect();
+                        for id in managed_ids {
+                            self.windows.remove(&id);
+                            self.registry.unregister(id);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /// Create pending windows from configs
+    fn create_pending_windows(&mut self, event_loop: &ActiveEventLoop) {
+        for (config, effect) in self.pending_configs.drain(..) {
+            // Build a FloatingWindow from the config
+            let window_name = config.title.clone().unwrap_or_else(|| "Window".to_string());
+            let effect_info = effect.clone();
+
+            let mut builder = FloatingWindow::builder()
+                .position(config.position.x, config.position.y)
+                .size(config.size.width, config.size.height)
+                .shape(config.shape.clone())
+                .draggable(config.draggable)
+                .always_on_top(config.level == WindowLevel::AlwaysOnTop);
+
+            if let Some(title) = config.title {
+                builder = builder.title(title);
+            }
+
+            if let Some((effect, options)) = effect {
+                builder = builder.effect(effect, options);
+            }
+
+            match builder.build() {
+                Ok(floating_window) => {
+                    // Create the window
+                    let margin = floating_window.effect_margin;
+                    let window_width = config.size.width as f32 + margin * 2.0;
+                    let window_height = config.size.height as f32 + margin * 2.0;
+
+                    let mut attrs = WindowAttributes::default()
+                        .with_title(&window_name)
+                        .with_inner_size(LogicalSize::new(window_width, window_height))
+                        .with_position(LogicalPosition::new(config.position.x, config.position.y))
+                        .with_decorations(false)
+                        .with_transparent(true)
+                        .with_resizable(false)
+                        .with_window_level(WinitWindowLevel::AlwaysOnTop);
+
+                    match event_loop.create_window(attrs) {
+                        Ok(window) => {
+                            let window = Arc::new(window);
+                            let window_id = window.id();
+
+                            let gpu_state = pollster::block_on(GpuState::new(window.clone()));
+                            let egui_ctx = Self::create_egui_context();
+                            let egui_state = egui_winit::State::new(
+                                egui_ctx.clone(),
+                                egui_ctx.viewport_id(),
+                                &window,
+                                None,
+                                None,
+                                None,
+                            );
+
+                            let state = WindowState {
+                                floating_window,
+                                window,
+                                gpu_state,
+                                egui_ctx,
+                                egui_state,
+                                controller_state: None,
+                                is_managed: true,
+                            };
+
+                            // Register in the registry
+                            let effect_type = effect_info.as_ref().map(|(e, _)| *e);
+                            let effect_opts = effect_info.map(|(_, o)| o);
+                            self.registry.register(window_id, window_name, effect_type, effect_opts);
+
+                            self.windows.insert(window_id, state);
+                            log::info!("Created managed window {:?}", window_id);
+                        }
+                        Err(e) => {
+                            log::error!("Failed to create window: {}", e);
+                        }
+                    }
+                }
+                Err(e) => {
+                    log::error!("Failed to build FloatingWindow: {}", e);
+                }
+            }
         }
     }
 }
 
 impl ApplicationHandler for FloatingWindowApp {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
-        if self.window.is_some() {
-            return;
+        // Create all pending windows
+        for mut floating_window in self.pending_windows.drain(..) {
+            let config = &floating_window.config;
+            let margin = floating_window.effect_margin;
+
+            // Window size includes content size + margin on all sides
+            let window_width = config.size.width as f32 + margin * 2.0;
+            let window_height = config.size.height as f32 + margin * 2.0;
+
+            let mut attrs = WindowAttributes::default()
+                .with_title(config.title.as_deref().unwrap_or("Float Window"))
+                .with_inner_size(LogicalSize::new(window_width, window_height))
+                .with_position(LogicalPosition::new(config.position.x, config.position.y))
+                .with_decorations(false)
+                .with_transparent(true)
+                .with_resizable(config.resizable);
+
+            // Set window level
+            attrs = attrs.with_window_level(match config.level {
+                WindowLevel::Normal => WinitWindowLevel::Normal,
+                WindowLevel::Top => WinitWindowLevel::AlwaysOnTop,
+                WindowLevel::AlwaysOnTop => WinitWindowLevel::AlwaysOnTop,
+            });
+
+            let window = Arc::new(
+                event_loop
+                    .create_window(attrs)
+                    .expect("Failed to create window"),
+            );
+
+            let window_id = window.id();
+
+            // Initialize GPU state (blocking on async)
+            let gpu_state = pollster::block_on(GpuState::new(window.clone()));
+
+            // Create egui context for this window
+            let egui_ctx = Self::create_egui_context();
+
+            // Initialize egui state
+            let egui_state = egui_winit::State::new(
+                egui_ctx.clone(),
+                egui_ctx.viewport_id(),
+                &window,
+                None,
+                None,
+                None,
+            );
+
+            floating_window.set_visible(true);
+
+            // Check if this is a controller window (first window with command_sender set)
+            let controller_state = if self.controller_window_id.is_none() && self.command_sender.is_some() {
+                self.controller_window_id = Some(window_id);
+                let sender = self.command_sender.clone().unwrap();
+                Some(ControllerState::new(sender, self.registry.clone()))
+            } else {
+                None
+            };
+
+            let state = WindowState {
+                floating_window,
+                window,
+                gpu_state,
+                egui_ctx,
+                egui_state,
+                controller_state,
+                is_managed: false, // Initial windows are not "managed" flow windows
+            };
+
+            self.windows.insert(window_id, state);
+            log::info!("Window {:?} created successfully with GPU rendering", window_id);
         }
-
-        let config = &self.floating_window.config;
-        let margin = self.floating_window.effect_margin;
-
-        // Window size includes content size + margin on all sides
-        let window_width = config.size.width as f32 + margin * 2.0;
-        let window_height = config.size.height as f32 + margin * 2.0;
-
-        let mut attrs = WindowAttributes::default()
-            .with_title(config.title.as_deref().unwrap_or("Float Window"))
-            .with_inner_size(LogicalSize::new(window_width, window_height))
-            .with_position(LogicalPosition::new(config.position.x, config.position.y))
-            .with_decorations(false)
-            .with_transparent(true)
-            .with_resizable(config.resizable);
-
-        // Set window level
-        attrs = attrs.with_window_level(match config.level {
-            WindowLevel::Normal => WinitWindowLevel::Normal,
-            WindowLevel::Top => WinitWindowLevel::AlwaysOnTop,
-            WindowLevel::AlwaysOnTop => WinitWindowLevel::AlwaysOnTop,
-        });
-
-        let window = Arc::new(
-            event_loop
-                .create_window(attrs)
-                .expect("Failed to create window"),
-        );
-
-        // Initialize GPU state (blocking on async)
-        let gpu_state = pollster::block_on(GpuState::new(window.clone()));
-
-        // Initialize egui state
-        let egui_state = egui_winit::State::new(
-            self.egui_ctx.clone(),
-            self.egui_ctx.viewport_id(),
-            &window,
-            None,
-            None,
-            None,
-        );
-
-        self.gpu_state = Some(gpu_state);
-        self.egui_state = Some(egui_state);
-        self.window = Some(window);
-        self.floating_window.set_visible(true);
-
-        log::info!("Window created successfully with GPU rendering");
     }
 
     fn window_event(
         &mut self,
         event_loop: &ActiveEventLoop,
-        _window_id: WindowId,
+        window_id: WindowId,
         event: WindowEvent,
     ) {
-        let Some(window) = &self.window else { return };
-        let Some(egui_state) = &mut self.egui_state else {
-            return;
-        };
-        let Some(gpu_state) = &mut self.gpu_state else {
-            return;
-        };
+        let Some(state) = self.windows.get_mut(&window_id) else { return };
 
         // Let egui handle the event first
-        let _response = egui_state.on_window_event(&window, &event);
+        let _response = state.egui_state.on_window_event(&state.window, &event);
 
         match event {
             WindowEvent::CloseRequested => {
-                self.floating_window
+                state.floating_window
                     .event_handler
                     .dispatch(&FloatingWindowEvent::Close);
-                event_loop.exit();
+                self.windows.remove(&window_id);
+                if self.windows.is_empty() {
+                    event_loop.exit();
+                }
             }
             WindowEvent::RedrawRequested => {
-                let size = window.inner_size();
+                let size = state.window.inner_size();
                 if size.width == 0 || size.height == 0 {
                     return;
                 }
 
-                let raw_input = egui_state.take_egui_input(&window);
-                let pixels_per_point = self.egui_ctx.pixels_per_point();
+                let raw_input = state.egui_state.take_egui_input(&state.window);
+                let pixels_per_point = state.egui_ctx.pixels_per_point();
 
                 // Use logical size for egui rect (not physical)
                 let logical_width = size.width as f32 / pixels_per_point;
@@ -571,72 +805,77 @@ impl ApplicationHandler for FloatingWindowApp {
                     Vec2::new(logical_width, logical_height),
                 );
 
-                let full_output = self.egui_ctx.run(raw_input, |ctx| {
-                    self.floating_window.render(ctx, rect);
+                let full_output = state.egui_ctx.run(raw_input, |ctx| {
+                    // Check if this is a controller window
+                    if let Some(ref mut controller) = state.controller_state {
+                        controller.render(ctx);
+                    } else {
+                        state.floating_window.render(ctx, rect);
+                    }
                 });
 
-                egui_state.handle_platform_output(&window, full_output.platform_output);
+                state.egui_state.handle_platform_output(&state.window, full_output.platform_output);
 
                 // Tessellate
-                let primitives = self.egui_ctx.tessellate(full_output.shapes, full_output.pixels_per_point);
+                let primitives = state.egui_ctx.tessellate(full_output.shapes, full_output.pixels_per_point);
 
                 let screen_descriptor = egui_wgpu::ScreenDescriptor {
                     size_in_pixels: [size.width, size.height],
                     pixels_per_point: full_output.pixels_per_point,
                 };
 
-                gpu_state.render(primitives, full_output.textures_delta, screen_descriptor);
+                state.gpu_state.render(primitives, full_output.textures_delta, screen_descriptor);
             }
             WindowEvent::CursorMoved { position, .. } => {
                 // Convert physical to logical coordinates for shape mask
-                let scale_factor = window.scale_factor();
+                let scale_factor = state.window.scale_factor();
                 let logical_x = position.x / scale_factor;
                 let logical_y = position.y / scale_factor;
 
                 // Check if cursor is inside the shape
-                let inside_shape = self.floating_window.shape_mask.contains(logical_x as f32, logical_y as f32);
+                let inside_shape = state.floating_window.shape_mask.contains(logical_x as f32, logical_y as f32);
 
                 // Enable/disable hit testing based on whether cursor is inside shape
                 // This makes areas outside the shape "click-through"
-                let _ = window.set_cursor_hittest(inside_shape);
+                let _ = state.window.set_cursor_hittest(inside_shape);
 
                 // Update local mouse position (in logical coordinates)
-                self.floating_window.on_mouse_move(logical_x, logical_y);
+                state.floating_window.on_mouse_move(logical_x, logical_y);
 
                 // If dragging, calculate new window position using screen coordinates
-                if self.floating_window.is_dragging {
+                if state.floating_window.is_dragging {
                     // Get window position on screen
-                    if let Ok(window_pos) = window.outer_position() {
+                    if let Ok(window_pos) = state.window.outer_position() {
                         // Calculate mouse position in screen coordinates (physical)
                         let screen_x = window_pos.x as f64 + position.x;
                         let screen_y = window_pos.y as f64 + position.y;
 
-                        if let Some((new_x, new_y)) = self.floating_window.on_drag_move(screen_x, screen_y, scale_factor) {
-                            window.set_outer_position(PhysicalPosition::new(new_x as i32, new_y as i32));
-                            self.floating_window.update_position(new_x, new_y);
+                        if let Some((new_x, new_y)) = state.floating_window.on_drag_move(screen_x, screen_y, scale_factor) {
+                            state.window.set_outer_position(PhysicalPosition::new(new_x as i32, new_y as i32));
+                            state.floating_window.update_position(new_x, new_y);
                         }
                     }
                 }
             }
-            WindowEvent::MouseInput { state, button, .. } => {
+            WindowEvent::MouseInput { state: button_state, button, .. } => {
                 if button == MouseButton::Left {
-                    match state {
+                    match button_state {
                         ElementState::Pressed => {
-                            if let Some((x, y)) = self.floating_window.mouse_pos {
-                                self.floating_window.on_mouse_press(x as f64, y as f64);
+                            if let Some((x, y)) = state.floating_window.mouse_pos {
+                                state.floating_window.on_mouse_press(x as f64, y as f64);
                             }
                         }
                         ElementState::Released => {
-                            if let Some((x, y)) = self.floating_window.mouse_pos {
-                                self.floating_window.on_mouse_release(x as f64, y as f64);
+                            if let Some((x, y)) = state.floating_window.mouse_pos {
+                                state.floating_window.on_mouse_release(x as f64, y as f64);
                             }
                         }
                     }
                 }
             }
             WindowEvent::Resized(size) => {
-                gpu_state.resize(size.width, size.height);
-                self.floating_window
+                state.gpu_state.resize(size.width, size.height);
+                state.floating_window
                     .event_handler
                     .dispatch(&FloatingWindowEvent::Resize {
                         width: size.width,
@@ -649,9 +888,16 @@ impl ApplicationHandler for FloatingWindowApp {
         }
     }
 
-    fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
-        if let Some(window) = &self.window {
-            window.request_redraw();
+    fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
+        // Process any pending commands from the controller
+        self.process_commands(event_loop);
+
+        // Create any pending windows from commands
+        self.create_pending_windows(event_loop);
+
+        // Request redraw for all windows
+        for state in self.windows.values() {
+            state.window.request_redraw();
         }
     }
 }
