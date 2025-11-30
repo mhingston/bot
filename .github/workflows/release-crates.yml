@@ -45,7 +45,8 @@ jobs:
             libgles2-mesa-dev \
             libgbm-dev \
             libxi-dev \
-            libxtst-dev
+            libxtst-dev \
+            libxdo-dev
 
       - name: Cache Rust dependencies
         uses: actions/cache@v4
@@ -102,7 +103,8 @@ jobs:
             libgles2-mesa-dev \
             libgbm-dev \
             libxi-dev \
-            libxtst-dev
+            libxtst-dev \
+            libxdo-dev
 
       - name: Cache Rust dependencies
         uses: actions/cache@v4
