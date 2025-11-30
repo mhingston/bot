@@ -1,3 +1,4 @@
+// Type-only imports
 import type {
   Bitmap,
   ColorInfo,
@@ -10,6 +11,8 @@ import type {
   ScreenshotToolOptions,
   WindowInfo,
 } from "@tego/botjs";
+
+// Value imports (classes, functions)
 import {
   bitmapColorAt,
   captureAndCopy,
@@ -32,11 +35,9 @@ import {
   getPixelColorHex,
   getScreen,
   getScreenSize,
-  Keyboard,
   keyTap,
   keyToggle,
   leftClick,
-  Mouse,
   middleClick,
   mouseClick,
   mouseDown,
@@ -65,15 +66,8 @@ import { describe, expect, it, vi } from "vitest";
 
 describe("@tego/bot", () => {
   describe("Exports", () => {
-    it("should export Keyboard class", () => {
-      expect(Keyboard).toBeDefined();
-      expect(typeof Keyboard).toBe("function");
-    });
-
-    it("should export Mouse class", () => {
-      expect(Mouse).toBeDefined();
-      expect(typeof Mouse).toBe("function");
-    });
+    // Note: Keyboard and Mouse classes are not exported from the Rust bindings.
+    // Use standalone functions (keyTap, typeString, moveMouse, mouseClick, etc.) instead.
 
     it("should export Screen class", () => {
       expect(Screen).toBeDefined();
@@ -238,23 +232,8 @@ describe("@tego/bot", () => {
     });
   });
 
-  describe("Keyboard class", () => {
-    // Note: Creating Keyboard instances requires system connection (Enigo)
-    // Actual instance creation tests are in bot.integration.test.ts
-    it("should have Keyboard class defined", () => {
-      expect(Keyboard).toBeDefined();
-      expect(typeof Keyboard).toBe("function");
-    });
-  });
-
-  describe("Mouse class", () => {
-    // Note: Creating Mouse instances requires system connection (Enigo)
-    // Actual instance creation tests are in bot.integration.test.ts
-    it("should have Mouse class defined", () => {
-      expect(Mouse).toBeDefined();
-      expect(typeof Mouse).toBe("function");
-    });
-  });
+  // Note: Keyboard and Mouse classes are not exported from the Rust bindings.
+  // Use standalone functions (keyTap, typeString, moveMouse, mouseClick, etc.) instead.
 
   describe("Screen class", () => {
     it("should create Screen instance", () => {

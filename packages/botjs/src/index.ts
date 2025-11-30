@@ -21,35 +21,8 @@ export type {
 // Class Exports
 // ============================================================================
 
-/**
- * Keyboard automation class for simulating keyboard input
- *
- * @example
- * ```typescript
- * import { Keyboard } from "@tego/botjs";
- *
- * const keyboard = new Keyboard();
- * keyboard.keyTap('a');
- * keyboard.typeString('Hello World');
- * keyboard.keyTap('c', ['control']); // Ctrl+C
- * ```
- */
-export const Keyboard = bot.Keyboard;
-
-/**
- * Mouse automation class for controlling mouse movements and clicks
- *
- * @example
- * ```typescript
- * import { Mouse } from "@tego/botjs";
- *
- * const mouse = new Mouse();
- * mouse.moveMouse(100, 200);
- * mouse.mouseClick('left');
- * mouse.dragMouse(500, 500);
- * ```
- */
-export const Mouse = bot.Mouse;
+// Note: Keyboard and Mouse classes are not currently exported from the Rust bindings.
+// Use the standalone functions (keyTap, typeString, moveMouse, mouseClick, etc.) instead.
 
 /**
  * Screen capture class for taking screenshots and getting pixel colors
