@@ -910,6 +910,8 @@ impl FloatingWindowApp {
         };
 
         if let RawWindowHandle::AppKit(handle) = handle.as_raw() {
+            // Allow unexpected_cfgs from objc crate's msg_send! macro
+            #[allow(unexpected_cfgs)]
             unsafe {
                 use objc::runtime::{Class, Object};
                 use objc::{msg_send, sel, sel_impl};

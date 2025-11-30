@@ -57,8 +57,8 @@ fn load_svg(
     let mut pixmap = tiny_skia::Pixmap::new(width, height)
         .ok_or_else(|| "Failed to create pixmap".to_string())?;
 
-    let scale_x = width as f32 / size.width() as f32;
-    let scale_y = height as f32 / size.height() as f32;
+    let scale_x = width as f32 / size.width();
+    let scale_y = height as f32 / size.height();
     let transform = tiny_skia::Transform::from_scale(scale_x, scale_y);
 
     resvg::render(&tree, transform, &mut pixmap.as_mut());
