@@ -2,12 +2,15 @@
 
 use super::commands::{CommandSender, WindowCommand, WindowRegistry};
 use super::config::{Position, Size, WindowConfig};
+use winit::window::WindowId;
 use crate::content::Content;
 use crate::effect::{PresetEffect, PresetEffectOptions};
 use crate::menu_bar::{MenuBarIcon, MenuBarItem, MenuBarMenu};
 use crate::shape::WindowShape;
 use egui::{Context, Ui};
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
+use std::thread;
 
 /// Available shapes for selection
 const ALL_SHAPES: &[(&str, WindowShape)] = &[
@@ -68,6 +71,16 @@ pub struct ControllerState {
     flow_window_image_path: Option<PathBuf>,
     /// Selected image path for tray icon
     tray_icon_image_path: Option<PathBuf>,
+    /// Window ID and size pending image update (when user clicks Set Image on existing window)
+    pending_image_update_window: Option<(WindowId, (u32, u32))>,
+    /// Controller window background content
+    controller_background: Option<Content>,
+    /// Pending controller background update
+    pending_controller_background: bool,
+    /// Async loading state for background image
+    async_background_load: Arc<Mutex<Option<Content>>>,
+    /// Whether we're currently loading a background
+    is_loading_background: bool,
 }
 
 impl ControllerState {
@@ -89,6 +102,11 @@ impl ControllerState {
             tray_icon_color: [100, 200, 255], // Cyan default
             flow_window_image_path: None,
             tray_icon_image_path: None,
+            pending_image_update_window: None,
+            controller_background: None,
+            pending_controller_background: false,
+            async_background_load: Arc::new(Mutex::new(None)),
+            is_loading_background: false,
         }
     }
 
@@ -99,28 +117,168 @@ impl ControllerState {
 
     /// Render the controller UI
     pub fn render(&mut self, ctx: &Context) {
-        egui::CentralPanel::default().show(ctx, |ui| {
-            ui.heading("Flow Window Controller");
+        // Check for async-loaded background
+        if let Ok(mut pending) = self.async_background_load.try_lock() {
+            if let Some(content) = pending.take() {
+                self.controller_background = Some(content);
+                self.is_loading_background = false;
+                log::info!("Background image loaded asynchronously");
+            }
+        }
+
+        // Glassmorphism color scheme
+        let has_bg = self.controller_background.is_some();
+
+        // Left panel: more opaque for better readability
+        let left_panel_frame = if has_bg {
+            egui::Frame::none()
+                .fill(egui::Color32::from_rgba_unmultiplied(15, 20, 35, 220)) // Deep blue tint, very opaque
+                .inner_margin(egui::Margin::same(12))
+        } else {
+            egui::Frame::none()
+                .fill(egui::Color32::from_rgb(25, 28, 40)) // Dark blue-gray
+                .inner_margin(egui::Margin::same(12))
+        };
+
+        // Right panel: more transparent for glassmorphism effect
+        let right_panel_frame = if has_bg {
+            egui::Frame::none()
+                .fill(egui::Color32::from_rgba_unmultiplied(20, 25, 45, 160)) // Blue-purple tint, more transparent
+                .inner_margin(egui::Margin::same(12))
+        } else {
+            egui::Frame::none()
+                .fill(egui::Color32::from_rgb(30, 32, 48)) // Slightly lighter blue-gray
+                .inner_margin(egui::Margin::same(12))
+        };
+
+        // Draw background image if set (behind everything using layer painter)
+        if let Some(content) = &self.controller_background {
+            if let Content::Image { data, width, height, .. } = content {
+                let screen_rect = ctx.input(|i| i.screen_rect());
+                let texture = ctx.load_texture(
+                    "controller_bg",
+                    egui::ColorImage::from_rgba_unmultiplied([*width as usize, *height as usize], data),
+                    egui::TextureOptions::LINEAR,
+                );
+                // Use layer painter at Background level
+                let painter = ctx.layer_painter(egui::LayerId::background());
+                painter.image(
+                    texture.id(),
+                    screen_rect,
+                    egui::Rect::from_min_max(egui::Pos2::ZERO, egui::Pos2::new(1.0, 1.0)),
+                    egui::Color32::WHITE,
+                );
+            }
+        }
+
+        // Left panel for create/configure (flow windows)
+        egui::SidePanel::left("left_panel")
+            .resizable(true)
+            .default_width(340.0)
+            .min_width(300.0)
+            .max_width(450.0)
+            .frame(left_panel_frame)
+            .show(ctx, |ui| {
+                ui.heading("Create & Configure");
+                ui.separator();
+
+                egui::ScrollArea::vertical()
+                    .auto_shrink([false; 2])
+                    .show(ui, |ui| {
+                        // Create new window section
+                        self.render_create_section(ui);
+
+                        ui.add_space(16.0);
+                        ui.separator();
+
+                        // Create menu bar item section (moved to left)
+                        self.render_create_menu_bar_section(ui);
+
+                        ui.add_space(16.0);
+                        ui.separator();
+
+                        // Controller Settings section
+                        self.render_controller_settings(ui);
+                    });
+            });
+
+        // Right panel (CentralPanel) for managed/active items
+        egui::CentralPanel::default().frame(right_panel_frame).show(ctx, |ui| {
+            ui.heading("Active Items");
             ui.separator();
 
-            // Wrap content in a scroll area
             egui::ScrollArea::vertical()
                 .auto_shrink([false; 2])
                 .show(ui, |ui| {
-                    // Create new window section
-                    self.render_create_section(ui);
-
-                    ui.separator();
-
                     // Manage existing windows section
                     self.render_manage_section(ui);
 
+                    ui.add_space(16.0);
                     ui.separator();
 
-                    // Menu bar section
-                    self.render_menu_bar_section(ui);
+                    // Active menu bar items section
+                    self.render_active_menu_bar_section(ui);
                 });
         });
+    }
+
+    /// Render the controller settings section
+    fn render_controller_settings(&mut self, ui: &mut Ui) {
+        ui.heading("Controller Settings");
+        ui.add_space(8.0);
+
+        ui.group(|ui| {
+            ui.label("Background Image:");
+            ui.horizontal(|ui| {
+                if self.is_loading_background {
+                    ui.label("Loading...");
+                    ui.spinner();
+                } else if self.controller_background.is_some() {
+                    ui.label("Set");
+                    if ui.button("Clear").clicked() {
+                        self.controller_background = None;
+                    }
+                } else {
+                    ui.label("None");
+                }
+                if !self.is_loading_background && ui.button("Browse...").clicked() {
+                    self.pending_controller_background = true;
+                }
+            });
+        });
+
+        // Handle pending controller background update (file picker)
+        if self.pending_controller_background {
+            self.pending_controller_background = false;
+            if let Some(path) = rfd::FileDialog::new()
+                .add_filter("Images", &["png", "svg", "jpg", "jpeg"])
+                .pick_file()
+            {
+                // Load asynchronously to avoid blocking UI
+                self.is_loading_background = true;
+                let async_load = self.async_background_load.clone();
+                let path_clone = path.clone();
+
+                thread::spawn(move || {
+                    log::info!("Loading controller background async: {:?}", path_clone);
+                    match Content::from_path_sized(&path_clone, 1200, 1200) {
+                        Ok(content) => {
+                            if let Ok(mut pending) = async_load.lock() {
+                                *pending = Some(content);
+                            }
+                        }
+                        Err(e) => {
+                            log::error!("Failed to load controller background: {}", e);
+                        }
+                    }
+                });
+            }
+        }
+    }
+
+    /// Get the controller background content
+    pub fn get_background(&self) -> Option<&Content> {
+        self.controller_background.as_ref()
     }
 
     /// Render the create new window section
@@ -301,12 +459,39 @@ impl ControllerState {
                         ui.label(&window.name);
                         ui.label(format!("{:?}", window.effect.unwrap_or(PresetEffect::RotatingHalo)));
 
-                        if ui.button("Close").clicked() {
-                            let _ = self.command_sender.send(WindowCommand::Close { id: window.id });
-                        }
+                        ui.horizontal(|ui| {
+                            if ui.button("Close").clicked() {
+                                let _ = self.command_sender.send(WindowCommand::Close { id: window.id });
+                            }
+                            if ui.button("Set Image").clicked() {
+                                self.pending_image_update_window = Some((window.id, window.size));
+                            }
+                        });
                         ui.end_row();
                     }
                 });
+        }
+
+        // Handle pending image update (file picker)
+        if let Some((window_id, size)) = self.pending_image_update_window.take() {
+            if let Some(path) = rfd::FileDialog::new()
+                .add_filter("Images", &["png", "svg", "jpg", "jpeg"])
+                .pick_file()
+            {
+                // Load the image content with the window's size
+                match Content::from_path_sized(&path, size.0, size.1) {
+                    Ok(content) => {
+                        let _ = self.command_sender.send(WindowCommand::UpdateContent {
+                            id: window_id,
+                            content: Some(content),
+                        });
+                        log::info!("Set image for window {:?}: {:?}", window_id, path);
+                    }
+                    Err(e) => {
+                        log::error!("Failed to load image for existing window: {}", e);
+                    }
+                }
+            }
         }
 
         ui.add_space(8.0);
@@ -364,88 +549,82 @@ impl ControllerState {
         }
     }
 
-    /// Render the menu bar section
-    fn render_menu_bar_section(&mut self, ui: &mut Ui) {
-        ui.heading("Menu Bar Items");
+    /// Render the create menu bar item section (for left panel)
+    fn render_create_menu_bar_section(&mut self, ui: &mut Ui) {
+        ui.heading("Create Menu Bar Item");
         ui.add_space(8.0);
 
-        // Create new menu bar item section
-        ui.group(|ui| {
-            ui.label("Create Menu Bar Item");
-            ui.add_space(4.0);
+        ui.horizontal(|ui| {
+            ui.label("Name:");
+            ui.text_edit_singleline(&mut self.new_menu_bar_name);
+        });
 
-            ui.horizontal(|ui| {
-                ui.label("Name:");
-                ui.text_edit_singleline(&mut self.new_menu_bar_name);
-            });
+        ui.horizontal(|ui| {
+            ui.label("Tooltip:");
+            ui.text_edit_singleline(&mut self.new_menu_bar_tooltip);
+        });
 
-            ui.horizontal(|ui| {
-                ui.label("Tooltip:");
-                ui.text_edit_singleline(&mut self.new_menu_bar_tooltip);
-            });
+        ui.add_space(4.0);
 
-            ui.add_space(4.0);
+        // Icon selection - color buttons or image file
+        ui.label("Icon Color:");
+        ui.horizontal(|ui| {
+            if ui.button("Cyan").clicked() {
+                self.tray_icon_color = [100, 200, 255];
+                self.tray_icon_image_path = None;
+            }
+            if ui.button("Green").clicked() {
+                self.tray_icon_color = [100, 255, 150];
+                self.tray_icon_image_path = None;
+            }
+            if ui.button("Purple").clicked() {
+                self.tray_icon_color = [200, 100, 255];
+                self.tray_icon_image_path = None;
+            }
+            if ui.button("Orange").clicked() {
+                self.tray_icon_color = [255, 150, 50];
+                self.tray_icon_image_path = None;
+            }
+        });
 
-            // Icon selection - color buttons or image file
-            ui.horizontal(|ui| {
-                ui.label("Icon:");
-                if ui.button("Cyan").clicked() {
-                    self.tray_icon_color = [100, 200, 255];
-                    self.tray_icon_image_path = None;
-                }
-                if ui.button("Green").clicked() {
-                    self.tray_icon_color = [100, 255, 150];
-                    self.tray_icon_image_path = None;
-                }
-                if ui.button("Purple").clicked() {
-                    self.tray_icon_color = [200, 100, 255];
-                    self.tray_icon_image_path = None;
-                }
-                if ui.button("Orange").clicked() {
-                    self.tray_icon_color = [255, 150, 50];
-                    self.tray_icon_image_path = None;
-                }
-                if ui.button("Image...").clicked() {
-                    self.open_image_picker_for_tray();
-                }
-            });
-
+        ui.horizontal(|ui| {
+            if ui.button("Image...").clicked() {
+                self.open_image_picker_for_tray();
+            }
             // Show selected image or color preview
-            ui.horizontal(|ui| {
-                ui.label("Selected:");
-                if let Some(path) = &self.tray_icon_image_path {
-                    let filename = path.file_name()
-                        .map(|s| s.to_string_lossy().to_string())
-                        .unwrap_or_else(|| "Unknown".to_string());
-                    ui.label(&filename);
-                    if ui.button("Clear").clicked() {
-                        self.tray_icon_image_path = None;
-                    }
-                } else {
-                    let color = egui::Color32::from_rgb(
-                        self.tray_icon_color[0],
-                        self.tray_icon_color[1],
-                        self.tray_icon_color[2],
-                    );
-                    let (rect, _) = ui.allocate_exact_size(egui::vec2(20.0, 20.0), egui::Sense::hover());
-                    ui.painter().circle_filled(rect.center(), 8.0, color);
+            ui.label("Selected:");
+            if let Some(path) = &self.tray_icon_image_path {
+                let filename = path.file_name()
+                    .map(|s| s.to_string_lossy().to_string())
+                    .unwrap_or_else(|| "Unknown".to_string());
+                ui.label(&filename);
+                if ui.button("Clear").clicked() {
+                    self.tray_icon_image_path = None;
                 }
-            });
-
-            ui.add_space(4.0);
-
-            if ui.button("Add Menu Bar Item").clicked() {
-                self.create_menu_bar_item();
+            } else {
+                let color = egui::Color32::from_rgb(
+                    self.tray_icon_color[0],
+                    self.tray_icon_color[1],
+                    self.tray_icon_color[2],
+                );
+                let (rect, _) = ui.allocate_exact_size(egui::vec2(20.0, 20.0), egui::Sense::hover());
+                ui.painter().circle_filled(rect.center(), 8.0, color);
             }
         });
 
         ui.add_space(8.0);
 
-        // List existing menu bar items
-        if !self.menu_bar_items.is_empty() {
-            ui.label("Active Menu Bar Items:");
-            ui.add_space(4.0);
+        if ui.button("Add Menu Bar Item").clicked() {
+            self.create_menu_bar_item();
+        }
+    }
 
+    /// Render the active menu bar items section (for right panel)
+    fn render_active_menu_bar_section(&mut self, ui: &mut Ui) {
+        ui.heading("Menu Bar Items");
+        ui.add_space(8.0);
+
+        if !self.menu_bar_items.is_empty() {
             let mut to_remove = None;
             for (idx, id) in self.menu_bar_items.iter().enumerate() {
                 ui.horizontal(|ui| {

@@ -1,6 +1,7 @@
 //! Command system for inter-window communication
 
 use super::config::WindowConfig;
+use crate::content::Content;
 use crate::effect::{PresetEffect, PresetEffectOptions};
 use crate::menu_bar::{MenuBarIcon, MenuBarItem};
 use std::sync::mpsc::{channel, Receiver, Sender};
@@ -34,6 +35,8 @@ pub enum WindowCommand {
     UpdateMenuBarIcon { id: String, icon: MenuBarIcon },
     /// Update the tooltip of a menu bar item
     UpdateMenuBarTooltip { id: String, tooltip: String },
+    /// Update the content (image) of a window
+    UpdateContent { id: WindowId, content: Option<Content> },
 }
 
 /// Sender end of the command channel
@@ -54,6 +57,8 @@ pub struct WindowInfo {
     pub id: WindowId,
     /// User-friendly name
     pub name: String,
+    /// Window size (width, height)
+    pub size: (u32, u32),
     /// Current effect type
     pub effect: Option<PresetEffect>,
     /// Current effect options
@@ -73,9 +78,9 @@ impl WindowRegistry {
     }
 
     /// Register a new window
-    pub fn register(&self, id: WindowId, name: String, effect: Option<PresetEffect>, options: Option<PresetEffectOptions>) {
+    pub fn register(&self, id: WindowId, name: String, size: (u32, u32), effect: Option<PresetEffect>, options: Option<PresetEffectOptions>) {
         let mut windows = self.windows.write().unwrap();
-        windows.push(WindowInfo { id, name, effect, options });
+        windows.push(WindowInfo { id, name, size, effect, options });
     }
 
     /// Unregister a window by ID

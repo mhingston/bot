@@ -148,6 +148,11 @@ impl FloatingWindow {
         }
     }
 
+    /// Set content (image/text)
+    pub fn set_content(&mut self, content: Option<Content>) {
+        self.config.content = content;
+    }
+
     /// Update particle system
     pub fn update(&mut self) {
         if let Some(ref mut system) = self.particle_system {
@@ -628,6 +633,12 @@ impl FloatingWindowApp {
                             log::error!("Failed to update menu bar tooltip: {}", e);
                         }
                     }
+                    WindowCommand::UpdateContent { id, content } => {
+                        log::info!("Updating content for window {:?}", id);
+                        if let Some(state) = self.windows.get_mut(&id) {
+                            state.floating_window.set_content(content);
+                        }
+                    }
                 }
             }
         }
@@ -725,7 +736,8 @@ impl FloatingWindowApp {
                             // Register in the registry
                             let effect_type = effect_info.as_ref().map(|(e, _)| *e);
                             let effect_opts = effect_info.map(|(_, o)| o);
-                            self.registry.register(window_id, window_name, effect_type, effect_opts);
+                            let window_size = (config.size.width, config.size.height);
+                            self.registry.register(window_id, window_name, window_size, effect_type, effect_opts);
 
                             self.windows.insert(window_id, state);
                             log::info!("Created managed window {:?}", window_id);

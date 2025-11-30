@@ -9,7 +9,7 @@ fn main() {
     // Create controller window (rectangular, with egui UI)
     let controller = FloatingWindow::builder()
         .title("Flow Window Controller")
-        .size(350, 450)
+        .size(800, 450)
         .position(100.0, 100.0)
         .shape(WindowShape::Rectangle)
         .draggable(true)
