@@ -2,8 +2,8 @@
 //! Particles flow OUTSIDE the circle
 
 use super::{circle_edge_outside, random_color};
-use crate::effect::particle::Particle;
 use crate::effect::PresetEffectOptions;
+use crate::effect::particle::Particle;
 use rand::Rng;
 use std::f32::consts::PI;
 
@@ -19,10 +19,8 @@ pub fn spawn(pos: f32, options: &PresetEffectOptions, width: f32, height: f32) -
     let (size_min, size_max) = options.particle_size;
     let size = rand::rng().random_range(size_min * 0.5..size_max * 0.8).max(3.0);
 
-    let mut particle = Particle::new(x, y)
-        .with_size(size)
-        .with_color(color)
-        .with_lifetime(f32::INFINITY); // Particles don't die, they flow
+    let mut particle =
+        Particle::new(x, y).with_size(size).with_color(color).with_lifetime(f32::INFINITY); // Particles don't die, they flow
 
     // Store initial edge position for flow calculation
     particle.custom = pos;

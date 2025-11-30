@@ -1,17 +1,17 @@
-use image::{ImageBuffer, Rgba};
-use std::sync::Arc;
-use std::collections::VecDeque;
-use winit::window::Window;
-use winit::event::{KeyEvent, Ime};
 use egui::Context as EguiContext;
 use egui_wgpu::Renderer as EguiWgpuRenderer;
+use image::{ImageBuffer, Rgba};
+use std::collections::VecDeque;
+use std::sync::Arc;
+use winit::event::{Ime, KeyEvent};
+use winit::window::Window;
 
-use crate::ui::Toolbar;
+use super::input;
+use super::render;
 use super::texture;
 use super::ui;
 use super::wgpu_init;
-use super::input;
-use super::render;
+use crate::ui::Toolbar;
 
 /// 基于 egui 的渲染器，使用 wgpu 作为后端
 pub struct EguiRenderer {
@@ -20,21 +20,21 @@ pub struct EguiRenderer {
     device: wgpu::Device,
     queue: wgpu::Queue,
     config: wgpu::SurfaceConfiguration,
-    
+
     // 窗口和尺寸
     window: Arc<Window>,
     width: u32,
     height: u32,
     scale_factor: f64,
-    
+
     // Egui 资源
     egui_context: EguiContext,
     egui_renderer: EguiWgpuRenderer,
-    
+
     // 截图数据
     screenshot: ImageBuffer<Rgba<u8>, Vec<u8>>,
     screenshot_texture_id: egui::TextureId,
-    
+
     // 输入状态
     last_mouse_pressed: bool,
     keyboard_events: VecDeque<KeyEvent>,
@@ -43,18 +43,21 @@ pub struct EguiRenderer {
 
 impl EguiRenderer {
     /// 创建新的 egui 渲染器
-    pub fn new(window: Arc<Window>, screenshot: ImageBuffer<Rgba<u8>, Vec<u8>>) -> anyhow::Result<Self> {
+    pub fn new(
+        window: Arc<Window>,
+        screenshot: ImageBuffer<Rgba<u8>, Vec<u8>>,
+    ) -> anyhow::Result<Self> {
         let size = window.inner_size();
         let width = size.width;
         let height = size.height;
         let scale_factor = window.scale_factor();
-        
+
         // 初始化 WGPU
         let (surface, device, queue, config) = wgpu_init::init_wgpu(&window, width, height)?;
-        
+
         // 初始化 Egui
         let (egui_context, egui_renderer) = Self::init_egui(&device, config.format, scale_factor)?;
-        
+
         // 加载截图纹理
         let screenshot_texture_id = Self::load_screenshot_texture(&egui_context, &screenshot)?;
 
@@ -85,9 +88,10 @@ impl EguiRenderer {
     ) -> anyhow::Result<(EguiContext, EguiWgpuRenderer)> {
         let egui_context = EguiContext::default();
         egui_context.set_pixels_per_point(scale_factor as f32);
-        
-        let egui_renderer = EguiWgpuRenderer::new(device, surface_format, None, 1);
-        
+
+        let egui_renderer =
+            EguiWgpuRenderer::new(device, surface_format, egui_wgpu::RendererOptions::default());
+
         Ok((egui_context, egui_renderer))
     }
 
@@ -137,6 +141,7 @@ impl EguiRenderer {
 
     /// 渲染一帧
     /// 返回：(点击的按钮ID, 文本是否确认, 文本是否取消, 文本输入缓冲区)
+    #[allow(clippy::too_many_arguments)]
     pub fn render(
         &mut self,
         selection: Option<(f32, f32, f32, f32)>,
@@ -162,17 +167,25 @@ impl EguiRenderer {
             &keyboard_events,
             &ime_events,
         );
-        
+
         // 2. 开始 Egui 帧
         self.egui_context.set_pixels_per_point(self.scale_factor as f32);
-        self.egui_context.begin_frame(raw_input);
-        
+        self.egui_context.begin_pass(raw_input);
+
         // 3. 渲染 UI
-        let (clicked_button_id, text_confirmed, text_cancelled) = self.render_ui(selection, toolbar, drawing_points, text_items, text_input_active, text_input_pos, text_input_buffer)?;
-        
+        let (clicked_button_id, text_confirmed, text_cancelled) = self.render_ui(
+            selection,
+            toolbar,
+            drawing_points,
+            text_items,
+            text_input_active,
+            text_input_pos,
+            text_input_buffer,
+        )?;
+
         // 4. 结束帧并获取输出
-        let egui_output = self.egui_context.end_frame();
-        
+        let egui_output = self.egui_context.end_pass();
+
         // 5. 渲染到 WGPU
         render::render_to_wgpu(
             &self.surface,
@@ -190,6 +203,7 @@ impl EguiRenderer {
     }
 
     /// 渲染 UI 元素
+    #[allow(clippy::too_many_arguments)]
     fn render_ui(
         &mut self,
         selection: Option<(f32, f32, f32, f32)>,
@@ -206,11 +220,7 @@ impl EguiRenderer {
         );
 
         // 渲染截图背景
-        ui::render_screenshot(
-            &self.egui_context,
-            self.screenshot_texture_id,
-            &self.screenshot,
-        );
+        ui::render_screenshot(&self.egui_context, self.screenshot_texture_id, &self.screenshot);
 
         // 渲染选择区域或全屏遮罩
         if let Some(selection_rect) = selection {
@@ -220,12 +230,12 @@ impl EguiRenderer {
                 screen_rect,
                 toolbar.is_some(),
             );
-            
+
             // 渲染绘图
             if !drawing_points.is_empty() {
                 ui::render_drawing(&self.egui_context, selection_rect, drawing_points);
             }
-            
+
             // 渲染文本
             if !text_items.is_empty() {
                 ui::render_texts(&self.egui_context, selection_rect, text_items);
@@ -233,7 +243,7 @@ impl EguiRenderer {
         } else {
             ui::render_fullscreen_mask(&self.egui_context, screen_rect);
         }
-        
+
         // 渲染文本输入框
         let (text_confirmed, text_cancelled) = if text_input_active {
             if let Some((x, y)) = text_input_pos {
@@ -251,7 +261,7 @@ impl EguiRenderer {
         } else {
             None
         };
-        
+
         Ok((clicked_button_id, text_confirmed, text_cancelled))
     }
 }

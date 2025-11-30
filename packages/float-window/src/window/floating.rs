@@ -33,7 +33,7 @@ pub struct FloatingWindow {
     effect_margin: f32,
     visible: bool,
     // Runtime state - drag uses mouse position relative to window
-    pub(crate) drag_offset: Option<(f64, f64)>,  // Offset from window origin to mouse click point
+    pub(crate) drag_offset: Option<(f64, f64)>, // Offset from window origin to mouse click point
     mouse_pos: Option<(f32, f32)>,
     pub(crate) is_dragging: bool,
     /// Whether this window has focus (used to prevent drag when other window is focused)
@@ -47,6 +47,7 @@ impl FloatingWindow {
     }
 
     /// Create from configuration
+    #[allow(clippy::type_complexity)]
     pub(crate) fn from_config(
         config: WindowConfig,
         event_callback: Option<Box<dyn Fn(&FloatingWindowEvent) + Send + Sync>>,
@@ -63,12 +64,7 @@ impl FloatingWindow {
 
         // Particle system uses content size (the shape size), not window size
         let particle_system = config.effect.as_ref().map(|(effect, options)| {
-            ParticleSystem::new(
-                *effect,
-                options.clone(),
-                content_width,
-                content_height,
-            )
+            ParticleSystem::new(*effect, options.clone(), content_width, content_height)
         });
 
         // Shape mask is offset by the effect margin and uses content size
@@ -142,11 +138,7 @@ impl FloatingWindow {
     pub fn set_visible(&mut self, visible: bool) {
         if visible != self.visible {
             self.visible = visible;
-            let event = if visible {
-                FloatingWindowEvent::Show
-            } else {
-                FloatingWindowEvent::Hide
-            };
+            let event = if visible { FloatingWindowEvent::Show } else { FloatingWindowEvent::Hide };
             self.event_handler.dispatch(&event);
         }
     }
@@ -164,7 +156,7 @@ impl FloatingWindow {
     }
 
     /// Render the window content
-    pub fn render(&mut self, ctx: &Context, rect: Rect) {
+    pub fn render(&mut self, ctx: &Context, _rect: Rect) {
         // Update animations
         if let Some(ref mut anim) = self.show_animation {
             anim.update();
@@ -185,41 +177,39 @@ impl FloatingWindow {
             Vec2::new(content_width, content_height),
         );
 
-        CentralPanel::default()
-            .frame(transparent_frame)
-            .show(ctx, |ui| {
-                // Check if we have image content
-                let has_image_content = matches!(&self.config.content, Some(Content::Image { .. }));
+        CentralPanel::default().frame(transparent_frame).show(ctx, |ui| {
+            // Check if we have image content
+            let has_image_content = matches!(&self.config.content, Some(Content::Image { .. }));
 
-                // Draw background based on shape (only when no image content)
-                // Use full alpha (255) to avoid compositor blending artifacts
-                if !has_image_content {
-                    let bg_color = Color32::from_rgba_unmultiplied(50, 50, 80, 255);
-                    match &self.config.shape {
-                        WindowShape::Rectangle => {
-                            ui.painter().rect_filled(content_rect, 0.0, bg_color);
-                        }
-                        WindowShape::Circle => {
-                            let radius = content_width.min(content_height) / 2.0;
-                            ui.painter().circle_filled(content_rect.center(), radius, bg_color);
-                        }
-                        WindowShape::Custom { .. } => {
-                            ui.painter().rect_filled(content_rect, 0.0, bg_color);
-                        }
+            // Draw background based on shape (only when no image content)
+            // Use full alpha (255) to avoid compositor blending artifacts
+            if !has_image_content {
+                let bg_color = Color32::from_rgba_unmultiplied(50, 50, 80, 255);
+                match &self.config.shape {
+                    WindowShape::Rectangle => {
+                        ui.painter().rect_filled(content_rect, 0.0, bg_color);
+                    }
+                    WindowShape::Circle => {
+                        let radius = content_width.min(content_height) / 2.0;
+                        ui.painter().circle_filled(content_rect.center(), radius, bg_color);
+                    }
+                    WindowShape::Custom { .. } => {
+                        ui.painter().rect_filled(content_rect, 0.0, bg_color);
                     }
                 }
+            }
 
-                // Render content
-                if let Some(ref content) = self.config.content {
-                    // Render content to the full content_rect - shape masking is applied in the painter
-                    WindowPainter::render_content(ui, content, content_rect, &self.config.shape);
-                }
+            // Render content
+            if let Some(ref content) = self.config.content {
+                // Render content to the full content_rect - shape masking is applied in the painter
+                WindowPainter::render_content(ui, content, content_rect, &self.config.shape);
+            }
 
-                // Render particles - offset by margin so they're positioned relative to content
-                if let Some(ref system) = self.particle_system {
-                    WindowPainter::render_particles(ui, system, Pos2::new(margin, margin));
-                }
-            });
+            // Render particles - offset by margin so they're positioned relative to content
+            if let Some(ref system) = self.particle_system {
+                WindowPainter::render_particles(ui, system, Pos2::new(margin, margin));
+            }
+        });
     }
 
     /// Handle mouse press - x, y are in window-local coordinates
@@ -230,15 +220,9 @@ impl FloatingWindow {
             self.drag_offset = Some((x, y));
             self.is_dragging = true;
             self.event_handler
-                .dispatch(&FloatingWindowEvent::DragStart {
-                    x: x as f32,
-                    y: y as f32,
-                });
+                .dispatch(&FloatingWindowEvent::DragStart { x: x as f32, y: y as f32 });
         }
-        self.event_handler.dispatch(&FloatingWindowEvent::Click {
-            x: x as f32,
-            y: y as f32,
-        });
+        self.event_handler.dispatch(&FloatingWindowEvent::Click { x: x as f32, y: y as f32 });
     }
 
     /// Set focus state
@@ -256,10 +240,7 @@ impl FloatingWindow {
         if self.is_dragging {
             self.is_dragging = false;
             self.drag_offset = None;
-            self.event_handler.dispatch(&FloatingWindowEvent::DragEnd {
-                x: x as f32,
-                y: y as f32,
-            });
+            self.event_handler.dispatch(&FloatingWindowEvent::DragEnd { x: x as f32, y: y as f32 });
         }
     }
 
@@ -267,24 +248,27 @@ impl FloatingWindow {
     /// screen_x, screen_y are global screen coordinates of mouse (physical)
     /// scale_factor is used to convert logical offset to physical
     /// Returns new window position in screen coordinates (physical)
-    pub fn on_drag_move(&mut self, screen_x: f64, screen_y: f64, scale_factor: f64) -> Option<(f64, f64)> {
-        if self.is_dragging {
-            if let Some((offset_x, offset_y)) = self.drag_offset {
-                // Convert logical offset to physical
-                let physical_offset_x = offset_x * scale_factor;
-                let physical_offset_y = offset_y * scale_factor;
+    pub fn on_drag_move(
+        &mut self,
+        screen_x: f64,
+        screen_y: f64,
+        scale_factor: f64,
+    ) -> Option<(f64, f64)> {
+        if self.is_dragging
+            && let Some((offset_x, offset_y)) = self.drag_offset
+        {
+            // Convert logical offset to physical
+            let physical_offset_x = offset_x * scale_factor;
+            let physical_offset_y = offset_y * scale_factor;
 
-                // New window position = mouse screen position - offset (both in physical)
-                let new_x = screen_x - physical_offset_x;
-                let new_y = screen_y - physical_offset_y;
+            // New window position = mouse screen position - offset (both in physical)
+            let new_x = screen_x - physical_offset_x;
+            let new_y = screen_y - physical_offset_y;
 
-                self.event_handler.dispatch(&FloatingWindowEvent::Drag {
-                    x: new_x as f32,
-                    y: new_y as f32,
-                });
+            self.event_handler
+                .dispatch(&FloatingWindowEvent::Drag { x: new_x as f32, y: new_y as f32 });
 
-                return Some((new_x, new_y));
-            }
+            return Some((new_x, new_y));
         }
         None
     }
@@ -292,10 +276,7 @@ impl FloatingWindow {
     /// Handle mouse move (for tracking position, not dragging)
     pub fn on_mouse_move(&mut self, x: f64, y: f64) {
         self.mouse_pos = Some((x as f32, y as f32));
-        self.event_handler.dispatch(&FloatingWindowEvent::MouseMove {
-            x: x as f32,
-            y: y as f32,
-        });
+        self.event_handler.dispatch(&FloatingWindowEvent::MouseMove { x: x as f32, y: y as f32 });
     }
 
     /// Update stored window position
@@ -357,24 +338,29 @@ impl GpuState {
         let surface_format = surface_caps
             .formats
             .iter()
-            .find(|f| **f == wgpu::TextureFormat::Bgra8Unorm || **f == wgpu::TextureFormat::Rgba8Unorm)
+            .find(|f| {
+                **f == wgpu::TextureFormat::Bgra8Unorm || **f == wgpu::TextureFormat::Rgba8Unorm
+            })
             .copied()
             .unwrap_or_else(|| {
                 // Fallback to first non-sRGB, or just first format
-                surface_caps.formats.iter()
+                surface_caps
+                    .formats
+                    .iter()
                     .find(|f| !f.is_srgb())
                     .copied()
                     .unwrap_or(surface_caps.formats[0])
             });
 
         // Use PreMultiplied alpha mode for proper compositing with transparent windows
-        let alpha_mode = if surface_caps.alpha_modes.contains(&wgpu::CompositeAlphaMode::PreMultiplied) {
-            wgpu::CompositeAlphaMode::PreMultiplied
-        } else if surface_caps.alpha_modes.contains(&wgpu::CompositeAlphaMode::PostMultiplied) {
-            wgpu::CompositeAlphaMode::PostMultiplied
-        } else {
-            surface_caps.alpha_modes[0]
-        };
+        let alpha_mode =
+            if surface_caps.alpha_modes.contains(&wgpu::CompositeAlphaMode::PreMultiplied) {
+                wgpu::CompositeAlphaMode::PreMultiplied
+            } else if surface_caps.alpha_modes.contains(&wgpu::CompositeAlphaMode::PostMultiplied) {
+                wgpu::CompositeAlphaMode::PostMultiplied
+            } else {
+                surface_caps.alpha_modes[0]
+            };
 
         log::info!("Using surface format: {:?}, alpha mode: {:?}", surface_format, alpha_mode);
 
@@ -397,13 +383,7 @@ impl GpuState {
             egui_wgpu::RendererOptions::default(),
         );
 
-        Self {
-            surface,
-            device,
-            queue,
-            surface_config,
-            egui_renderer,
-        }
+        Self { surface, device, queue, surface_config, egui_renderer }
     }
 
     fn resize(&mut self, width: u32, height: u32) {
@@ -550,7 +530,11 @@ impl FloatingWindowApp {
         }
     }
 
-    fn new_controller(controller_window: FloatingWindow, command_sender: CommandSender, command_receiver: CommandReceiver) -> Self {
+    fn new_controller(
+        controller_window: FloatingWindow,
+        command_sender: CommandSender,
+        command_receiver: CommandReceiver,
+    ) -> Self {
         Self {
             pending_windows: vec![controller_window],
             windows: std::collections::HashMap::new(),
@@ -594,10 +578,10 @@ impl FloatingWindowApp {
                     }
                     WindowCommand::CloseByName { name } => {
                         log::info!("Closing window by name: {}", name);
-                        if let Some(id) = self.registry.find_by_name(&name) {
-                            if let Some(_state) = self.windows.remove(&id) {
-                                self.registry.unregister(id);
-                            }
+                        if let Some(id) = self.registry.find_by_name(&name)
+                            && self.windows.remove(&id).is_some()
+                        {
+                            self.registry.unregister(id);
                         }
                     }
                     WindowCommand::UpdateEffectOptions { id, options } => {
@@ -608,7 +592,12 @@ impl FloatingWindowApp {
                                 let width = state.floating_window.config.size.width as f32;
                                 let height = state.floating_window.config.size.height as f32;
                                 if let Some((effect, _)) = &state.floating_window.config.effect {
-                                    *system = ParticleSystem::immediate(*effect, options.clone(), width, height);
+                                    *system = ParticleSystem::immediate(
+                                        *effect,
+                                        options.clone(),
+                                        width,
+                                        height,
+                                    );
                                 }
                             }
                             self.registry.update_options(id, options);
@@ -616,7 +605,9 @@ impl FloatingWindowApp {
                     }
                     WindowCommand::CloseAll => {
                         log::info!("Closing all managed windows");
-                        let managed_ids: Vec<WindowId> = self.windows.iter()
+                        let managed_ids: Vec<WindowId> = self
+                            .windows
+                            .iter()
                             .filter(|(_, state)| state.is_managed)
                             .map(|(id, _)| *id)
                             .collect();
@@ -714,7 +705,7 @@ impl FloatingWindowApp {
                     let window_width = config.size.width as f32 + margin * 2.0;
                     let window_height = config.size.height as f32 + margin * 2.0;
 
-                    let mut attrs = WindowAttributes::default()
+                    let attrs = WindowAttributes::default()
                         .with_title(&window_name)
                         .with_inner_size(LogicalSize::new(window_width, window_height))
                         .with_position(LogicalPosition::new(config.position.x, config.position.y))
@@ -754,7 +745,13 @@ impl FloatingWindowApp {
                             let effect_type = effect_info.as_ref().map(|(e, _)| *e);
                             let effect_opts = effect_info.map(|(_, o)| o);
                             let window_size = (config.size.width, config.size.height);
-                            self.registry.register(window_id, window_name, window_size, effect_type, effect_opts);
+                            self.registry.register(
+                                window_id,
+                                window_name,
+                                window_size,
+                                effect_type,
+                                effect_opts,
+                            );
 
                             self.windows.insert(window_id, state);
                             log::info!("Created managed window {:?}", window_id);
@@ -798,11 +795,8 @@ impl ApplicationHandler for FloatingWindowApp {
                 WindowLevel::AlwaysOnTop => WinitWindowLevel::AlwaysOnTop,
             });
 
-            let window = Arc::new(
-                event_loop
-                    .create_window(attrs)
-                    .expect("Failed to create window"),
-            );
+            let window =
+                Arc::new(event_loop.create_window(attrs).expect("Failed to create window"));
 
             let window_id = window.id();
 
@@ -825,13 +819,14 @@ impl ApplicationHandler for FloatingWindowApp {
             floating_window.set_visible(true);
 
             // Check if this is a controller window (first window with command_sender set)
-            let controller_state = if self.controller_window_id.is_none() && self.command_sender.is_some() {
-                self.controller_window_id = Some(window_id);
-                let sender = self.command_sender.clone().unwrap();
-                Some(ControllerState::new(sender, self.registry.clone()))
-            } else {
-                None
-            };
+            let controller_state =
+                if self.controller_window_id.is_none() && self.command_sender.is_some() {
+                    self.controller_window_id = Some(window_id);
+                    let sender = self.command_sender.clone().unwrap();
+                    Some(ControllerState::new(sender, self.registry.clone()))
+                } else {
+                    None
+                };
 
             let state = WindowState {
                 floating_window,
@@ -862,9 +857,7 @@ impl ApplicationHandler for FloatingWindowApp {
 
         match event {
             WindowEvent::CloseRequested => {
-                state.floating_window
-                    .event_handler
-                    .dispatch(&FloatingWindowEvent::Close);
+                state.floating_window.event_handler.dispatch(&FloatingWindowEvent::Close);
                 self.windows.remove(&window_id);
                 if self.windows.is_empty() {
                     event_loop.exit();
@@ -882,10 +875,8 @@ impl ApplicationHandler for FloatingWindowApp {
                 // Use logical size for egui rect (not physical)
                 let logical_width = size.width as f32 / pixels_per_point;
                 let logical_height = size.height as f32 / pixels_per_point;
-                let rect = Rect::from_min_size(
-                    Pos2::ZERO,
-                    Vec2::new(logical_width, logical_height),
-                );
+                let rect =
+                    Rect::from_min_size(Pos2::ZERO, Vec2::new(logical_width, logical_height));
 
                 let full_output = state.egui_ctx.run(raw_input, |ctx| {
                     // Check if this is a controller window
@@ -899,7 +890,8 @@ impl ApplicationHandler for FloatingWindowApp {
                 state.egui_state.handle_platform_output(&state.window, full_output.platform_output);
 
                 // Tessellate
-                let primitives = state.egui_ctx.tessellate(full_output.shapes, full_output.pixels_per_point);
+                let primitives =
+                    state.egui_ctx.tessellate(full_output.shapes, full_output.pixels_per_point);
 
                 let screen_descriptor = egui_wgpu::ScreenDescriptor {
                     size_in_pixels: [size.width, size.height],
@@ -921,7 +913,8 @@ impl ApplicationHandler for FloatingWindowApp {
                 let logical_y = position.y / scale_factor;
 
                 // Check if cursor is inside the shape
-                let inside_shape = state.floating_window.shape_mask.contains(logical_x as f32, logical_y as f32);
+                let inside_shape =
+                    state.floating_window.shape_mask.contains(logical_x as f32, logical_y as f32);
 
                 // Enable/disable hit testing based on whether cursor is inside shape
                 // This makes areas outside the shape "click-through"
@@ -942,8 +935,13 @@ impl ApplicationHandler for FloatingWindowApp {
                         let screen_x = window_pos.x as f64 + position.x;
                         let screen_y = window_pos.y as f64 + position.y;
 
-                        if let Some((new_x, new_y)) = state.floating_window.on_drag_move(screen_x, screen_y, scale_factor) {
-                            state.window.set_outer_position(PhysicalPosition::new(new_x as i32, new_y as i32));
+                        if let Some((new_x, new_y)) =
+                            state.floating_window.on_drag_move(screen_x, screen_y, scale_factor)
+                        {
+                            state.window.set_outer_position(PhysicalPosition::new(
+                                new_x as i32,
+                                new_y as i32,
+                            ));
                             state.floating_window.update_position(new_x, new_y);
                         }
                     }
@@ -969,12 +967,10 @@ impl ApplicationHandler for FloatingWindowApp {
             }
             WindowEvent::Resized(size) => {
                 state.gpu_state.resize(size.width, size.height);
-                state.floating_window
-                    .event_handler
-                    .dispatch(&FloatingWindowEvent::Resize {
-                        width: size.width,
-                        height: size.height,
-                    });
+                state.floating_window.event_handler.dispatch(&FloatingWindowEvent::Resize {
+                    width: size.width,
+                    height: size.height,
+                });
                 // Particle system uses content size (excluding margin), not window size
                 // Content size stays constant as configured, no need to update on resize
             }

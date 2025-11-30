@@ -27,19 +27,13 @@ pub enum WindowShape {
 impl WindowShape {
     /// Create a custom shape from RGBA image data
     pub fn custom(mask: Vec<u8>, width: u32, height: u32) -> Self {
-        Self::Custom {
-            mask,
-            width,
-            height,
-        }
+        Self::Custom { mask, width, height }
     }
 
     /// Check if a point is inside the shape
     pub fn contains(&self, x: f32, y: f32, width: f32, height: f32) -> bool {
         match self {
-            WindowShape::Rectangle => {
-                x >= 0.0 && x < width && y >= 0.0 && y < height
-            }
+            WindowShape::Rectangle => x >= 0.0 && x < width && y >= 0.0 && y < height,
             WindowShape::Circle => {
                 let cx = width / 2.0;
                 let cy = height / 2.0;
@@ -48,11 +42,7 @@ impl WindowShape {
                 let dy = y - cy;
                 dx * dx + dy * dy <= radius * radius
             }
-            WindowShape::Custom {
-                mask,
-                width: mw,
-                height: mh,
-            } => {
+            WindowShape::Custom { mask, width: mw, height: mh } => {
                 // Scale point to mask coordinates
                 let mx = (x / width * (*mw as f32)) as u32;
                 let my = (y / height * (*mh as f32)) as u32;

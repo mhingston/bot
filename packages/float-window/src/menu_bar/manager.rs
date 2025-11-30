@@ -133,10 +133,8 @@ impl MenuBarManager {
 
     /// Update the icon for a menu bar item
     pub fn update_icon(&mut self, id: &str, icon: &MenuBarIcon) -> Result<(), String> {
-        let tray_icon = self
-            .tray_icons
-            .get(id)
-            .ok_or_else(|| format!("Menu bar item not found: {}", id))?;
+        let tray_icon =
+            self.tray_icons.get(id).ok_or_else(|| format!("Menu bar item not found: {}", id))?;
 
         let new_icon = self.create_icon(icon)?;
         tray_icon.set_icon(Some(new_icon)).map_err(|e| e.to_string())
@@ -144,14 +142,10 @@ impl MenuBarManager {
 
     /// Update the tooltip for a menu bar item
     pub fn update_tooltip(&mut self, id: &str, tooltip: &str) -> Result<(), String> {
-        let tray_icon = self
-            .tray_icons
-            .get(id)
-            .ok_or_else(|| format!("Menu bar item not found: {}", id))?;
+        let tray_icon =
+            self.tray_icons.get(id).ok_or_else(|| format!("Menu bar item not found: {}", id))?;
 
-        tray_icon
-            .set_tooltip(Some(tooltip))
-            .map_err(|e| e.to_string())
+        tray_icon.set_tooltip(Some(tooltip)).map_err(|e| e.to_string())
     }
 
     /// Process pending events (call this in your event loop)
@@ -161,34 +155,19 @@ impl MenuBarManager {
         // Process tray icon events
         while let Ok(event) = TrayIconEvent::receiver().try_recv() {
             match event {
-                TrayIconEvent::Click {
-                    id,
-                    position: _,
-                    rect: _,
-                    button: _,
-                    button_state: _,
-                } => {
+                TrayIconEvent::Click { id, position: _, rect: _, button: _, button_state: _ } => {
                     // Find the tray ID from the internal tray icon ID
                     for (tray_id, tray_icon) in &self.tray_icons {
                         if tray_icon.id() == &id {
-                            events.push(MenuBarEvent::Click {
-                                id: tray_id.clone(),
-                            });
+                            events.push(MenuBarEvent::Click { id: tray_id.clone() });
                             break;
                         }
                     }
                 }
-                TrayIconEvent::DoubleClick {
-                    id,
-                    position: _,
-                    rect: _,
-                    button: _,
-                } => {
+                TrayIconEvent::DoubleClick { id, position: _, rect: _, button: _ } => {
                     for (tray_id, tray_icon) in &self.tray_icons {
                         if tray_icon.id() == &id {
-                            events.push(MenuBarEvent::DoubleClick {
-                                id: tray_id.clone(),
-                            });
+                            events.push(MenuBarEvent::DoubleClick { id: tray_id.clone() });
                             break;
                         }
                     }
@@ -291,8 +270,7 @@ impl MenuBarManager {
             MenuBarMenuItem::Item { id, label, enabled } => {
                 let menu_item = MenuItem::new(label, *enabled, None);
                 let muda_id = menu_item.id().0.clone();
-                self.menu_item_map
-                    .insert(muda_id, (tray_id.to_string(), id.clone()));
+                self.menu_item_map.insert(muda_id, (tray_id.to_string(), id.clone()));
                 menu.append(&menu_item).map_err(|e| e.to_string())?;
             }
             MenuBarMenuItem::Submenu { label, items } => {
@@ -303,8 +281,7 @@ impl MenuBarManager {
                 menu.append(&submenu).map_err(|e| e.to_string())?;
             }
             MenuBarMenuItem::Separator => {
-                menu.append(&PredefinedMenuItem::separator())
-                    .map_err(|e| e.to_string())?;
+                menu.append(&PredefinedMenuItem::separator()).map_err(|e| e.to_string())?;
             }
             MenuBarMenuItem::Predefined(predefined) => match predefined {
                 PredefinedMenuItemType::Quit => {
@@ -319,8 +296,7 @@ impl MenuBarManager {
                         .map_err(|e| e.to_string())?;
                 }
                 PredefinedMenuItemType::Separator => {
-                    menu.append(&PredefinedMenuItem::separator())
-                        .map_err(|e| e.to_string())?;
+                    menu.append(&PredefinedMenuItem::separator()).map_err(|e| e.to_string())?;
                 }
             },
         }
@@ -338,8 +314,7 @@ impl MenuBarManager {
             MenuBarMenuItem::Item { id, label, enabled } => {
                 let menu_item = MenuItem::new(label, *enabled, None);
                 let muda_id = menu_item.id().0.clone();
-                self.menu_item_map
-                    .insert(muda_id, (tray_id.to_string(), id.clone()));
+                self.menu_item_map.insert(muda_id, (tray_id.to_string(), id.clone()));
                 submenu.append(&menu_item).map_err(|e| e.to_string())?;
             }
             MenuBarMenuItem::Submenu { label, items } => {
@@ -350,9 +325,7 @@ impl MenuBarManager {
                 submenu.append(&nested_submenu).map_err(|e| e.to_string())?;
             }
             MenuBarMenuItem::Separator => {
-                submenu
-                    .append(&PredefinedMenuItem::separator())
-                    .map_err(|e| e.to_string())?;
+                submenu.append(&PredefinedMenuItem::separator()).map_err(|e| e.to_string())?;
             }
             MenuBarMenuItem::Predefined(predefined) => match predefined {
                 PredefinedMenuItemType::Quit => {
@@ -368,9 +341,7 @@ impl MenuBarManager {
                         .map_err(|e| e.to_string())?;
                 }
                 PredefinedMenuItemType::Separator => {
-                    submenu
-                        .append(&PredefinedMenuItem::separator())
-                        .map_err(|e| e.to_string())?;
+                    submenu.append(&PredefinedMenuItem::separator()).map_err(|e| e.to_string())?;
                 }
             },
         }

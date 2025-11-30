@@ -26,10 +26,7 @@ pub fn load_image(
     target_width: Option<u32>,
     target_height: Option<u32>,
 ) -> Result<LoadedImage, String> {
-    let ext = path
-        .extension()
-        .and_then(|s| s.to_str())
-        .unwrap_or("");
+    let ext = path.extension().and_then(|s| s.to_str()).unwrap_or("");
 
     match ext.to_lowercase().as_str() {
         "svg" => load_svg(path, target_width, target_height),
@@ -43,7 +40,8 @@ fn load_svg(
     target_width: Option<u32>,
     target_height: Option<u32>,
 ) -> Result<LoadedImage, String> {
-    let svg_data = std::fs::read_to_string(path).map_err(|e| format!("Failed to read SVG: {}", e))?;
+    let svg_data =
+        std::fs::read_to_string(path).map_err(|e| format!("Failed to read SVG: {}", e))?;
 
     let tree = resvg::usvg::Tree::from_str(&svg_data, &resvg::usvg::Options::default())
         .map_err(|e| format!("Failed to parse SVG: {}", e))?;
@@ -65,11 +63,7 @@ fn load_svg(
 
     resvg::render(&tree, transform, &mut pixmap.as_mut());
 
-    Ok(LoadedImage {
-        data: pixmap.take(),
-        width,
-        height,
-    })
+    Ok(LoadedImage { data: pixmap.take(), width, height })
 }
 
 /// Load a raster image (PNG, JPG, etc.) and convert to RGBA
@@ -89,9 +83,5 @@ fn load_raster(
     let rgba = img.to_rgba8();
     let (width, height) = rgba.dimensions();
 
-    Ok(LoadedImage {
-        data: rgba.into_raw(),
-        width,
-        height,
-    })
+    Ok(LoadedImage { data: rgba.into_raw(), width, height })
 }

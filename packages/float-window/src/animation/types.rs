@@ -67,30 +67,17 @@ impl Default for WindowAnimation {
 impl WindowAnimation {
     /// Create a fade animation
     pub fn fade(duration: Duration) -> Self {
-        Self {
-            animation_type: AnimationType::Fade,
-            duration,
-            ..Default::default()
-        }
+        Self { animation_type: AnimationType::Fade, duration, ..Default::default() }
     }
 
     /// Create a scale animation
     pub fn scale(duration: Duration) -> Self {
-        Self {
-            animation_type: AnimationType::Scale,
-            duration,
-            ..Default::default()
-        }
+        Self { animation_type: AnimationType::Scale, duration, ..Default::default() }
     }
 
     /// Create a slide animation
     pub fn slide(direction: AnimationDirection, duration: Duration) -> Self {
-        Self {
-            animation_type: AnimationType::Slide,
-            duration,
-            direction,
-            ..Default::default()
-        }
+        Self { animation_type: AnimationType::Slide, duration, direction, ..Default::default() }
     }
 
     /// Create a bounce animation

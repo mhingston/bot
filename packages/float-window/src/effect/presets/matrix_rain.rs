@@ -2,8 +2,8 @@
 //! Rain falls OUTSIDE the circle
 
 use super::random_color;
-use crate::effect::particle::Particle;
 use crate::effect::PresetEffectOptions;
+use crate::effect::particle::Particle;
 use rand::Rng;
 
 /// Spawn a particle for the matrix rain effect

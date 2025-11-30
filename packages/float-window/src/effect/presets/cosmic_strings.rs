@@ -2,8 +2,8 @@
 //! Strings stay OUTSIDE the circle
 
 use super::{circle_edge_outside, random_color};
-use crate::effect::particle::Particle;
 use crate::effect::PresetEffectOptions;
+use crate::effect::particle::Particle;
 use rand::Rng;
 use std::f32::consts::PI;
 
@@ -35,10 +35,10 @@ pub fn spawn(pos: f32, options: &PresetEffectOptions, width: f32, height: f32) -
             [1.0, 1.0, 1.0, 1.0]
         } else {
             match ((hue - 0.1) * 4.0 / 0.9) as i32 {
-                0 => [0.4, 0.2, 0.8, 1.0],  // Deep purple
-                1 => [0.2, 0.3, 0.9, 1.0],  // Deep blue
-                2 => [0.3, 0.6, 0.9, 1.0],  // Light blue
-                _ => [0.6, 0.3, 0.7, 1.0],  // Violet
+                0 => [0.4, 0.2, 0.8, 1.0], // Deep purple
+                1 => [0.2, 0.3, 0.9, 1.0], // Deep blue
+                2 => [0.3, 0.6, 0.9, 1.0], // Light blue
+                _ => [0.6, 0.3, 0.7, 1.0], // Violet
             }
         }
     } else {

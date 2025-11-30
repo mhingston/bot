@@ -18,10 +18,7 @@ impl Default for EventHandler {
 
 impl EventHandler {
     pub fn new() -> Self {
-        Self {
-            callbacks: Arc::new(RwLock::new(HashMap::new())),
-            next_id: Arc::new(RwLock::new(0)),
-        }
+        Self { callbacks: Arc::new(RwLock::new(HashMap::new())), next_id: Arc::new(RwLock::new(0)) }
     }
 
     /// Register an event callback
@@ -34,10 +31,7 @@ impl EventHandler {
         let current_id = *id;
         *id += 1;
 
-        callbacks
-            .entry(event_type.to_string())
-            .or_default()
-            .push(Box::new(callback));
+        callbacks.entry(event_type.to_string()).or_default().push(Box::new(callback));
 
         current_id
     }
@@ -88,9 +82,6 @@ impl EventHandler {
 
 impl Clone for EventHandler {
     fn clone(&self) -> Self {
-        Self {
-            callbacks: Arc::clone(&self.callbacks),
-            next_id: Arc::clone(&self.next_id),
-        }
+        Self { callbacks: Arc::clone(&self.callbacks), next_id: Arc::clone(&self.next_id) }
     }
 }

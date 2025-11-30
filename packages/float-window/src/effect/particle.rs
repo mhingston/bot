@@ -74,10 +74,7 @@ impl Default for Particle {
 
 impl Particle {
     pub fn new(x: f32, y: f32) -> Self {
-        Self {
-            position: (x, y),
-            ..Default::default()
-        }
+        Self { position: (x, y), ..Default::default() }
     }
 
     /// Update particle physics

@@ -2,8 +2,8 @@
 //! Particles spawn OUTSIDE the circle and drift outward
 
 use super::{circle_edge_outside, outward_direction, random_color};
-use crate::effect::particle::Particle;
 use crate::effect::PresetEffectOptions;
+use crate::effect::particle::Particle;
 use rand::Rng;
 use std::f32::consts::PI;
 
@@ -44,8 +44,8 @@ pub fn spawn(pos: f32, options: &PresetEffectOptions, width: f32, height: f32) -
 pub fn update(
     particle: &mut Particle,
     dt: f32,
-    time: f32,
-    options: &PresetEffectOptions,
+    _time: f32,
+    _options: &PresetEffectOptions,
     width: f32,
     height: f32,
 ) {

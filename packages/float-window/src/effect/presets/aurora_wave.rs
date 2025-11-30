@@ -2,8 +2,8 @@
 //! Aurora stays OUTSIDE the circle
 
 use super::{circle_edge_outside, random_color};
-use crate::effect::particle::Particle;
 use crate::effect::PresetEffectOptions;
+use crate::effect::particle::Particle;
 use rand::Rng;
 use std::f32::consts::PI;
 
@@ -26,10 +26,10 @@ pub fn spawn(pos: f32, options: &PresetEffectOptions, width: f32, height: f32) -
     let color = if options.particle_colors.is_empty() {
         let hue = rand::rng().random_range(0.0..1.0);
         match (hue * 4.0) as i32 {
-            0 => [0.3, 1.0, 0.5, 1.0],  // Green
-            1 => [0.4, 0.8, 1.0, 1.0],  // Cyan
-            2 => [0.6, 0.4, 1.0, 1.0],  // Purple
-            _ => [1.0, 0.5, 0.8, 1.0],  // Pink
+            0 => [0.3, 1.0, 0.5, 1.0], // Green
+            1 => [0.4, 0.8, 1.0, 1.0], // Cyan
+            2 => [0.6, 0.4, 1.0, 1.0], // Purple
+            _ => [1.0, 0.5, 0.8, 1.0], // Pink
         }
     } else {
         random_color(options)

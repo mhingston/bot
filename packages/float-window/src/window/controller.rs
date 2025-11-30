@@ -2,7 +2,6 @@
 
 use super::commands::{CommandSender, WindowCommand, WindowRegistry};
 use super::config::{Position, Size, WindowConfig};
-use winit::window::WindowId;
 use crate::content::Content;
 use crate::effect::{PresetEffect, PresetEffectOptions};
 use crate::menu_bar::{MenuBarIcon, MenuBarItem, MenuBarMenu};
@@ -11,12 +10,11 @@ use egui::{Context, Ui};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::thread;
+use winit::window::WindowId;
 
 /// Available shapes for selection
-const ALL_SHAPES: &[(&str, WindowShape)] = &[
-    ("Circle", WindowShape::Circle),
-    ("Rectangle", WindowShape::Rectangle),
-];
+const ALL_SHAPES: &[(&str, WindowShape)] =
+    &[("Circle", WindowShape::Circle), ("Rectangle", WindowShape::Rectangle)];
 
 /// All available preset effects
 const ALL_EFFECTS: &[PresetEffect] = &[
@@ -118,12 +116,12 @@ impl ControllerState {
     /// Render the controller UI
     pub fn render(&mut self, ctx: &Context) {
         // Check for async-loaded background
-        if let Ok(mut pending) = self.async_background_load.try_lock() {
-            if let Some(content) = pending.take() {
-                self.controller_background = Some(content);
-                self.is_loading_background = false;
-                log::info!("Background image loaded asynchronously");
-            }
+        if let Ok(mut pending) = self.async_background_load.try_lock()
+            && let Some(content) = pending.take()
+        {
+            self.controller_background = Some(content);
+            self.is_loading_background = false;
+            log::info!("Background image loaded asynchronously");
         }
 
         // Glassmorphism color scheme
@@ -131,44 +129,43 @@ impl ControllerState {
 
         // Left panel: more opaque for better readability
         let left_panel_frame = if has_bg {
-            egui::Frame::none()
+            egui::Frame::NONE
                 .fill(egui::Color32::from_rgba_unmultiplied(15, 20, 35, 220)) // Deep blue tint, very opaque
                 .inner_margin(egui::Margin::same(12))
         } else {
-            egui::Frame::none()
+            egui::Frame::NONE
                 .fill(egui::Color32::from_rgb(25, 28, 40)) // Dark blue-gray
                 .inner_margin(egui::Margin::same(12))
         };
 
         // Right panel: more transparent for glassmorphism effect
         let right_panel_frame = if has_bg {
-            egui::Frame::none()
+            egui::Frame::NONE
                 .fill(egui::Color32::from_rgba_unmultiplied(20, 25, 45, 160)) // Blue-purple tint, more transparent
                 .inner_margin(egui::Margin::same(12))
         } else {
-            egui::Frame::none()
+            egui::Frame::NONE
                 .fill(egui::Color32::from_rgb(30, 32, 48)) // Slightly lighter blue-gray
                 .inner_margin(egui::Margin::same(12))
         };
 
         // Draw background image if set (behind everything using layer painter)
-        if let Some(content) = &self.controller_background {
-            if let Content::Image { data, width, height, .. } = content {
-                let screen_rect = ctx.input(|i| i.screen_rect());
-                let texture = ctx.load_texture(
-                    "controller_bg",
-                    egui::ColorImage::from_rgba_unmultiplied([*width as usize, *height as usize], data),
-                    egui::TextureOptions::LINEAR,
-                );
-                // Use layer painter at Background level
-                let painter = ctx.layer_painter(egui::LayerId::background());
-                painter.image(
-                    texture.id(),
-                    screen_rect,
-                    egui::Rect::from_min_max(egui::Pos2::ZERO, egui::Pos2::new(1.0, 1.0)),
-                    egui::Color32::WHITE,
-                );
-            }
+        if let Some(Content::Image { data, width, height, .. }) = &self.controller_background {
+            #[allow(deprecated)]
+            let screen_rect = ctx.input(|i| i.screen_rect());
+            let texture = ctx.load_texture(
+                "controller_bg",
+                egui::ColorImage::from_rgba_unmultiplied([*width as usize, *height as usize], data),
+                egui::TextureOptions::LINEAR,
+            );
+            // Use layer painter at Background level
+            let painter = ctx.layer_painter(egui::LayerId::background());
+            painter.image(
+                texture.id(),
+                screen_rect,
+                egui::Rect::from_min_max(egui::Pos2::ZERO, egui::Pos2::new(1.0, 1.0)),
+                egui::Color32::WHITE,
+            );
         }
 
         // Left panel for create/configure (flow windows)
@@ -182,24 +179,22 @@ impl ControllerState {
                 ui.heading("Create & Configure");
                 ui.separator();
 
-                egui::ScrollArea::vertical()
-                    .auto_shrink([false; 2])
-                    .show(ui, |ui| {
-                        // Create new window section
-                        self.render_create_section(ui);
+                egui::ScrollArea::vertical().auto_shrink([false; 2]).show(ui, |ui| {
+                    // Create new window section
+                    self.render_create_section(ui);
 
-                        ui.add_space(16.0);
-                        ui.separator();
+                    ui.add_space(16.0);
+                    ui.separator();
 
-                        // Create menu bar item section (moved to left)
-                        self.render_create_menu_bar_section(ui);
+                    // Create menu bar item section (moved to left)
+                    self.render_create_menu_bar_section(ui);
 
-                        ui.add_space(16.0);
-                        ui.separator();
+                    ui.add_space(16.0);
+                    ui.separator();
 
-                        // Controller Settings section
-                        self.render_controller_settings(ui);
-                    });
+                    // Controller Settings section
+                    self.render_controller_settings(ui);
+                });
             });
 
         // Right panel (CentralPanel) for managed/active items
@@ -207,18 +202,16 @@ impl ControllerState {
             ui.heading("Active Items");
             ui.separator();
 
-            egui::ScrollArea::vertical()
-                .auto_shrink([false; 2])
-                .show(ui, |ui| {
-                    // Manage existing windows section
-                    self.render_manage_section(ui);
+            egui::ScrollArea::vertical().auto_shrink([false; 2]).show(ui, |ui| {
+                // Manage existing windows section
+                self.render_manage_section(ui);
 
-                    ui.add_space(16.0);
-                    ui.separator();
+                ui.add_space(16.0);
+                ui.separator();
 
-                    // Active menu bar items section
-                    self.render_active_menu_bar_section(ui);
-                });
+                // Active menu bar items section
+                self.render_active_menu_bar_section(ui);
+            });
         });
     }
 
@@ -329,7 +322,8 @@ impl ControllerState {
         ui.horizontal(|ui| {
             ui.label("Image:");
             if let Some(path) = &self.flow_window_image_path {
-                let filename = path.file_name()
+                let filename = path
+                    .file_name()
                     .map(|s| s.to_string_lossy().to_string())
                     .unwrap_or_else(|| "Unknown".to_string());
                 ui.label(&filename);
@@ -409,17 +403,12 @@ impl ControllerState {
         ui.horizontal(|ui| {
             ui.label("Colors:");
             if ui.button("Cyan/Purple").clicked() {
-                self.effect_options.particle_colors = vec![
-                    [0.4, 0.8, 1.0, 1.0],
-                    [0.8, 0.4, 1.0, 1.0],
-                ];
+                self.effect_options.particle_colors =
+                    vec![[0.4, 0.8, 1.0, 1.0], [0.8, 0.4, 1.0, 1.0]];
             }
             if ui.button("Fire").clicked() {
-                self.effect_options.particle_colors = vec![
-                    [1.0, 0.3, 0.0, 1.0],
-                    [1.0, 0.6, 0.0, 1.0],
-                    [1.0, 0.9, 0.2, 1.0],
-                ];
+                self.effect_options.particle_colors =
+                    vec![[1.0, 0.3, 0.0, 1.0], [1.0, 0.6, 0.0, 1.0], [1.0, 0.9, 0.2, 1.0]];
             }
             if ui.button("Rainbow").clicked() {
                 self.effect_options.particle_colors = vec![
@@ -445,11 +434,9 @@ impl ControllerState {
             ui.label("No windows created yet.");
         } else {
             // Table of windows
-            egui::Grid::new("window_grid")
-                .num_columns(3)
-                .spacing([20.0, 4.0])
-                .striped(true)
-                .show(ui, |ui| {
+            egui::Grid::new("window_grid").num_columns(3).spacing([20.0, 4.0]).striped(true).show(
+                ui,
+                |ui| {
                     ui.label("Name");
                     ui.label("Effect");
                     ui.label("Actions");
@@ -457,11 +444,16 @@ impl ControllerState {
 
                     for window in &windows {
                         ui.label(&window.name);
-                        ui.label(format!("{:?}", window.effect.unwrap_or(PresetEffect::RotatingHalo)));
+                        ui.label(format!(
+                            "{:?}",
+                            window.effect.unwrap_or(PresetEffect::RotatingHalo)
+                        ));
 
                         ui.horizontal(|ui| {
                             if ui.button("Close").clicked() {
-                                let _ = self.command_sender.send(WindowCommand::Close { id: window.id });
+                                let _ = self
+                                    .command_sender
+                                    .send(WindowCommand::Close { id: window.id });
                             }
                             if ui.button("Set Image").clicked() {
                                 self.pending_image_update_window = Some((window.id, window.size));
@@ -469,27 +461,27 @@ impl ControllerState {
                         });
                         ui.end_row();
                     }
-                });
+                },
+            );
         }
 
         // Handle pending image update (file picker)
-        if let Some((window_id, size)) = self.pending_image_update_window.take() {
-            if let Some(path) = rfd::FileDialog::new()
+        if let Some((window_id, size)) = self.pending_image_update_window.take()
+            && let Some(path) = rfd::FileDialog::new()
                 .add_filter("Images", &["png", "svg", "jpg", "jpeg"])
                 .pick_file()
-            {
-                // Load the image content with the window's size
-                match Content::from_path_sized(&path, size.0, size.1) {
-                    Ok(content) => {
-                        let _ = self.command_sender.send(WindowCommand::UpdateContent {
-                            id: window_id,
-                            content: Some(content),
-                        });
-                        log::info!("Set image for window {:?}: {:?}", window_id, path);
-                    }
-                    Err(e) => {
-                        log::error!("Failed to load image for existing window: {}", e);
-                    }
+        {
+            // Load the image content with the window's size
+            match Content::from_path_sized(&path, size.0, size.1) {
+                Ok(content) => {
+                    let _ = self.command_sender.send(WindowCommand::UpdateContent {
+                        id: window_id,
+                        content: Some(content),
+                    });
+                    log::info!("Set image for window {:?}: {:?}", window_id, path);
+                }
+                Err(e) => {
+                    log::error!("Failed to load image for existing window: {}", e);
                 }
             }
         }
@@ -594,7 +586,8 @@ impl ControllerState {
             // Show selected image or color preview
             ui.label("Selected:");
             if let Some(path) = &self.tray_icon_image_path {
-                let filename = path.file_name()
+                let filename = path
+                    .file_name()
                     .map(|s| s.to_string_lossy().to_string())
                     .unwrap_or_else(|| "Unknown".to_string());
                 ui.label(&filename);
@@ -607,7 +600,8 @@ impl ControllerState {
                     self.tray_icon_color[1],
                     self.tray_icon_color[2],
                 );
-                let (rect, _) = ui.allocate_exact_size(egui::vec2(20.0, 20.0), egui::Sense::hover());
+                let (rect, _) =
+                    ui.allocate_exact_size(egui::vec2(20.0, 20.0), egui::Sense::hover());
                 ui.painter().circle_filled(rect.center(), 8.0, color);
             }
         });
@@ -707,18 +701,13 @@ impl ControllerState {
             }
         }
 
-        MenuBarIcon::Rgba {
-            data,
-            width: size,
-            height: size,
-        }
+        MenuBarIcon::Rgba { data, width: size, height: size }
     }
 
     /// Open file picker for flow window image
     fn open_image_picker_for_flow_window(&mut self) {
-        if let Some(path) = rfd::FileDialog::new()
-            .add_filter("Images", &["png", "svg", "jpg", "jpeg"])
-            .pick_file()
+        if let Some(path) =
+            rfd::FileDialog::new().add_filter("Images", &["png", "svg", "jpg", "jpeg"]).pick_file()
         {
             self.flow_window_image_path = Some(path);
         }
@@ -726,9 +715,8 @@ impl ControllerState {
 
     /// Open file picker for tray icon image
     fn open_image_picker_for_tray(&mut self) {
-        if let Some(path) = rfd::FileDialog::new()
-            .add_filter("Images", &["png", "svg", "jpg", "jpeg"])
-            .pick_file()
+        if let Some(path) =
+            rfd::FileDialog::new().add_filter("Images", &["png", "svg", "jpg", "jpeg"]).pick_file()
         {
             self.tray_icon_image_path = Some(path);
         }

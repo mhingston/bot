@@ -13,22 +13,12 @@ pub struct ShapeMask {
 
 impl ShapeMask {
     pub fn new(shape: WindowShape, width: f32, height: f32) -> Self {
-        Self {
-            shape,
-            width,
-            height,
-            offset: 0.0,
-        }
+        Self { shape, width, height, offset: 0.0 }
     }
 
     /// Create a shape mask with an offset (for effect margin)
     pub fn new_with_offset(shape: WindowShape, width: f32, height: f32, offset: f32) -> Self {
-        Self {
-            shape,
-            width,
-            height,
-            offset,
-        }
+        Self { shape, width, height, offset }
     }
 
     /// Check if a point is inside the shape (accounting for offset)

@@ -1,8 +1,8 @@
 //! Particle effect system
 
 pub mod particle;
-mod system;
 pub mod presets;
+mod system;
 
 pub use particle::{Particle, ParticleStyle};
 pub use system::ParticleSystem;
@@ -76,10 +76,10 @@ impl Default for PresetEffectOptions {
             particle_count: None,
             particle_size: (5.0, 10.0), // Bigger particles for more visibility
             particle_colors: vec![
-                [0.2, 0.9, 1.0, 1.0],  // Bright Cyan
-                [1.0, 0.3, 0.8, 1.0],  // Hot Pink
-                [0.5, 1.0, 0.3, 1.0],  // Lime Green
-                [1.0, 0.8, 0.1, 1.0],  // Golden Yellow
+                [0.2, 0.9, 1.0, 1.0], // Bright Cyan
+                [1.0, 0.3, 0.8, 1.0], // Hot Pink
+                [0.5, 1.0, 0.3, 1.0], // Lime Green
+                [1.0, 0.8, 0.1, 1.0], // Golden Yellow
             ],
             speed: 1.0,
             intensity: 1.0,

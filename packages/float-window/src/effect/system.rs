@@ -27,12 +27,23 @@ pub struct ParticleSystem {
 const DEFAULT_START_DELAY: f32 = 0.5;
 
 impl ParticleSystem {
-    pub fn new(effect: PresetEffect, options: PresetEffectOptions, width: f32, height: f32) -> Self {
+    pub fn new(
+        effect: PresetEffect,
+        options: PresetEffectOptions,
+        width: f32,
+        height: f32,
+    ) -> Self {
         Self::with_delay(effect, options, width, height, DEFAULT_START_DELAY)
     }
 
     /// Create a particle system with a custom start delay
-    pub fn with_delay(effect: PresetEffect, options: PresetEffectOptions, width: f32, height: f32, delay: f32) -> Self {
+    pub fn with_delay(
+        effect: PresetEffect,
+        options: PresetEffectOptions,
+        width: f32,
+        height: f32,
+        delay: f32,
+    ) -> Self {
         Self {
             particles: Vec::new(),
             effect,
@@ -49,7 +60,12 @@ impl ParticleSystem {
     }
 
     /// Create a particle system with no delay (starts immediately)
-    pub fn immediate(effect: PresetEffect, options: PresetEffectOptions, width: f32, height: f32) -> Self {
+    pub fn immediate(
+        effect: PresetEffect,
+        options: PresetEffectOptions,
+        width: f32,
+        height: f32,
+    ) -> Self {
         let mut system = Self::with_delay(effect, options, width, height, 0.0);
         system.initialize();
         system.initialized = true;
@@ -58,10 +74,7 @@ impl ParticleSystem {
 
     /// Initialize particles based on the effect type
     fn initialize(&mut self) {
-        let count = self
-            .options
-            .particle_count
-            .unwrap_or_else(|| self.auto_particle_count());
+        let count = self.options.particle_count.unwrap_or_else(|| self.auto_particle_count());
 
         self.particles.clear();
         self.particles.reserve(count);
@@ -85,7 +98,7 @@ impl ParticleSystem {
                 // More particles - 1.5x more than before
                 let circumference = std::f32::consts::PI * self.width.min(self.height);
                 let base_count = (circumference / 10.0) as usize; // One particle every 10 pixels
-                ((base_count as f32 * self.options.intensity * 1.5) as usize).max(15).min(60)
+                ((base_count as f32 * self.options.intensity * 1.5) as usize).clamp(15, 60)
             }
             PresetEffect::SilkRibbon => {
                 // 120 segments per ribbon × ribbon_count
@@ -111,12 +124,18 @@ impl ParticleSystem {
             PresetEffect::FlowingLight => {
                 presets::flowing_light::spawn(edge_position, &self.options, self.width, self.height)
             }
-            PresetEffect::StardustScatter => {
-                presets::stardust_scatter::spawn(edge_position, &self.options, self.width, self.height)
-            }
-            PresetEffect::ElectricSpark => {
-                presets::electric_spark::spawn(edge_position, &self.options, self.width, self.height)
-            }
+            PresetEffect::StardustScatter => presets::stardust_scatter::spawn(
+                edge_position,
+                &self.options,
+                self.width,
+                self.height,
+            ),
+            PresetEffect::ElectricSpark => presets::electric_spark::spawn(
+                edge_position,
+                &self.options,
+                self.width,
+                self.height,
+            ),
             PresetEffect::SmokeWisp => {
                 presets::smoke_wisp::spawn(edge_position, &self.options, self.width, self.height)
             }
@@ -144,12 +163,18 @@ impl ParticleSystem {
             PresetEffect::OrbitRings => {
                 presets::orbit_rings::spawn(edge_position, &self.options, self.width, self.height)
             }
-            PresetEffect::HeartbeatPulse => {
-                presets::heartbeat_pulse::spawn(edge_position, &self.options, self.width, self.height)
-            }
-            PresetEffect::CosmicStrings => {
-                presets::cosmic_strings::spawn(edge_position, &self.options, self.width, self.height)
-            }
+            PresetEffect::HeartbeatPulse => presets::heartbeat_pulse::spawn(
+                edge_position,
+                &self.options,
+                self.width,
+                self.height,
+            ),
+            PresetEffect::CosmicStrings => presets::cosmic_strings::spawn(
+                edge_position,
+                &self.options,
+                self.width,
+                self.height,
+            ),
             PresetEffect::SilkRibbon => {
                 presets::silk_ribbon::spawn(edge_position, &self.options, self.width, self.height)
             }
@@ -186,55 +211,174 @@ impl ParticleSystem {
         for particle in &mut self.particles {
             match self.effect {
                 PresetEffect::RotatingHalo => {
-                    presets::rotating_halo::update(particle, dt, self.time, &self.options, self.width, self.height);
+                    presets::rotating_halo::update(
+                        particle,
+                        dt,
+                        self.time,
+                        &self.options,
+                        self.width,
+                        self.height,
+                    );
                 }
                 PresetEffect::PulseRipple => {
-                    presets::pulse_ripple::update(particle, dt, self.time, &self.options, self.width, self.height);
+                    presets::pulse_ripple::update(
+                        particle,
+                        dt,
+                        self.time,
+                        &self.options,
+                        self.width,
+                        self.height,
+                    );
                 }
                 PresetEffect::FlowingLight => {
-                    presets::flowing_light::update(particle, dt, self.time, &self.options, self.width, self.height);
+                    presets::flowing_light::update(
+                        particle,
+                        dt,
+                        self.time,
+                        &self.options,
+                        self.width,
+                        self.height,
+                    );
                 }
                 PresetEffect::StardustScatter => {
-                    presets::stardust_scatter::update(particle, dt, self.time, &self.options, self.width, self.height);
+                    presets::stardust_scatter::update(
+                        particle,
+                        dt,
+                        self.time,
+                        &self.options,
+                        self.width,
+                        self.height,
+                    );
                 }
                 PresetEffect::ElectricSpark => {
-                    presets::electric_spark::update(particle, dt, self.time, &self.options, self.width, self.height);
+                    presets::electric_spark::update(
+                        particle,
+                        dt,
+                        self.time,
+                        &self.options,
+                        self.width,
+                        self.height,
+                    );
                 }
                 PresetEffect::SmokeWisp => {
-                    presets::smoke_wisp::update(particle, dt, self.time, &self.options, self.width, self.height);
+                    presets::smoke_wisp::update(
+                        particle,
+                        dt,
+                        self.time,
+                        &self.options,
+                        self.width,
+                        self.height,
+                    );
                 }
                 PresetEffect::RainDrop => {
-                    presets::rain_drop::update(particle, dt, self.time, &self.options, self.width, self.height);
+                    presets::rain_drop::update(
+                        particle,
+                        dt,
+                        self.time,
+                        &self.options,
+                        self.width,
+                        self.height,
+                    );
                 }
                 PresetEffect::LaserBeam => {
-                    presets::laser_beam::update(particle, dt, self.time, &self.options, self.width, self.height);
+                    presets::laser_beam::update(
+                        particle,
+                        dt,
+                        self.time,
+                        &self.options,
+                        self.width,
+                        self.height,
+                    );
                 }
                 PresetEffect::LightningArc => {
-                    presets::lightning_arc::update(particle, dt, self.time, &self.options, self.width, self.height);
+                    presets::lightning_arc::update(
+                        particle,
+                        dt,
+                        self.time,
+                        &self.options,
+                        self.width,
+                        self.height,
+                    );
                 }
                 PresetEffect::MeteorShower => {
-                    presets::meteor_shower::update(particle, dt, self.time, &self.options, self.width, self.height);
+                    presets::meteor_shower::update(
+                        particle,
+                        dt,
+                        self.time,
+                        &self.options,
+                        self.width,
+                        self.height,
+                    );
                 }
                 PresetEffect::SonarPulse => {
-                    presets::sonar_pulse::update(particle, dt, self.time, &self.options, self.width, self.height);
+                    presets::sonar_pulse::update(
+                        particle,
+                        dt,
+                        self.time,
+                        &self.options,
+                        self.width,
+                        self.height,
+                    );
                 }
                 PresetEffect::MatrixRain => {
-                    presets::matrix_rain::update(particle, dt, self.time, &self.options, self.width, self.height);
+                    presets::matrix_rain::update(
+                        particle,
+                        dt,
+                        self.time,
+                        &self.options,
+                        self.width,
+                        self.height,
+                    );
                 }
                 PresetEffect::AuroraWave => {
-                    presets::aurora_wave::update(particle, dt, self.time, &self.options, self.width, self.height);
+                    presets::aurora_wave::update(
+                        particle,
+                        dt,
+                        self.time,
+                        &self.options,
+                        self.width,
+                        self.height,
+                    );
                 }
                 PresetEffect::OrbitRings => {
-                    presets::orbit_rings::update(particle, dt, self.time, &self.options, self.width, self.height);
+                    presets::orbit_rings::update(
+                        particle,
+                        dt,
+                        self.time,
+                        &self.options,
+                        self.width,
+                        self.height,
+                    );
                 }
                 PresetEffect::HeartbeatPulse => {
-                    presets::heartbeat_pulse::update(particle, dt, self.time, &self.options, self.width, self.height);
+                    presets::heartbeat_pulse::update(
+                        particle,
+                        dt,
+                        self.time,
+                        &self.options,
+                        self.width,
+                        self.height,
+                    );
                 }
                 PresetEffect::CosmicStrings => {
-                    presets::cosmic_strings::update(particle, dt, self.time, &self.options, self.width, self.height);
+                    presets::cosmic_strings::update(
+                        particle,
+                        dt,
+                        self.time,
+                        &self.options,
+                        self.width,
+                        self.height,
+                    );
                 }
                 PresetEffect::SilkRibbon => {
-                    presets::silk_ribbon::update(particle, dt, self.time, &self.options, self.width, self.height);
+                    presets::silk_ribbon::update(
+                        particle,
+                        dt,
+                        self.time,
+                        &self.options,
+                        self.width,
+                        self.height,
+                    );
                 }
             }
         }

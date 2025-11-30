@@ -15,14 +15,10 @@ pub fn capture_and_save_to_clipboard(
     }
 
     // Capture the full screen
-    let img = monitor
-        .capture_image()
-        .context("Failed to capture screen")?;
+    let img = monitor.capture_image().context("Failed to capture screen")?;
 
     // Crop the selected region
-    let cropped = img
-        .view(min_x, min_y, width, height)
-        .to_image();
+    let cropped = img.view(min_x, min_y, width, height).to_image();
 
     // Convert to RGBA bytes (already RGBA)
     let (img_width, img_height) = cropped.dimensions();
@@ -36,10 +32,7 @@ pub fn capture_and_save_to_clipboard(
         bytes: std::borrow::Cow::Owned(bytes),
     };
 
-    clipboard
-        .set_image(image_data)
-        .context("Failed to set clipboard image")?;
+    clipboard.set_image(image_data).context("Failed to set clipboard image")?;
 
     Ok(())
 }
-

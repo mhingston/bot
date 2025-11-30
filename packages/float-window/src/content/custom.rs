@@ -9,4 +9,5 @@ pub trait ContentRenderer: Send + Sync {
 }
 
 /// A boxed content renderer
+#[allow(dead_code)]
 pub type BoxedRenderer = Box<dyn ContentRenderer>;

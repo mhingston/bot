@@ -2,8 +2,8 @@
 //! The ribbons wrap completely around the circle with gentle wind-blown wave motion
 //! Drawing connected line segments with gradient colors, interleaved for visual effect
 
-use crate::effect::particle::Particle;
 use crate::effect::PresetEffectOptions;
+use crate::effect::particle::Particle;
 use std::f32::consts::PI;
 
 /// Number of segments per ribbon (more = smoother curve)
@@ -89,6 +89,7 @@ pub fn spawn(pos: f32, options: &PresetEffectOptions, width: f32, height: f32) -
 /// Calculate ribbon position for a given angle at a given time
 /// ribbon_id: index of the ribbon (0, 1, 2, ...)
 /// ribbon_count: total number of ribbons
+#[allow(clippy::too_many_arguments)]
 fn calc_ribbon_position(
     angle: f32,
     time: f32,
@@ -156,8 +157,10 @@ pub fn update(
     let next_angle = (next_segment as f32 / SEGMENTS_PER_RIBBON as f32) * 2.0 * PI;
 
     // Get positions for current and next segment (with ribbon-specific phase offset)
-    let (curr_x, curr_y) = calc_ribbon_position(current_angle, time, ribbon_id, ribbon_count, options, cx, cy, radius);
-    let (next_x, next_y) = calc_ribbon_position(next_angle, time, ribbon_id, ribbon_count, options, cx, cy, radius);
+    let (curr_x, curr_y) =
+        calc_ribbon_position(current_angle, time, ribbon_id, ribbon_count, options, cx, cy, radius);
+    let (next_x, next_y) =
+        calc_ribbon_position(next_angle, time, ribbon_id, ribbon_count, options, cx, cy, radius);
 
     // Current position is where we draw FROM
     particle.position = (curr_x, curr_y);

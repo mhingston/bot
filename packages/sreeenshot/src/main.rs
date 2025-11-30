@@ -1,23 +1,23 @@
 use glam::Vec2;
 use winit::{
     application::ApplicationHandler,
-    event::{ElementState, KeyEvent, MouseButton, WindowEvent},
+    event::{ElementState, MouseButton, WindowEvent},
     keyboard::{Key, NamedKey},
 };
 
-mod window;
+mod capture;
+mod plugins;
 mod renderer;
 mod selection;
-mod capture;
 mod ui;
-mod plugins;
+mod window;
 
-use window::create_fullscreen_window;
+use plugins::{AnnotatePlugin, CancelPlugin, CopyPlugin, SavePlugin, TextPlugin};
+use plugins::{PluginContext, PluginRegistry, PluginResult};
 use renderer::EguiRenderer;
 use selection::Selection;
 use ui::Toolbar;
-use plugins::{PluginRegistry, PluginContext, PluginResult};
-use plugins::{SavePlugin, CopyPlugin, CancelPlugin, AnnotatePlugin, TextPlugin};
+use window::create_fullscreen_window;
 
 struct App {
     renderer: Option<EguiRenderer>,
@@ -32,13 +32,13 @@ struct App {
     plugin_registry: PluginRegistry,
     // 绘图相关
     drawing_points: Vec<Vec2>, // 绘制的点列表
-    is_drawing: bool, // 是否正在绘图
+    is_drawing: bool,          // 是否正在绘图
     // 文本相关
     text_items: Vec<(f32, f32, String)>, // 文本列表：(x, y, text)
-    text_mode_active: bool, // 文本工具是否激活
-    text_input_active: bool, // 是否正在输入文本
-    text_input_pos: Option<(f32, f32)>, // 文本输入位置
-    text_input_buffer: String, // 文本输入缓冲区
+    text_mode_active: bool,              // 文本工具是否激活
+    text_input_active: bool,             // 是否正在输入文本
+    text_input_pos: Option<(f32, f32)>,  // 文本输入位置
+    text_input_buffer: String,           // 文本输入缓冲区
 }
 
 impl App {
@@ -46,7 +46,7 @@ impl App {
         if let Some(renderer) = &mut self.renderer {
             // Get scale factor before mutable borrow
             let scale_factor = renderer.window().scale_factor();
-            
+
             // Show selection if active (during dragging) or completed
             let rect = if self.selection.is_active() || self.selection_completed {
                 self.selection.rect()
@@ -54,18 +54,14 @@ impl App {
                 None
             };
             // Only show toolbar and info when selection is completed
-            let toolbar = if self.selection_completed {
-                self.toolbar.as_ref()
-            } else {
-                None
-            };
+            let toolbar = if self.selection_completed { self.toolbar.as_ref() } else { None };
             // Pass mouse position and button state to renderer
             let mouse_pos = Some((self.mouse_pos.x, self.mouse_pos.y));
             match renderer.render(
-                rect, 
-                toolbar, 
-                mouse_pos, 
-                self.mouse_pressed, 
+                rect,
+                toolbar,
+                mouse_pos,
+                self.mouse_pressed,
                 &self.drawing_points,
                 &self.text_items,
                 self.text_input_active,
@@ -80,9 +76,9 @@ impl App {
                         screenshot: self.screenshot.clone(),
                         monitor: self.monitor.clone(),
                     };
-                    
+
                     let result = self.plugin_registry.execute_plugin(&button_id, &context);
-                    
+
                     match result {
                         PluginResult::Exit => {
                             self.should_exit = true;
@@ -115,16 +111,17 @@ impl App {
                 }
                 Ok((None, text_confirmed, text_cancelled)) => {
                     // 处理文本输入确认或取消
-                    if text_confirmed && !self.text_input_buffer.is_empty() {
+                    if text_confirmed
+                        && !self.text_input_buffer.is_empty()
+                        && let Some((x, y)) = self.text_input_pos
+                    {
                         // 确认文本输入，添加到文本列表
-                        if let Some((x, y)) = self.text_input_pos {
-                            if let Some(rect) = self.selection.rect() {
-                                let (sel_x, sel_y, _, _) = rect;
-                                // 转换为相对于选择区域的坐标
-                                let rel_x = x - sel_x;
-                                let rel_y = y - sel_y;
-                                self.text_items.push((rel_x, rel_y, self.text_input_buffer.clone()));
-                            }
+                        if let Some(rect) = self.selection.rect() {
+                            let (sel_x, sel_y, _, _) = rect;
+                            // 转换为相对于选择区域的坐标
+                            let rel_x = x - sel_x;
+                            let rel_y = y - sel_y;
+                            self.text_items.push((rel_x, rel_y, self.text_input_buffer.clone()));
                         }
                         self.text_input_active = false;
                         self.text_input_pos = None;
@@ -162,10 +159,7 @@ impl ApplicationHandler for App {
             }
         };
 
-        let monitor = match monitors
-            .into_iter()
-            .find(|m| m.is_primary().unwrap_or(false))
-        {
+        let monitor = match monitors.into_iter().find(|m| m.is_primary().unwrap_or(false)) {
             Some(m) => m,
             None => {
                 eprintln!("Could not find primary monitor");
@@ -184,10 +178,9 @@ impl ApplicationHandler for App {
         };
 
         // Get primary monitor from winit to get correct logical size (DPI-aware)
-        let primary_monitor = event_loop
-            .primary_monitor()
-            .or_else(|| event_loop.available_monitors().next());
-        
+        let primary_monitor =
+            event_loop.primary_monitor().or_else(|| event_loop.available_monitors().next());
+
         let size = if let Some(winit_monitor) = primary_monitor {
             // Use winit's monitor size (logical pixels, DPI-aware)
             winit_monitor.size()
@@ -211,7 +204,7 @@ impl ApplicationHandler for App {
 
         // Create Arc<Window> for renderer
         let window_arc = std::sync::Arc::new(window);
-        
+
         // 创建 egui 渲染器
         let renderer = match EguiRenderer::new(window_arc, screenshot.clone()) {
             Ok(r) => r,
@@ -258,9 +251,10 @@ impl ApplicationHandler for App {
                 } else {
                     1.0
                 };
-                let logical_pos: winit::dpi::LogicalPosition<f64> = position.to_logical(scale_factor);
+                let logical_pos: winit::dpi::LogicalPosition<f64> =
+                    position.to_logical(scale_factor);
                 self.mouse_pos = Vec2::new(logical_pos.x as f32, logical_pos.y as f32);
-                
+
                 // Only update selection if not completed (allow dragging during selection)
                 if self.selection.is_active() && !self.selection_completed {
                     self.selection.update(self.mouse_pos);
@@ -268,36 +262,36 @@ impl ApplicationHandler for App {
                         renderer.window().request_redraw();
                     }
                 }
-                
+
                 // 处理绘图：如果选择完成且鼠标按下，记录绘图点
-                if self.selection_completed && self.mouse_pressed {
-                    if let Some(rect) = self.selection.rect() {
-                        let (sel_x, sel_y, sel_w, sel_h) = rect;
-                        // 检查鼠标是否在选择区域内
-                        if self.mouse_pos.x >= sel_x 
-                            && self.mouse_pos.x <= sel_x + sel_w
-                            && self.mouse_pos.y >= sel_y 
-                            && self.mouse_pos.y <= sel_y + sel_h {
-                            if !self.is_drawing {
-                                self.is_drawing = true;
-                                self.drawing_points.clear();
-                            }
-                            // 将坐标转换为相对于选择区域的坐标
-                            let relative_pos = Vec2::new(
-                                self.mouse_pos.x - sel_x,
-                                self.mouse_pos.y - sel_y,
-                            );
-                            self.drawing_points.push(relative_pos);
-                            if let Some(renderer) = &self.renderer {
-                                renderer.window().request_redraw();
-                            }
+                if self.selection_completed
+                    && self.mouse_pressed
+                    && let Some(rect) = self.selection.rect()
+                {
+                    let (sel_x, sel_y, sel_w, sel_h) = rect;
+                    // 检查鼠标是否在选择区域内
+                    if self.mouse_pos.x >= sel_x
+                        && self.mouse_pos.x <= sel_x + sel_w
+                        && self.mouse_pos.y >= sel_y
+                        && self.mouse_pos.y <= sel_y + sel_h
+                    {
+                        if !self.is_drawing {
+                            self.is_drawing = true;
+                            self.drawing_points.clear();
+                        }
+                        // 将坐标转换为相对于选择区域的坐标
+                        let relative_pos =
+                            Vec2::new(self.mouse_pos.x - sel_x, self.mouse_pos.y - sel_y);
+                        self.drawing_points.push(relative_pos);
+                        if let Some(renderer) = &self.renderer {
+                            renderer.window().request_redraw();
                         }
                     }
                 }
             }
             WindowEvent::MouseInput { state, button, .. } => {
                 // Mouse input is handled by egui in the render method
-                
+
                 match (state, button) {
                     (ElementState::Pressed, MouseButton::Left) => {
                         self.mouse_pressed = true;
@@ -311,14 +305,16 @@ impl ApplicationHandler for App {
                             // 如果选择完成，检查是否在选择区域内
                             if let Some(rect) = self.selection.rect() {
                                 let (sel_x, sel_y, sel_w, sel_h) = rect;
-                                if self.mouse_pos.x >= sel_x 
+                                if self.mouse_pos.x >= sel_x
                                     && self.mouse_pos.x <= sel_x + sel_w
-                                    && self.mouse_pos.y >= sel_y 
-                                    && self.mouse_pos.y <= sel_y + sel_h {
+                                    && self.mouse_pos.y >= sel_y
+                                    && self.mouse_pos.y <= sel_y + sel_h
+                                {
                                     // 如果文本模式激活，开始文本输入
                                     if self.text_mode_active {
                                         self.text_input_active = true;
-                                        self.text_input_pos = Some((self.mouse_pos.x, self.mouse_pos.y));
+                                        self.text_input_pos =
+                                            Some((self.mouse_pos.x, self.mouse_pos.y));
                                         self.text_input_buffer.clear();
                                     } else {
                                         // 否则开始绘图
@@ -343,11 +339,11 @@ impl ApplicationHandler for App {
                         self.is_drawing = false;
                         // Button clicks are now handled via egui in render() method
                         // Just finish selection if not completed
-                        
+
                         if self.selection.finish().is_some() {
                             // Selection completed, but don't exit - allow further operations
                             self.selection_completed = true;
-                            
+
                             // Create toolbar when selection is completed
                             if let Some(rect) = self.selection.rect() {
                                 // Get screen height for toolbar positioning (in logical points)
@@ -359,9 +355,16 @@ impl ApplicationHandler for App {
                                     1920.0 // Fallback
                                 };
                                 let plugin_info = self.plugin_registry.get_enabled_plugin_info();
-                                self.toolbar = Some(Toolbar::new(rect.0, rect.1, rect.2, rect.3, screen_height, &plugin_info));
+                                self.toolbar = Some(Toolbar::new(
+                                    rect.0,
+                                    rect.1,
+                                    rect.2,
+                                    rect.3,
+                                    screen_height,
+                                    &plugin_info,
+                                ));
                             }
-                            
+
                             // Immediately render to show toolbar
                             // Don't wait for next RedrawRequested event
                             self.render_frame(event_loop);
@@ -389,11 +392,11 @@ impl ApplicationHandler for App {
             }
             WindowEvent::Ime(ime) => {
                 // 处理输入法事件
-                if self.text_input_active {
-                    if let Some(renderer) = &mut self.renderer {
-                        renderer.push_ime_event(ime);
-                        renderer.window().request_redraw();
-                    }
+                if self.text_input_active
+                    && let Some(renderer) = &mut self.renderer
+                {
+                    renderer.push_ime_event(ime);
+                    renderer.window().request_redraw();
                 }
             }
             WindowEvent::KeyboardInput { event, .. } => {
@@ -401,8 +404,9 @@ impl ApplicationHandler for App {
                 if self.text_input_active {
                     if let Some(renderer) = &mut self.renderer {
                         // Escape 键仍然用于退出（只在按下时）
-                        if matches!(event.state, ElementState::Pressed) 
-                            && matches!(event.logical_key, Key::Named(NamedKey::Escape)) {
+                        if matches!(event.state, ElementState::Pressed)
+                            && matches!(event.logical_key, Key::Named(NamedKey::Escape))
+                        {
                             self.should_exit = true;
                             event_loop.exit();
                         } else {
@@ -445,20 +449,20 @@ impl ApplicationHandler for App {
 fn main() -> anyhow::Result<()> {
     // Initialize plugin registry and register plugins
     let mut plugin_registry = PluginRegistry::new();
-    
+
     // Register plugins
     plugin_registry.register(Box::new(SavePlugin::new()));
     plugin_registry.register(Box::new(CopyPlugin::new()));
     plugin_registry.register(Box::new(CancelPlugin::new()));
     plugin_registry.register(Box::new(AnnotatePlugin::new()));
     plugin_registry.register(Box::new(TextPlugin::new()));
-    
+
     // Enable plugins via configuration array
     let enabled_plugins = vec!["save", "copy", "cancel", "annotate", "text"];
     for plugin_id in enabled_plugins {
         plugin_registry.enable(plugin_id);
     }
-    
+
     let mut app = App {
         renderer: None,
         selection: Selection::new(),
@@ -469,15 +473,15 @@ fn main() -> anyhow::Result<()> {
         should_exit: false,
         selection_completed: false,
         toolbar: None,
-    plugin_registry,
-    drawing_points: Vec::new(),
-    is_drawing: false,
-    text_items: Vec::new(),
-    text_mode_active: false,
-    text_input_active: false,
-    text_input_pos: None,
-    text_input_buffer: String::new(),
-};
+        plugin_registry,
+        drawing_points: Vec::new(),
+        is_drawing: false,
+        text_items: Vec::new(),
+        text_mode_active: false,
+        text_input_active: false,
+        text_input_pos: None,
+        text_input_buffer: String::new(),
+    };
 
     let event_loop = winit::event_loop::EventLoop::new()?;
     event_loop.run_app(&mut app)?;

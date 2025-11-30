@@ -2,19 +2,16 @@
 //! Particles spawn OUTSIDE the circle and drift outward/upward
 
 use super::{circle_edge_outside, outward_direction, random_color};
-use crate::effect::particle::Particle;
 use crate::effect::PresetEffectOptions;
+use crate::effect::particle::Particle;
 use rand::Rng;
 use std::f32::consts::PI;
 
 /// Spawn a particle for the smoke wisp effect
 pub fn spawn(pos: f32, options: &PresetEffectOptions, width: f32, height: f32) -> Particle {
     // Spawn from bottom half of circle primarily (pos 0.25-0.75 is bottom half)
-    let spawn_pos = if rand::rng().random::<f32>() > 0.3 {
-        rand::rng().random_range(0.25..0.75)
-    } else {
-        pos
-    };
+    let spawn_pos =
+        if rand::rng().random::<f32>() > 0.3 { rand::rng().random_range(0.25..0.75) } else { pos };
 
     // Spawn OUTSIDE the circle
     let gap = 6.0;

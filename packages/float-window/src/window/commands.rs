@@ -4,7 +4,7 @@ use super::config::WindowConfig;
 use crate::content::Content;
 use crate::effect::{PresetEffect, PresetEffectOptions};
 use crate::menu_bar::{MenuBarIcon, MenuBarItem};
-use std::sync::mpsc::{channel, Receiver, Sender};
+use std::sync::mpsc::{Receiver, Sender, channel};
 use std::sync::{Arc, RwLock};
 use winit::window::WindowId;
 
@@ -12,19 +12,13 @@ use winit::window::WindowId;
 #[derive(Debug)]
 pub enum WindowCommand {
     /// Create a new window with the given configuration
-    Create {
-        config: WindowConfig,
-        effect: Option<(PresetEffect, PresetEffectOptions)>,
-    },
+    Create { config: WindowConfig, effect: Option<(PresetEffect, PresetEffectOptions)> },
     /// Close a specific window by its ID
     Close { id: WindowId },
     /// Close a window by its name
     CloseByName { name: String },
     /// Update effect options for a specific window
-    UpdateEffectOptions {
-        id: WindowId,
-        options: PresetEffectOptions,
-    },
+    UpdateEffectOptions { id: WindowId, options: PresetEffectOptions },
     /// Close all managed windows (not the controller)
     CloseAll,
     /// Add a new menu bar item
@@ -78,7 +72,14 @@ impl WindowRegistry {
     }
 
     /// Register a new window
-    pub fn register(&self, id: WindowId, name: String, size: (u32, u32), effect: Option<PresetEffect>, options: Option<PresetEffectOptions>) {
+    pub fn register(
+        &self,
+        id: WindowId,
+        name: String,
+        size: (u32, u32),
+        effect: Option<PresetEffect>,
+        options: Option<PresetEffectOptions>,
+    ) {
         let mut windows = self.windows.write().unwrap();
         windows.push(WindowInfo { id, name, size, effect, options });
     }

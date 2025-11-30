@@ -28,10 +28,7 @@ pub struct Size {
 
 impl Default for Size {
     fn default() -> Self {
-        Self {
-            width: 200,
-            height: 200,
-        }
+        Self { width: 200, height: 200 }
     }
 }
 
@@ -92,9 +89,6 @@ pub struct WindowConfig {
 
 impl WindowConfig {
     pub fn new() -> Self {
-        Self {
-            opacity: 1.0,
-            ..Default::default()
-        }
+        Self { opacity: 1.0, ..Default::default() }
     }
 }

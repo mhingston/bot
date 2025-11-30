@@ -1,12 +1,12 @@
-use egui::{Area, Frame, Rounding, Stroke, Color32, Pos2, Vec2};
 use egui::epaint::Shadow;
-use std::cell::RefCell;
-use std::rc::Rc;
+use egui::{Area, Color32, CornerRadius, Frame, Pos2, Stroke, Vec2};
 use image::ImageBuffer;
 use image::Rgba;
+use std::cell::RefCell;
+use std::rc::Rc;
 
-use crate::ui::Toolbar;
 use super::texture;
+use crate::ui::Toolbar;
 
 /// 渲染截图背景
 pub fn render_screenshot(
@@ -14,20 +14,18 @@ pub fn render_screenshot(
     screenshot_texture_id: egui::TextureId,
     screenshot: &ImageBuffer<Rgba<u8>, Vec<u8>>,
 ) {
-    egui::CentralPanel::default()
-        .frame(Frame::none())
-        .show(ctx, |ui| {
-            let pixels_per_point = ctx.pixels_per_point();
-            let screenshot_texel_size = Vec2::new(
-                screenshot.width() as f32,
-                screenshot.height() as f32,
-            );
-            ui.add(egui::Image::new(egui::load::SizedTexture {
+    egui::CentralPanel::default().frame(Frame::NONE).show(ctx, |ui| {
+        let pixels_per_point = ctx.pixels_per_point();
+        let screenshot_texel_size =
+            Vec2::new(screenshot.width() as f32, screenshot.height() as f32);
+        ui.add(
+            egui::Image::new(egui::load::SizedTexture {
                 id: screenshot_texture_id,
                 size: screenshot_texel_size,
             })
-            .fit_to_original_size(1.0 / pixels_per_point));
-        });
+            .fit_to_original_size(1.0 / pixels_per_point),
+        );
+    });
 }
 
 /// 渲染选择区域的遮罩和边框
@@ -38,15 +36,13 @@ pub fn render_selection_mask(
     show_info: bool,
 ) {
     let (sel_x, sel_y, sel_width, sel_height) = selection;
-    let selection_rect = egui::Rect::from_min_size(
-        Pos2::new(sel_x, sel_y),
-        Vec2::new(sel_width, sel_height),
-    );
+    let selection_rect =
+        egui::Rect::from_min_size(Pos2::new(sel_x, sel_y), Vec2::new(sel_width, sel_height));
 
     let painter = ctx.layer_painter(egui::LayerId::background());
     // 有选区时，遮罩透明度为12% (255 * 0.35 = 89)
     let dark_color = Color32::from_rgba_unmultiplied(0, 0, 0, 89);
-    
+
     // 绘制选择区域周围的暗色遮罩（4个矩形）
     if selection_rect.top() > 0.0 {
         painter.rect_filled(
@@ -58,7 +54,7 @@ pub fn render_selection_mask(
             dark_color,
         );
     }
-    
+
     if selection_rect.bottom() < screen_rect.bottom() {
         painter.rect_filled(
             egui::Rect::from_min_max(
@@ -69,7 +65,7 @@ pub fn render_selection_mask(
             dark_color,
         );
     }
-    
+
     if selection_rect.left() > 0.0 {
         painter.rect_filled(
             egui::Rect::from_min_max(
@@ -80,7 +76,7 @@ pub fn render_selection_mask(
             dark_color,
         );
     }
-    
+
     if selection_rect.right() < screen_rect.right() {
         painter.rect_filled(
             egui::Rect::from_min_max(
@@ -95,7 +91,7 @@ pub fn render_selection_mask(
     // 绘制选择区域边框（蓝色）
     let border_color = Color32::from_rgb(0, 122, 255);
     let border_width = 2.0;
-    
+
     painter.rect_filled(
         egui::Rect::from_min_max(
             Pos2::new(selection_rect.left(), selection_rect.top() - border_width),
@@ -104,7 +100,7 @@ pub fn render_selection_mask(
         0.0,
         border_color,
     );
-    
+
     painter.rect_filled(
         egui::Rect::from_min_max(
             Pos2::new(selection_rect.left(), selection_rect.bottom()),
@@ -113,7 +109,7 @@ pub fn render_selection_mask(
         0.0,
         border_color,
     );
-    
+
     painter.rect_filled(
         egui::Rect::from_min_max(
             Pos2::new(selection_rect.left() - border_width, selection_rect.top()),
@@ -122,7 +118,7 @@ pub fn render_selection_mask(
         0.0,
         border_color,
     );
-    
+
     painter.rect_filled(
         egui::Rect::from_min_max(
             Pos2::new(selection_rect.right(), selection_rect.top()),
@@ -139,12 +135,8 @@ pub fn render_selection_mask(
         let sel_w = sel_width.max(0.0);
         let sel_h = sel_height.max(0.0);
 
-        let info_text = format!("{}x{}\n{} {}", 
-            sel_w as u32, 
-            sel_h as u32,
-            start_x as u32,
-            start_y as u32
-        );
+        let info_text =
+            format!("{}x{}\n{} {}", sel_w as u32, sel_h as u32, start_x as u32, start_y as u32);
 
         Area::new(egui::Id::new("selection_info"))
             .fixed_pos(Pos2::new(start_x - 4.0, start_y - 24.0))
@@ -153,10 +145,9 @@ pub fn render_selection_mask(
                     .fill(Color32::from_rgba_unmultiplied(0, 0, 0, 180))
                     .stroke(Stroke::NONE)
                     .show(ui, |ui| {
-                        ui.style_mut().text_styles.insert(
-                            egui::TextStyle::Body,
-                            egui::FontId::proportional(11.0),
-                        );
+                        ui.style_mut()
+                            .text_styles
+                            .insert(egui::TextStyle::Body, egui::FontId::proportional(11.0));
                         ui.label(egui::RichText::new(info_text).color(Color32::WHITE));
                     });
             });
@@ -180,22 +171,23 @@ pub fn render_drawing(
     if drawing_points.len() < 2 {
         return;
     }
-    
+
     let (sel_x, sel_y, _, _) = selection;
-    let painter = ctx.layer_painter(egui::LayerId::new(egui::Order::Foreground, egui::Id::new("drawing")));
-    
+    let painter =
+        ctx.layer_painter(egui::LayerId::new(egui::Order::Foreground, egui::Id::new("drawing")));
+
     // 红色画笔
     let stroke = Stroke::new(2.0, Color32::from_rgb(255, 0, 0));
-    
+
     // 绘制连续的线条
     for i in 0..drawing_points.len() - 1 {
         let start = drawing_points[i];
         let end = drawing_points[i + 1];
-        
+
         // 转换为屏幕坐标（相对于选择区域）
         let start_pos = Pos2::new(sel_x + start.x, sel_y + start.y);
         let end_pos = Pos2::new(sel_x + end.x, sel_y + end.y);
-        
+
         painter.line_segment([start_pos, end_pos], stroke);
     }
 }
@@ -207,16 +199,17 @@ pub fn render_texts(
     text_items: &[(f32, f32, String)],
 ) {
     let (sel_x, sel_y, _, _) = selection;
-    let painter = ctx.layer_painter(egui::LayerId::new(egui::Order::Foreground, egui::Id::new("texts")));
-    
+    let painter =
+        ctx.layer_painter(egui::LayerId::new(egui::Order::Foreground, egui::Id::new("texts")));
+
     // 固定字体大小14
     let font_size = 14.0;
     let text_color = Color32::WHITE;
-    
+
     for (rel_x, rel_y, text) in text_items {
         // 转换为屏幕坐标（相对于选择区域）
         let pos = Pos2::new(sel_x + rel_x, sel_y + rel_y);
-        
+
         // 绘制文本
         painter.text(
             pos,
@@ -238,31 +231,32 @@ pub fn render_text_input(
     use egui::{Area, Frame, TextEdit};
     use std::cell::RefCell;
     use std::rc::Rc;
-    
+
     let confirmed = Rc::new(RefCell::new(false));
     let cancelled = Rc::new(RefCell::new(false));
     let confirmed_clone = confirmed.clone();
     let cancelled_clone = cancelled.clone();
-    
+
     Area::new(egui::Id::new("text_input"))
         .fixed_pos(Pos2::new(x, y))
-        .order(egui::Order::Foreground)  // 确保在最前面
+        .order(egui::Order::Foreground) // 确保在最前面
         .show(ctx, |ui| {
             Frame::popup(ui.style())
                 .fill(Color32::from_rgba_unmultiplied(0, 0, 0, 200))
                 .stroke(Stroke::new(1.0, Color32::WHITE))
                 .show(ui, |ui| {
                     ui.set_width(200.0);
-                    ui.style_mut().text_styles.insert(
-                        egui::TextStyle::Body,
-                        egui::FontId::proportional(14.0),
+                    ui.style_mut()
+                        .text_styles
+                        .insert(egui::TextStyle::Body, egui::FontId::proportional(14.0));
+                    let response = ui.add(
+                        TextEdit::singleline(text_buffer)
+                            .desired_width(180.0)
+                            .hint_text("输入文本..."),
                     );
-                    let response = ui.add(TextEdit::singleline(text_buffer)
-                        .desired_width(180.0)
-                        .hint_text("输入文本..."));
                     // 确保输入框获取焦点 - 每次渲染时都请求焦点
                     response.request_focus();
-                    
+
                     // 检查键盘输入
                     ctx.input(|i| {
                         // 检查回车键确认
@@ -276,29 +270,25 @@ pub fn render_text_input(
                     });
                 });
         });
-    
+
     (*confirmed.borrow(), *cancelled.borrow())
 }
 
 /// 渲染工具栏
-pub fn render_toolbar(
-    ctx: &egui::Context,
-    toolbar: &Toolbar,
-) -> anyhow::Result<Option<String>> {
+pub fn render_toolbar(ctx: &egui::Context, toolbar: &Toolbar) -> anyhow::Result<Option<String>> {
     let clicked_id = Rc::new(RefCell::new(None));
-    
+
     // 预加载所有图标
     let mut button_textures: Vec<Option<(egui::TextureId, egui::Vec2)>> = Vec::new();
     for button in &toolbar.buttons {
         let texture_info = if let Some(icon_data) = &button.icon {
             match texture::load_icon_image(icon_data) {
                 Ok(icon_image) => {
-                    let size = egui::Vec2::new(icon_image.width() as f32, icon_image.height() as f32);
-                    let texture_id = ctx.load_texture(
-                        format!("icon_{}", button.id),
-                        icon_image,
-                        Default::default()
-                    ).id();
+                    let size =
+                        egui::Vec2::new(icon_image.width() as f32, icon_image.height() as f32);
+                    let texture_id = ctx
+                        .load_texture(format!("icon_{}", button.id), icon_image, Default::default())
+                        .id();
                     Some((texture_id, size))
                 }
                 Err(_) => None,
@@ -310,34 +300,43 @@ pub fn render_toolbar(
     }
 
     let clicked_id_clone = clicked_id.clone();
-    Area::new(egui::Id::new("toolbar"))
-        .fixed_pos(Pos2::new(toolbar.x, toolbar.y))
-        .show(ctx, |ui| {
+    Area::new(egui::Id::new("toolbar")).fixed_pos(Pos2::new(toolbar.x, toolbar.y)).show(
+        ctx,
+        |ui| {
             Frame::popup(ui.style())
                 .fill(Color32::from_rgb(40, 40, 40))
                 .stroke(Stroke::new(1.0, Color32::from_rgba_unmultiplied(255, 255, 255, 30)))
-                .rounding(Rounding::same(8.0))
+                .corner_radius(CornerRadius::same(8))
                 .shadow(Shadow {
-                    offset: Vec2::new(0.0, 4.0),
-                    blur: 8.0,
-                    spread: 0.0,
+                    offset: [0, 4],
+                    blur: 8,
+                    spread: 0,
                     color: Color32::from_black_alpha(76),
                 })
                 .show(ui, |ui| {
                     ui.set_width(toolbar.width);
                     ui.set_height(toolbar.height);
-                    
+
                     ui.horizontal(|ui| {
                         ui.spacing_mut().item_spacing = Vec2::new(4.0, 0.0);
-                        
+
                         for (idx, button) in toolbar.buttons.iter().enumerate() {
-                            let button_response = if let Some((texture_id, size)) = button_textures.get(idx).and_then(|t| *t) {
-                                ui.add(egui::ImageButton::new(egui::load::SizedTexture {
+                            let button_response = if let Some((texture_id, size)) =
+                                button_textures.get(idx).and_then(|t| *t)
+                            {
+                                ui.add(egui::Button::image(egui::load::SizedTexture {
                                     id: texture_id,
                                     size,
                                 }))
                             } else {
-                                let label = button.id.chars().next().unwrap_or('?').to_uppercase().next().unwrap_or('?');
+                                let label = button
+                                    .id
+                                    .chars()
+                                    .next()
+                                    .unwrap_or('?')
+                                    .to_uppercase()
+                                    .next()
+                                    .unwrap_or('?');
                                 ui.button(label.to_string())
                             };
 
@@ -347,7 +346,8 @@ pub fn render_toolbar(
                         }
                     });
                 });
-        });
-    
+        },
+    );
+
     Ok(clicked_id.borrow().clone())
 }

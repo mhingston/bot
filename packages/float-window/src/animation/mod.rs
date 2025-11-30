@@ -17,11 +17,7 @@ pub struct AnimationController {
 
 impl AnimationController {
     pub fn new(animation: WindowAnimation) -> Self {
-        Self {
-            animation,
-            start_time: Instant::now(),
-            state: AnimationState::Running,
-        }
+        Self { animation, start_time: Instant::now(), state: AnimationState::Running }
     }
 
     /// Get the current progress (0.0 to 1.0)

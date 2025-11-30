@@ -8,19 +8,17 @@
 //! ```no_run
 //! use float_window::prelude::*;
 //!
-//! fn main() {
-//!     FloatingWindow::builder()
-//!         .size(200, 200)
-//!         .position(100.0, 100.0)
-//!         .shape(WindowShape::Circle)
-//!         .draggable(true)
-//!         .always_on_top(true)
-//!         .effect(PresetEffect::RotatingHalo, PresetEffectOptions::default())
-//!         .build()
-//!         .unwrap()
-//!         .run()
-//!         .unwrap();
-//! }
+//! FloatingWindow::builder()
+//!     .size(200, 200)
+//!     .position(100.0, 100.0)
+//!     .shape(WindowShape::Circle)
+//!     .draggable(true)
+//!     .always_on_top(true)
+//!     .effect(PresetEffect::RotatingHalo, PresetEffectOptions::default())
+//!     .build()
+//!     .unwrap()
+//!     .run()
+//!     .unwrap();
 //! ```
 
 pub mod animation;
@@ -37,7 +35,9 @@ pub mod window;
 /// Prelude module for convenient imports
 pub mod prelude {
     pub use crate::animation::{AnimationDirection, AnimationType, Easing, WindowAnimation};
-    pub use crate::content::{Content, ContentRenderer, ImageDisplayOptions, ScaleMode, TextAlign, TextDisplayOptions};
+    pub use crate::content::{
+        Content, ContentRenderer, ImageDisplayOptions, ScaleMode, TextAlign, TextDisplayOptions,
+    };
     pub use crate::effect::{PresetEffect, PresetEffectOptions};
     pub use crate::event::FloatingWindowEvent;
     pub use crate::icon::{IconName, WindowIcon};

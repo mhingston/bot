@@ -1,7 +1,7 @@
 //! FloatingWindow builder pattern
 
-use super::config::{Position, Size, WindowConfig, WindowLevel};
 use super::FloatingWindow;
+use super::config::{Position, Size, WindowConfig, WindowLevel};
 use crate::animation::WindowAnimation;
 use crate::content::Content;
 use crate::effect::{PresetEffect, PresetEffectOptions};
@@ -10,6 +10,7 @@ use crate::icon::WindowIcon;
 use crate::shape::WindowShape;
 
 /// Builder for creating FloatingWindow instances
+#[allow(clippy::type_complexity)]
 pub struct FloatingWindowBuilder {
     config: WindowConfig,
     event_callback: Option<Box<dyn Fn(&FloatingWindowEvent) + Send + Sync>>,
@@ -24,10 +25,7 @@ impl Default for FloatingWindowBuilder {
 impl FloatingWindowBuilder {
     /// Create a new builder with default configuration
     pub fn new() -> Self {
-        Self {
-            config: WindowConfig::new(),
-            event_callback: None,
-        }
+        Self { config: WindowConfig::new(), event_callback: None }
     }
 
     /// Set the window ID
@@ -86,11 +84,7 @@ impl FloatingWindowBuilder {
 
     /// Set always on top
     pub fn always_on_top(mut self, always: bool) -> Self {
-        self.config.level = if always {
-            WindowLevel::AlwaysOnTop
-        } else {
-            WindowLevel::Normal
-        };
+        self.config.level = if always { WindowLevel::AlwaysOnTop } else { WindowLevel::Normal };
         self
     }
 

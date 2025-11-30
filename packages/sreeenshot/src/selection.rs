@@ -8,10 +8,7 @@ pub struct Selection {
 
 impl Selection {
     pub fn new() -> Self {
-        Self {
-            start: None,
-            end: None,
-        }
+        Self { start: None, end: None }
     }
 
     pub fn start(&mut self, pos: Vec2) {
@@ -42,7 +39,7 @@ impl Selection {
     pub fn coords(&self) -> Option<((u32, u32), (u32, u32))> {
         self.coords_with_scale(1.0)
     }
-    
+
     /// Get coordinates in physical pixels, converting from logical points
     pub fn coords_with_scale(&self, scale_factor: f64) -> Option<((u32, u32), (u32, u32))> {
         let start = self.start?;
@@ -69,4 +66,3 @@ impl Selection {
         Some((x, y, width, height))
     }
 }
-

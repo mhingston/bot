@@ -1,12 +1,17 @@
 //! Rotating Halo effect - particles orbit OUTSIDE window edge like a glowing ring
 
 use super::{random_color, random_size};
-use crate::effect::particle::Particle;
 use crate::effect::PresetEffectOptions;
+use crate::effect::particle::Particle;
 use std::f32::consts::PI;
 
 /// Spawn a particle for the rotating halo effect
-pub fn spawn(edge_position: f32, options: &PresetEffectOptions, width: f32, height: f32) -> Particle {
+pub fn spawn(
+    edge_position: f32,
+    options: &PresetEffectOptions,
+    width: f32,
+    height: f32,
+) -> Particle {
     let cx = width / 2.0;
     let cy = height / 2.0;
     let circle_radius = width.min(height) / 2.0;

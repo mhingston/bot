@@ -1,15 +1,15 @@
+pub mod annotate;
+pub mod cancel;
+pub mod copy;
 pub mod registry;
 pub mod save;
-pub mod copy;
-pub mod cancel;
-pub mod annotate;
 pub mod text;
 
+pub use annotate::AnnotatePlugin;
+pub use cancel::CancelPlugin;
+pub use copy::CopyPlugin;
 pub use registry::PluginRegistry;
 pub use save::SavePlugin;
-pub use copy::CopyPlugin;
-pub use cancel::CancelPlugin;
-pub use annotate::AnnotatePlugin;
 pub use text::TextPlugin;
 
 use image::ImageBuffer;
@@ -45,4 +45,3 @@ pub struct PluginInfo {
     pub name: String,
     pub icon: Option<Vec<u8>>,
 }
-

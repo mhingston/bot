@@ -1,4 +1,4 @@
-use winit::event::{ElementState, KeyEvent, Ime};
+use winit::event::{ElementState, Ime, KeyEvent};
 use winit::keyboard::{Key, NamedKey};
 
 /// 将 winit Key 转换为 egui Key
@@ -23,11 +23,7 @@ fn winit_key_to_egui_key(key: &Key) -> Option<egui::Key> {
             // 处理单个字符
             if ch.len() == 1 {
                 let c = ch.chars().next().unwrap();
-                if c.is_ascii() {
-                    egui::Key::from_name(ch)
-                } else {
-                    None
-                }
+                if c.is_ascii() { egui::Key::from_name(ch) } else { None }
             } else {
                 None
             }
@@ -47,16 +43,16 @@ pub fn build_egui_input(
     ime_events: &[Ime],
 ) -> egui::RawInput {
     let mut events = Vec::new();
-    
+
     // 鼠标移动事件
     if let Some((x, y)) = mouse_pos {
         events.push(egui::Event::PointerMoved(egui::Pos2::new(x, y)));
     }
-    
+
     // 鼠标按钮事件（检测点击）
     if let Some((x, y)) = mouse_pos {
         let pos = egui::Pos2::new(x, y);
-        
+
         if mouse_pressed && !*last_mouse_pressed {
             // 按钮按下
             events.push(egui::Event::PointerButton {
@@ -75,9 +71,9 @@ pub fn build_egui_input(
             });
         }
     }
-    
+
     *last_mouse_pressed = mouse_pressed;
-    
+
     // 处理 IME 事件（输入法事件）
     // 注意：egui 的 Event::Ime 直接接受 ImeEvent，但我们需要从 winit 的 Ime 转换
     // 对于 Commit 事件，我们直接发送 Text 事件，因为 egui 的 TextEdit 会处理它
@@ -89,7 +85,7 @@ pub fn build_egui_input(
                     events.push(egui::Event::Text(text.to_string()));
                 }
             }
-            Ime::Preedit(_, ..) => {
+            Ime::Preedit(..) => {
                 // 输入法预编辑文本（如中文输入时的拼音）
                 // egui 的 TextEdit 会自动处理，我们不需要特别处理
             }
@@ -98,16 +94,16 @@ pub fn build_egui_input(
             }
         }
     }
-    
+
     // 处理键盘事件
     for key_event in keyboard_events {
         let pressed = matches!(key_event.state, ElementState::Pressed);
-        
+
         // 处理修饰键
         let modifiers = egui::Modifiers::default();
         // 注意：winit 的 KeyEvent 可能不包含修饰键信息，这里需要从其他地方获取
         // 暂时使用默认值
-        
+
         if let Some(egui_key) = winit_key_to_egui_key(&key_event.logical_key) {
             // physical_key 字段用于标识物理按键位置，对于文本输入来说不是必需的，使用 None
             events.push(egui::Event::Key {
@@ -126,7 +122,7 @@ pub fn build_egui_input(
             }
         }
     }
-    
+
     egui::RawInput {
         screen_rect: Some(egui::Rect::from_min_size(
             egui::Pos2::ZERO,
@@ -136,4 +132,3 @@ pub fn build_egui_input(
         ..Default::default()
     }
 }
-

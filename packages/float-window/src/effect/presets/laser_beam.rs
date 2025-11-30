@@ -2,8 +2,8 @@
 //! Lasers radiate OUTWARD from the circle
 
 use super::{circle_edge_outside, outward_direction, random_color};
-use crate::effect::particle::Particle;
 use crate::effect::PresetEffectOptions;
+use crate::effect::particle::Particle;
 use rand::Rng;
 
 /// Spawn a particle for the laser beam effect

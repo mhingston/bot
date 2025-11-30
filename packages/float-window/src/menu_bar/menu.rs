@@ -11,16 +11,9 @@ pub struct MenuBarMenu {
 #[derive(Debug, Clone)]
 pub enum MenuBarMenuItem {
     /// Regular clickable item
-    Item {
-        id: String,
-        label: String,
-        enabled: bool,
-    },
+    Item { id: String, label: String, enabled: bool },
     /// Submenu with nested items
-    Submenu {
-        label: String,
-        items: Vec<MenuBarMenuItem>,
-    },
+    Submenu { label: String, items: Vec<MenuBarMenuItem> },
     /// Separator line
     Separator,
     /// Predefined items (Quit, About, etc.)
@@ -65,15 +58,8 @@ impl MenuBarMenu {
     }
 
     /// Add a submenu
-    pub fn add_submenu(
-        mut self,
-        label: impl Into<String>,
-        items: Vec<MenuBarMenuItem>,
-    ) -> Self {
-        self.items.push(MenuBarMenuItem::Submenu {
-            label: label.into(),
-            items,
-        });
+    pub fn add_submenu(mut self, label: impl Into<String>, items: Vec<MenuBarMenuItem>) -> Self {
+        self.items.push(MenuBarMenuItem::Submenu { label: label.into(), items });
         self
     }
 
@@ -85,15 +71,13 @@ impl MenuBarMenu {
 
     /// Add a quit item
     pub fn add_quit(mut self) -> Self {
-        self.items
-            .push(MenuBarMenuItem::Predefined(PredefinedMenuItemType::Quit));
+        self.items.push(MenuBarMenuItem::Predefined(PredefinedMenuItemType::Quit));
         self
     }
 
     /// Add an about item
     pub fn add_about(mut self) -> Self {
-        self.items
-            .push(MenuBarMenuItem::Predefined(PredefinedMenuItemType::About));
+        self.items.push(MenuBarMenuItem::Predefined(PredefinedMenuItemType::About));
         self
     }
 }

@@ -2,14 +2,13 @@
 //! Meteors pass by OUTSIDE the circle
 
 use super::random_color;
-use crate::effect::particle::Particle;
 use crate::effect::PresetEffectOptions;
+use crate::effect::particle::Particle;
 use rand::Rng;
 use std::f32::consts::PI;
 
 /// Spawn a particle for the meteor shower effect
 pub fn spawn(_pos: f32, options: &PresetEffectOptions, width: f32, height: f32) -> Particle {
-
     // Spawn from top-right area, moving toward bottom-left
     let spawn_side = rand::rng().random_range(0.0..1.0);
     let (x, y) = if spawn_side < 0.5 {
@@ -17,7 +16,10 @@ pub fn spawn(_pos: f32, options: &PresetEffectOptions, width: f32, height: f32) 
         (rand::rng().random_range(width * 0.3..width + 50.0), -rand::rng().random_range(10.0..50.0))
     } else {
         // From right
-        (width + rand::rng().random_range(10.0..50.0), rand::rng().random_range(-50.0..height * 0.5))
+        (
+            width + rand::rng().random_range(10.0..50.0),
+            rand::rng().random_range(-50.0..height * 0.5),
+        )
     };
 
     // Diagonal velocity (top-right to bottom-left)

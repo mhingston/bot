@@ -1,9 +1,9 @@
 //! RainDrop effect - vertical rain lines falling from top
 //! Rain falls OUTSIDE the circle with wind sway
 
-use super::{random_color};
-use crate::effect::particle::Particle;
+use super::random_color;
 use crate::effect::PresetEffectOptions;
+use crate::effect::particle::Particle;
 use rand::Rng;
 
 /// Spawn a particle for the rain drop effect

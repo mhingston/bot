@@ -2,8 +2,8 @@
 //! Orbits stay OUTSIDE the circle
 
 use super::{circle_edge_outside, random_color};
-use crate::effect::particle::Particle;
 use crate::effect::PresetEffectOptions;
+use crate::effect::particle::Particle;
 use rand::Rng;
 use std::f32::consts::PI;
 
@@ -31,9 +31,9 @@ pub fn spawn(pos: f32, options: &PresetEffectOptions, width: f32, height: f32) -
     // Ring colors - different color per layer
     let color = if options.particle_colors.is_empty() {
         match orbit_layer {
-            0 => [1.0, 0.8, 0.3, 1.0],  // Gold (inner)
-            1 => [0.6, 0.8, 1.0, 1.0],  // Light blue (middle)
-            _ => [1.0, 0.6, 0.8, 1.0],  // Pink (outer)
+            0 => [1.0, 0.8, 0.3, 1.0], // Gold (inner)
+            1 => [0.6, 0.8, 1.0, 1.0], // Light blue (middle)
+            _ => [1.0, 0.6, 0.8, 1.0], // Pink (outer)
         }
     } else {
         random_color(options)

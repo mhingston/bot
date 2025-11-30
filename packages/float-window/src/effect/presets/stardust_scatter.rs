@@ -2,8 +2,8 @@
 //! Particles spawn OUTSIDE the circle and scatter outward
 
 use super::{circle_edge_outside, outward_direction, random_color};
-use crate::effect::particle::Particle;
 use crate::effect::PresetEffectOptions;
+use crate::effect::particle::Particle;
 use rand::Rng;
 /// Spawn a particle for the stardust scatter effect
 pub fn spawn(pos: f32, options: &PresetEffectOptions, width: f32, height: f32) -> Particle {

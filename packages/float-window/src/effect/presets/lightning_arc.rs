@@ -2,8 +2,8 @@
 //! Lightning stays OUTSIDE the circle
 
 use super::{circle_edge_outside, random_color};
-use crate::effect::particle::Particle;
 use crate::effect::PresetEffectOptions;
+use crate::effect::particle::Particle;
 use rand::Rng;
 use std::f32::consts::PI;
 

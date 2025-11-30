@@ -37,22 +37,14 @@ pub enum Content {
 
 impl Default for Content {
     fn default() -> Self {
-        Content::Text {
-            text: String::new(),
-            options: TextDisplayOptions::default(),
-        }
+        Content::Text { text: String::new(), options: TextDisplayOptions::default() }
     }
 }
 
 impl Content {
     /// Create image content from RGBA data
     pub fn image(data: Vec<u8>, width: u32, height: u32) -> Self {
-        Self::Image {
-            data,
-            width,
-            height,
-            options: ImageDisplayOptions::default(),
-        }
+        Self::Image { data, width, height, options: ImageDisplayOptions::default() }
     }
 
     /// Create image content with options
@@ -62,28 +54,17 @@ impl Content {
         height: u32,
         options: ImageDisplayOptions,
     ) -> Self {
-        Self::Image {
-            data,
-            width,
-            height,
-            options,
-        }
+        Self::Image { data, width, height, options }
     }
 
     /// Create text content
     pub fn text(text: impl Into<String>) -> Self {
-        Self::Text {
-            text: text.into(),
-            options: TextDisplayOptions::default(),
-        }
+        Self::Text { text: text.into(), options: TextDisplayOptions::default() }
     }
 
     /// Create text content with options
     pub fn text_with_options(text: impl Into<String>, options: TextDisplayOptions) -> Self {
-        Self::Text {
-            text: text.into(),
-            options,
-        }
+        Self::Text { text: text.into(), options }
     }
 
     /// Load content from image file (PNG/SVG)
@@ -102,7 +83,11 @@ impl Content {
     /// Load content with specific size (stretched)
     ///
     /// Loads and resizes the image to the specified dimensions.
-    pub fn from_path_sized(path: impl AsRef<Path>, width: u32, height: u32) -> Result<Self, String> {
+    pub fn from_path_sized(
+        path: impl AsRef<Path>,
+        width: u32,
+        height: u32,
+    ) -> Result<Self, String> {
         let loaded = crate::util::load_image(path.as_ref(), Some(width), Some(height))?;
         Ok(Self::Image {
             data: loaded.data,

@@ -12,43 +12,28 @@ pub enum MenuBarIcon {
     /// Use existing WindowIcon system
     WindowIcon(WindowIcon),
     /// Raw RGBA image data
-    Rgba {
-        data: Vec<u8>,
-        width: u32,
-        height: u32,
-    },
+    Rgba { data: Vec<u8>, width: u32, height: u32 },
     /// Load from file path
     Path(PathBuf),
 }
 
 impl Default for MenuBarIcon {
     fn default() -> Self {
-        MenuBarIcon::Rgba {
-            data: vec![128, 128, 128, 255].repeat(16 * 16),
-            width: 16,
-            height: 16,
-        }
+        MenuBarIcon::Rgba { data: [128, 128, 128, 255].repeat(16 * 16), width: 16, height: 16 }
     }
 }
 
 /// Click behavior for menu bar item
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
+#[allow(clippy::large_enum_variant)]
 pub enum MenuBarClickAction {
     /// Show a dropdown menu
     ShowMenu(MenuBarMenu),
     /// Toggle a floating window (show/hide)
-    ToggleWindow {
-        config: WindowConfig,
-        effect: Option<(PresetEffect, PresetEffectOptions)>,
-    },
+    ToggleWindow { config: WindowConfig, effect: Option<(PresetEffect, PresetEffectOptions)> },
     /// No action (handled externally via events)
+    #[default]
     None,
-}
-
-impl Default for MenuBarClickAction {
-    fn default() -> Self {
-        MenuBarClickAction::None
-    }
 }
 
 /// A menu bar item (status bar icon on macOS)
@@ -144,9 +129,7 @@ impl MenuBarItemBuilder {
     pub fn build(self) -> MenuBarItem {
         let id = self.id.unwrap_or_else(|| {
             use std::time::{SystemTime, UNIX_EPOCH};
-            let duration = SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap_or_default();
+            let duration = SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default();
             format!("menu_bar_{}_{}", self.name, duration.as_nanos())
         });
 

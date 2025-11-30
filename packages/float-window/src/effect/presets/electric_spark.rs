@@ -2,8 +2,8 @@
 //! Particles spawn OUTSIDE the circle and drift slowly outward
 
 use super::{circle_edge_outside, outward_direction, random_color};
-use crate::effect::particle::Particle;
 use crate::effect::PresetEffectOptions;
+use crate::effect::particle::Particle;
 use rand::Rng;
 
 /// Spawn a particle for the electric spark effect

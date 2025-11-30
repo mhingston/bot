@@ -19,10 +19,7 @@ impl Default for FloatingWindowManager {
 impl FloatingWindowManager {
     /// Create a new window manager
     pub fn new() -> Self {
-        Self {
-            windows: Arc::new(RwLock::new(HashMap::new())),
-            next_id: Arc::new(RwLock::new(0)),
-        }
+        Self { windows: Arc::new(RwLock::new(HashMap::new())), next_id: Arc::new(RwLock::new(0)) }
     }
 
     /// Generate a unique window ID
@@ -35,10 +32,7 @@ impl FloatingWindowManager {
 
     /// Add a window to the manager
     pub fn add_window(&self, window: FloatingWindow) -> String {
-        let id = window
-            .id()
-            .map(|s| s.to_string())
-            .unwrap_or_else(|| self.generate_id());
+        let id = window.id().map(|s| s.to_string()).unwrap_or_else(|| self.generate_id());
 
         self.windows.write().unwrap().insert(id.clone(), window);
         id
@@ -72,9 +66,6 @@ impl FloatingWindowManager {
 
 impl Clone for FloatingWindowManager {
     fn clone(&self) -> Self {
-        Self {
-            windows: Arc::clone(&self.windows),
-            next_id: Arc::clone(&self.next_id),
-        }
+        Self { windows: Arc::clone(&self.windows), next_id: Arc::clone(&self.next_id) }
     }
 }

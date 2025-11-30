@@ -1,8 +1,8 @@
 //! Window painter - unified rendering interface
 
 use crate::content::{Content, ImageDisplayOptions, ScaleMode, TextAlign, TextDisplayOptions};
-use crate::effect::particle::ParticleStyle;
 use crate::effect::ParticleSystem;
+use crate::effect::particle::ParticleStyle;
 use crate::shape::WindowShape;
 use egui::{Color32, Pos2, Rect, Stroke, StrokeKind, Vec2};
 
@@ -13,12 +13,7 @@ impl WindowPainter {
     /// Render content to the UI with shape masking
     pub fn render_content(ui: &mut egui::Ui, content: &Content, rect: Rect, shape: &WindowShape) {
         match content {
-            Content::Image {
-                data,
-                width,
-                height,
-                options,
-            } => {
+            Content::Image { data, width, height, options } => {
                 Self::render_image_with_shape(ui, data, *width, *height, options, rect, shape);
             }
             Content::Text { text, options } => {
@@ -56,20 +51,23 @@ impl WindowPainter {
         };
 
         // Draw background if specified (only for non-circle, since masked image handles transparency)
-        if let Some(bg) = options.background_color {
-            if !matches!(shape, WindowShape::Circle) {
-                ui.painter().rect_filled(
-                    rect,
-                    0.0,
-                    Color32::from_rgba_unmultiplied(bg[0], bg[1], bg[2], bg[3]),
-                );
-            }
+        if let Some(bg) = options.background_color
+            && !matches!(shape, WindowShape::Circle)
+        {
+            ui.painter().rect_filled(
+                rect,
+                0.0,
+                Color32::from_rgba_unmultiplied(bg[0], bg[1], bg[2], bg[3]),
+            );
         }
 
         // Create texture from (potentially masked) image data
         let texture_id = ui.ctx().load_texture(
             "content_image",
-            egui::ColorImage::from_rgba_unmultiplied([masked_width as usize, masked_height as usize], &masked_data),
+            egui::ColorImage::from_rgba_unmultiplied(
+                [masked_width as usize, masked_height as usize],
+                &masked_data,
+            ),
             egui::TextureOptions::LINEAR,
         );
 
@@ -191,13 +189,7 @@ impl WindowPainter {
         let font_id = egui::FontId::proportional(options.font_size);
 
         if options.wrap {
-            ui.painter().text(
-                rect.left_top(),
-                egui::Align2::LEFT_TOP,
-                text,
-                font_id,
-                color,
-            );
+            ui.painter().text(rect.left_top(), egui::Align2::LEFT_TOP, text, font_id, color);
         } else {
             let pos = match align {
                 egui::Align::LEFT => rect.left_center(),
@@ -240,10 +232,8 @@ impl WindowPainter {
                         continue;
                     }
 
-                    let pos = Pos2::new(
-                        offset.x + particle.position.0,
-                        offset.y + particle.position.1,
-                    );
+                    let pos =
+                        Pos2::new(offset.x + particle.position.0, offset.y + particle.position.1);
 
                     let size = particle.size.max(2.0);
 
@@ -258,10 +248,8 @@ impl WindowPainter {
                         offset.x + particle.prev_position.0,
                         offset.y + particle.prev_position.1,
                     );
-                    let to = Pos2::new(
-                        offset.x + particle.position.0,
-                        offset.y + particle.position.1,
-                    );
+                    let to =
+                        Pos2::new(offset.x + particle.position.0, offset.y + particle.position.1);
 
                     let stroke = Stroke::new(particle.size.max(1.0), color);
                     painter.line_segment([from, to], stroke);
@@ -330,7 +318,13 @@ impl WindowPainter {
     }
 
     /// Draw window border based on shape
-    pub fn draw_shape_border(ui: &mut egui::Ui, shape: &WindowShape, rect: Rect, color: Color32, width: f32) {
+    pub fn draw_shape_border(
+        ui: &mut egui::Ui,
+        shape: &WindowShape,
+        rect: Rect,
+        color: Color32,
+        width: f32,
+    ) {
         let painter = ui.painter();
         let stroke = Stroke::new(width, color);
 

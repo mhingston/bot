@@ -27,11 +27,7 @@ pub struct ImageDisplayOptions {
 
 impl ImageDisplayOptions {
     pub fn new() -> Self {
-        Self {
-            scale_mode: ScaleMode::Fit,
-            background_color: None,
-            maintain_aspect_ratio: true,
-        }
+        Self { scale_mode: ScaleMode::Fit, background_color: None, maintain_aspect_ratio: true }
     }
 
     pub fn with_scale_mode(mut self, mode: ScaleMode) -> Self {

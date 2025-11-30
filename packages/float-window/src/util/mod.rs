@@ -2,4 +2,4 @@
 
 mod image_loader;
 
-pub use image_loader::{load_image, LoadedImage};
+pub use image_loader::{LoadedImage, load_image};
