@@ -33,9 +33,11 @@ pub struct FloatingWindow {
     effect_margin: f32,
     visible: bool,
     // Runtime state - drag uses mouse position relative to window
-    drag_offset: Option<(f64, f64)>,  // Offset from window origin to mouse click point
+    pub(crate) drag_offset: Option<(f64, f64)>,  // Offset from window origin to mouse click point
     mouse_pos: Option<(f32, f32)>,
     pub(crate) is_dragging: bool,
+    /// Whether this window has focus (used to prevent drag when other window is focused)
+    has_focus: bool,
 }
 
 impl FloatingWindow {
@@ -89,6 +91,7 @@ impl FloatingWindow {
             drag_offset: None,
             mouse_pos: None,
             is_dragging: false,
+            has_focus: false,
         })
     }
 
@@ -221,7 +224,8 @@ impl FloatingWindow {
 
     /// Handle mouse press - x, y are in window-local coordinates
     pub fn on_mouse_press(&mut self, x: f64, y: f64) {
-        if self.config.draggable && self.shape_mask.contains(x as f32, y as f32) {
+        // Only handle drag if window has focus (prevents drag when clicking through other windows)
+        if self.has_focus && self.config.draggable && self.shape_mask.contains(x as f32, y as f32) {
             // Store the offset from window origin to mouse position
             self.drag_offset = Some((x, y));
             self.is_dragging = true;
@@ -235,6 +239,16 @@ impl FloatingWindow {
             x: x as f32,
             y: y as f32,
         });
+    }
+
+    /// Set focus state
+    pub fn set_focus(&mut self, focused: bool) {
+        self.has_focus = focused;
+        // Cancel any ongoing drag if focus is lost
+        if !focused && self.is_dragging {
+            self.is_dragging = false;
+            self.drag_offset = None;
+        }
     }
 
     /// Handle mouse release
@@ -485,6 +499,8 @@ struct WindowState {
     controller_state: Option<ControllerState>,
     /// Whether this window is a managed flow window (not the controller)
     is_managed: bool,
+    /// Whether a widget is currently being interacted with (dragged)
+    widget_has_focus: bool,
 }
 
 /// Application handler for the floating window
@@ -731,6 +747,7 @@ impl FloatingWindowApp {
                                 egui_state,
                                 controller_state: None,
                                 is_managed: true,
+                                widget_has_focus: false,
                             };
 
                             // Register in the registry
@@ -824,6 +841,7 @@ impl ApplicationHandler for FloatingWindowApp {
                 egui_state,
                 controller_state,
                 is_managed: false, // Initial windows are not "managed" flow windows
+                widget_has_focus: false,
             };
 
             self.windows.insert(window_id, state);
@@ -889,6 +907,12 @@ impl ApplicationHandler for FloatingWindowApp {
                 };
 
                 state.gpu_state.render(primitives, full_output.textures_delta, screen_descriptor);
+
+                // Track if any widget is being actively interacted with
+                // is_using_pointer: true when actively dragging a widget (scrollbar, slider)
+                // focused: true when a text field has keyboard focus
+                state.widget_has_focus = state.egui_ctx.is_using_pointer()
+                    || state.egui_ctx.memory(|mem| mem.focused().is_some());
             }
             WindowEvent::CursorMoved { position, .. } => {
                 // Convert physical to logical coordinates for shape mask
@@ -907,9 +931,13 @@ impl ApplicationHandler for FloatingWindowApp {
                 state.floating_window.on_mouse_move(logical_x, logical_y);
 
                 // If dragging, calculate new window position using screen coordinates
+                // But stop dragging if egui is using the pointer (e.g., slider, scrollbar)
                 if state.floating_window.is_dragging {
-                    // Get window position on screen
-                    if let Ok(window_pos) = state.window.outer_position() {
+                    if state.widget_has_focus {
+                        // egui took over - cancel our drag
+                        state.floating_window.is_dragging = false;
+                        state.floating_window.drag_offset = None;
+                    } else if let Ok(window_pos) = state.window.outer_position() {
                         // Calculate mouse position in screen coordinates (physical)
                         let screen_x = window_pos.x as f64 + position.x;
                         let screen_y = window_pos.y as f64 + position.y;
@@ -925,6 +953,8 @@ impl ApplicationHandler for FloatingWindowApp {
                 if button == MouseButton::Left {
                     match button_state {
                         ElementState::Pressed => {
+                            // Start window drag - if egui takes over (slider, scrollbar),
+                            // it will capture the pointer and we'll stop dragging
                             if let Some((x, y)) = state.floating_window.mouse_pos {
                                 state.floating_window.on_mouse_press(x as f64, y as f64);
                             }
@@ -947,6 +977,10 @@ impl ApplicationHandler for FloatingWindowApp {
                     });
                 // Particle system uses content size (excluding margin), not window size
                 // Content size stays constant as configured, no need to update on resize
+            }
+            WindowEvent::Focused(focused) => {
+                // Track focus state - only allow dragging when focused
+                state.floating_window.set_focus(focused);
             }
             _ => {}
         }
