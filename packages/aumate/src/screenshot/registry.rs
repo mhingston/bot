@@ -6,7 +6,30 @@ use std::collections::HashMap;
 
 use egui::Pos2;
 
-use super::action::{ActionContext, ActionInfo, ActionResult, DrawingContext, ScreenAction, ToolCategory};
+use super::action::{ActionContext, ActionInfo, ActionResult, DrawingContext, RenderContext, ScreenAction, ToolCategory};
+
+/// Display order for actions in UI (controller settings, etc.)
+/// This ensures consistent ordering across renders.
+const DISPLAY_ORDER: &[&str] = &[
+    // Drawing tools (Snipaste-like order)
+    "rectangle",
+    "ellipse",
+    "polyline",
+    "arrow",
+    "annotate",
+    "highlighter",
+    "mosaic",
+    "blur",
+    "text",
+    "sequence",
+    "eraser",
+    // Terminal actions
+    "undo",
+    "redo",
+    "cancel",
+    "save",
+    "copy",
+];
 
 /// Registry for managing screen actions
 pub struct ActionRegistry {
@@ -61,9 +84,22 @@ impl ActionRegistry {
         self.enabled_ids.iter().filter_map(|id| self.actions.get(id).map(|a| a.info())).collect()
     }
 
-    /// Get info for all registered actions
+    /// Get info for all registered actions in consistent display order
     pub fn get_all(&self) -> Vec<ActionInfo> {
-        self.actions.values().map(|a| a.info()).collect()
+        // Return actions in DISPLAY_ORDER to ensure consistent UI ordering
+        let mut result = Vec::new();
+        for id in DISPLAY_ORDER {
+            if let Some(action) = self.actions.get(*id) {
+                result.push(action.info());
+            }
+        }
+        // Add any actions not in DISPLAY_ORDER (shouldn't happen, but be safe)
+        for (id, action) in &self.actions {
+            if !DISPLAY_ORDER.contains(&id.as_str()) {
+                result.push(action.info());
+            }
+        }
+        result
     }
 
     /// Execute an action by ID
@@ -191,6 +227,33 @@ impl ActionRegistry {
     /// Check if there's an active drawing tool
     pub fn has_active_drawing_tool(&self) -> bool {
         self.get_active_drawing_tool_id().is_some()
+    }
+
+    // ==================== Rendering ====================
+
+    /// Render all annotations by calling each action's render method
+    ///
+    /// The rendering order is determined by the annotation type to ensure
+    /// proper layering (e.g., highlighters below shapes, markers on top).
+    /// Order: highlighters -> shapes -> strokes -> arrows -> polylines -> markers
+    pub fn render_all_annotations(&self, ctx: &RenderContext) {
+        // Each action renders its own annotation type
+        // The order is enforced by iterating in a specific order
+        const RENDER_ORDER: &[&str] = &[
+            "highlighter", // Bottom layer (semi-transparent)
+            "rectangle",   // Shapes
+            "ellipse",
+            "annotate", // Freehand strokes
+            "arrow",
+            "polyline",
+            "sequence", // Top layer (markers with numbers)
+        ];
+
+        for action_id in RENDER_ORDER {
+            if let Some(action) = self.actions.get(*action_id) {
+                action.render_annotations(ctx);
+            }
+        }
     }
 }
 

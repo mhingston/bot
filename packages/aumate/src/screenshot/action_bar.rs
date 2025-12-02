@@ -208,10 +208,9 @@ impl ActionBar {
         let bar_height = BUTTON_SIZE + 2.0 * BAR_PADDING;
         let main_bar_size = Vec2::new(total_width, bar_height);
 
-        // Position toolbar centered below selection
+        // Position toolbar at right edge of selection (right-aligned)
         let (min_pos, max_pos) = selection_bounds;
-        let selection_center_x = (min_pos.x + max_pos.x) / 2.0;
-        let mut toolbar_x = selection_center_x - total_width / 2.0;
+        let mut toolbar_x = max_pos.x - total_width;
 
         // Debug logging
         log::debug!(

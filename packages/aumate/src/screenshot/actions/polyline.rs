@@ -2,7 +2,8 @@
 
 use egui::Pos2;
 
-use crate::screenshot::action::{ActionContext, ActionResult, DrawingContext, ScreenAction, ToolCategory};
+use crate::screenshot::action::{ActionContext, ActionResult, DrawingContext, RenderContext, ScreenAction, ToolCategory};
+use crate::screenshot::stroke::Polyline;
 
 /// Action to toggle polyline drawing mode
 ///
@@ -93,5 +94,56 @@ impl ScreenAction for PolylineAction {
 
         ctx.annotations.finish_polyline();
         self.is_drawing = false;
+    }
+
+    // ==================== Rendering ====================
+
+    fn render_annotations(&self, ctx: &RenderContext) {
+        // Render completed polylines
+        for polyline in &ctx.annotations.polylines {
+            Self::render_polyline(ctx.ui, polyline);
+        }
+
+        // Render current polyline being drawn
+        if let Some(ref polyline) = ctx.annotations.current_polyline {
+            Self::render_polyline(ctx.ui, polyline);
+        }
+    }
+}
+
+impl PolylineAction {
+    /// Render a single polyline
+    fn render_polyline(ui: &egui::Ui, polyline: &Polyline) {
+        if polyline.points.len() < 2 {
+            return;
+        }
+
+        let stroke = egui::Stroke::new(polyline.settings.width, polyline.settings.color);
+
+        // Draw line segments between points
+        for window in polyline.points.windows(2) {
+            ui.painter().line_segment([window[0], window[1]], stroke);
+        }
+
+        // If closed, connect last to first
+        if polyline.closed && polyline.points.len() >= 3 {
+            ui.painter().line_segment(
+                [*polyline.points.last().unwrap(), polyline.points[0]],
+                stroke,
+            );
+        }
+
+        // Draw vertex handles if selected
+        if polyline.selected {
+            let handle_size = 6.0;
+            for point in &polyline.points {
+                ui.painter().circle_filled(*point, handle_size / 2.0, egui::Color32::WHITE);
+                ui.painter().circle_stroke(
+                    *point,
+                    handle_size / 2.0,
+                    egui::Stroke::new(1.0, egui::Color32::from_rgb(0, 120, 255)),
+                );
+            }
+        }
     }
 }

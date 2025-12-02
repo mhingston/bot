@@ -16,7 +16,7 @@ pub enum NavigationTab {
     Settings,
 }
 use super::config::{Position, Size, WindowConfig};
-use crate::gui::content::Content;
+use crate::gui::content::{Content, ImageDisplayOptions, ScaleMode};
 use crate::gui::effect::{PresetEffect, PresetEffectOptions};
 use crate::gui::menu_bar::{MenuBarIcon, MenuBarItem, MenuBarMenu};
 use crate::gui::shape::WindowShape;
@@ -31,6 +31,9 @@ use winit::window::WindowId;
 
 /// Icon size for controller screenshot actions
 const CONTROLLER_ICON_SIZE: u32 = 16;
+
+/// Default background image embedded at compile time
+const DEFAULT_BACKGROUND: &[u8] = include_bytes!("../../assets/background.png");
 
 /// Available shapes for selection
 const ALL_SHAPES: &[(&str, WindowShape)] =
@@ -112,6 +115,9 @@ pub struct ControllerState {
 impl ControllerState {
     /// Create a new controller state
     pub fn new(command_sender: CommandSender, registry: WindowRegistry) -> Self {
+        // Load default background from embedded asset
+        let controller_background = Self::load_default_background();
+
         Self {
             command_sender,
             registry,
@@ -130,13 +136,33 @@ impl ControllerState {
             flow_window_image_path: None,
             tray_icon_image_path: None,
             pending_image_update_window: None,
-            controller_background: None,
+            controller_background,
             pending_controller_background: false,
             async_background_load: Arc::new(Mutex::new(None)),
             is_loading_background: false,
             screenshot_actions_enabled: Self::default_screenshot_actions(),
             show_dock_icon: true,
             icon_cache: HashMap::new(),
+        }
+    }
+
+    /// Load default background from embedded PNG asset
+    fn load_default_background() -> Option<Content> {
+        match image::load_from_memory(DEFAULT_BACKGROUND) {
+            Ok(img) => {
+                let rgba = img.to_rgba8();
+                let (width, height) = rgba.dimensions();
+                Some(Content::Image {
+                    data: rgba.into_raw(),
+                    width,
+                    height,
+                    options: ImageDisplayOptions::new().with_scale_mode(ScaleMode::Stretch),
+                })
+            }
+            Err(e) => {
+                log::warn!("Failed to load default background: {}", e);
+                None
+            }
         }
     }
 
@@ -262,20 +288,41 @@ impl ControllerState {
         ui.horizontal(|ui| {
             ui.heading("aumate");
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                let exit_btn = ui.add(
-                    egui::Button::new("✕")
-                        .fill(egui::Color32::TRANSPARENT)
-                        .min_size(egui::vec2(28.0, 28.0)),
+                // Allocate space for close button
+                let (rect, response) = ui.allocate_exact_size(
+                    egui::vec2(28.0, 28.0),
+                    egui::Sense::click(),
                 );
-                if exit_btn.clicked() {
-                    let _ = self.command_sender.send(WindowCommand::ExitApplication);
-                }
-                if exit_btn.hovered() {
+
+                // Draw background on hover
+                if response.hovered() {
                     ui.painter().rect_filled(
-                        exit_btn.rect,
+                        rect,
                         egui::CornerRadius::same(4),
                         egui::Color32::from_rgba_unmultiplied(200, 60, 60, 180),
                     );
+                }
+
+                // Draw X using lines (more reliable than Unicode)
+                let padding = 8.0;
+                let stroke = egui::Stroke::new(2.0, egui::Color32::WHITE);
+                ui.painter().line_segment(
+                    [
+                        egui::pos2(rect.min.x + padding, rect.min.y + padding),
+                        egui::pos2(rect.max.x - padding, rect.max.y - padding),
+                    ],
+                    stroke,
+                );
+                ui.painter().line_segment(
+                    [
+                        egui::pos2(rect.max.x - padding, rect.min.y + padding),
+                        egui::pos2(rect.min.x + padding, rect.max.y - padding),
+                    ],
+                    stroke,
+                );
+
+                if response.clicked() {
+                    let _ = self.command_sender.send(WindowCommand::ExitApplication);
                 }
             });
         });

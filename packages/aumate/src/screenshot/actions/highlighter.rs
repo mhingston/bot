@@ -2,7 +2,7 @@
 
 use egui::{Color32, Pos2};
 
-use crate::screenshot::action::{ActionContext, ActionResult, DrawingContext, ScreenAction, ToolCategory};
+use crate::screenshot::action::{ActionContext, ActionResult, DrawingContext, RenderContext, ScreenAction, ToolCategory};
 
 /// Action to toggle highlighter drawing mode
 ///
@@ -96,5 +96,19 @@ impl ScreenAction for HighlighterAction {
 
         ctx.annotations.finish_highlighter();
         self.is_drawing = false;
+    }
+
+    // ==================== Rendering ====================
+
+    fn render_annotations(&self, ctx: &RenderContext) {
+        // Render completed highlighters
+        for highlighter in &ctx.annotations.highlighters {
+            ctx.ui.painter().rect_filled(highlighter.rect, 0.0, highlighter.color);
+        }
+
+        // Render current highlighter being drawn
+        if let Some(ref highlighter) = ctx.annotations.current_highlighter {
+            ctx.ui.painter().rect_filled(highlighter.rect, 0.0, highlighter.color);
+        }
     }
 }

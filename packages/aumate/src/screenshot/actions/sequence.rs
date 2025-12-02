@@ -2,7 +2,8 @@
 
 use egui::Pos2;
 
-use crate::screenshot::action::{ActionContext, ActionResult, DrawingContext, ScreenAction, ToolCategory};
+use crate::screenshot::action::{ActionContext, ActionResult, DrawingContext, RenderContext, ScreenAction, ToolCategory};
+use crate::screenshot::stroke::SequenceMarker;
 
 /// Action to toggle sequence marker mode
 ///
@@ -70,4 +71,36 @@ impl ScreenAction for SequenceAction {
 
     // on_draw_move and on_draw_end are not needed for sequence markers
     // since they are placed on click, not drag
+
+    // ==================== Rendering ====================
+
+    fn render_annotations(&self, ctx: &RenderContext) {
+        // Render all sequence markers
+        for marker in &ctx.annotations.markers {
+            Self::render_marker(ctx.ui, marker);
+        }
+    }
+}
+
+impl SequenceAction {
+    /// Render a single sequence marker
+    fn render_marker(ui: &egui::Ui, marker: &SequenceMarker) {
+        // Draw filled circle
+        ui.painter().circle_filled(marker.pos, marker.radius, marker.color);
+
+        // Draw border
+        ui.painter()
+            .circle_stroke(marker.pos, marker.radius, egui::Stroke::new(2.0, egui::Color32::WHITE));
+
+        // Draw label
+        let label = marker.label();
+        let font = egui::FontId::proportional(marker.radius * 1.2);
+        ui.painter().text(
+            marker.pos,
+            egui::Align2::CENTER_CENTER,
+            label,
+            font,
+            egui::Color32::WHITE,
+        );
+    }
 }

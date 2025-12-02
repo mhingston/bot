@@ -148,6 +148,26 @@ pub struct ActionInfo {
     pub category: ToolCategory,
 }
 
+/// Context for rendering annotations
+///
+/// Provides actions with access to annotations and UI for rendering
+/// completed annotations and in-progress previews.
+pub struct RenderContext<'a> {
+    /// egui UI for rendering
+    pub ui: &'a egui::Ui,
+    /// Annotations storage (read-only for rendering)
+    pub annotations: &'a Annotations,
+    /// DPI scale factor
+    pub scale_factor: f32,
+}
+
+impl<'a> RenderContext<'a> {
+    /// Create a new render context
+    pub fn new(ui: &'a egui::Ui, annotations: &'a Annotations, scale_factor: f32) -> Self {
+        Self { ui, annotations, scale_factor }
+    }
+}
+
 /// Context for drawing operations
 ///
 /// Provides actions with access to annotations storage and settings
@@ -293,6 +313,15 @@ pub trait ScreenAction: Send + Sync {
     /// Called during render to show the in-progress drawing.
     /// Default implementation does nothing.
     fn render_preview(&self, _ui: &egui::Ui) {}
+
+    // ==================== Rendering ====================
+
+    /// Render all annotations of this action's type
+    ///
+    /// Called during the render phase to draw completed annotations
+    /// and any in-progress preview. Each action renders only the
+    /// annotation types it manages.
+    fn render_annotations(&self, _ctx: &RenderContext) {}
 
     // ==================== Info ====================
 
