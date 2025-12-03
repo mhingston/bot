@@ -2,6 +2,7 @@
 
 use super::commands::{CommandSender, WindowCommand, WindowRegistry};
 use super::config::{Position, Size, WindowConfig};
+#[cfg(feature = "stt")]
 use crate::stt::{
     DownloadProgress, DownloadStatus, HotkeyMode, ModelInfo, ModelManager, OutputMode, SttConfig,
 };
@@ -162,22 +163,31 @@ pub struct ControllerState {
     /// Entry count for current filter
     clipboard_entry_count: usize,
     // ==================== Speech to Text State ====================
+    #[cfg(feature = "stt")]
     /// STT configuration
     stt_config: SttConfig,
+    #[cfg(feature = "stt")]
     /// Model manager for downloading models
     stt_model_manager: Option<ModelManager>,
+    #[cfg(feature = "stt")]
     /// Available models list (cached)
     stt_available_models: Vec<ModelInfo>,
+    #[cfg(feature = "stt")]
     /// Whether models need refresh
     stt_models_need_refresh: bool,
+    #[cfg(feature = "stt")]
     /// Current download progress (model_id -> progress)
     stt_download_progress: Arc<Mutex<Option<DownloadProgress>>>,
+    #[cfg(feature = "stt")]
     /// Whether STT is initialized
     stt_initialized: bool,
+    #[cfg(feature = "stt")]
     /// Whether currently recording
     stt_is_recording: bool,
+    #[cfg(feature = "stt")]
     /// Last transcription result
     stt_last_transcription: Option<String>,
+    #[cfg(feature = "stt")]
     /// Status message for STT
     stt_status: String,
 }
@@ -224,14 +234,23 @@ impl ControllerState {
             clipboard_needs_refresh: true,
             clipboard_entry_count: 0,
             // STT state
+            #[cfg(feature = "stt")]
             stt_config: SttConfig::load().unwrap_or_default(),
+            #[cfg(feature = "stt")]
             stt_model_manager: None,
+            #[cfg(feature = "stt")]
             stt_available_models: Vec::new(),
+            #[cfg(feature = "stt")]
             stt_models_need_refresh: true,
+            #[cfg(feature = "stt")]
             stt_download_progress: Arc::new(Mutex::new(None)),
+            #[cfg(feature = "stt")]
             stt_initialized: false,
+            #[cfg(feature = "stt")]
             stt_is_recording: false,
+            #[cfg(feature = "stt")]
             stt_last_transcription: None,
+            #[cfg(feature = "stt")]
             stt_status: "Not initialized".to_string(),
         }
     }
@@ -461,8 +480,13 @@ impl ControllerState {
                 ui.add_space(8.0);
                 self.render_active_menu_bar_section(ui);
             }
+            #[cfg(feature = "stt")]
             NavigationTab::SpeechToText => {
                 self.render_stt_section(ui);
+            }
+            #[cfg(not(feature = "stt"))]
+            NavigationTab::SpeechToText => {
+                ui.label("Speech to Text feature is not enabled. Please compile with --features stt");
             }
             NavigationTab::Clipboard => {
                 self.render_clipboard_section(ui);
@@ -1408,6 +1432,7 @@ impl ControllerState {
     }
 
     /// Render the Speech to Text section
+    #[cfg(feature = "stt")]
     fn render_stt_section(&mut self, ui: &mut Ui) {
         // Initialize model manager if needed
         self.ensure_stt_model_manager();
@@ -1693,6 +1718,7 @@ impl ControllerState {
     // ==================== STT Helper Methods ====================
 
     /// Initialize the STT model manager if not already done
+    #[cfg(feature = "stt")]
     fn ensure_stt_model_manager(&mut self) {
         if self.stt_model_manager.is_none() {
             match ModelManager::new() {
@@ -1710,6 +1736,7 @@ impl ControllerState {
     }
 
     /// Refresh the available models list
+    #[cfg(feature = "stt")]
     fn refresh_stt_models(&mut self) {
         if !self.stt_models_need_refresh {
             return;
@@ -1742,6 +1769,7 @@ impl ControllerState {
     }
 
     /// Start downloading a model in the background
+    #[cfg(feature = "stt")]
     fn start_stt_model_download(&mut self, model_id: &str) {
         let Some(ref manager) = self.stt_model_manager else {
             return;
@@ -1821,6 +1849,7 @@ impl ControllerState {
     }
 
     /// Delete a downloaded model
+    #[cfg(feature = "stt")]
     fn delete_stt_model(&mut self, model_id: &str) {
         if let Some(ref manager) = self.stt_model_manager {
             if let Err(e) = manager.delete_model(model_id) {

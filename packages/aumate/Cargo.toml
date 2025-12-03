@@ -47,7 +47,6 @@ window = ["dep:active-win-pos-rs"]
 gui = [
     "screen",
     "clipboard",
-    "stt",
     "dep:winit",
     "dep:egui",
     "dep:egui-wgpu",
@@ -143,6 +142,7 @@ fontdue = { workspace = true, optional = true }
 cpal = { workspace = true, optional = true }
 hound = { workspace = true, optional = true }
 whisper-rs = { workspace = true, optional = true }
+
 ort = { workspace = true, optional = true }
 ndarray = { workspace = true, optional = true }
 reqwest = { workspace = true, optional = true }
@@ -150,3 +150,10 @@ futures-util = { workspace = true, optional = true }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc = { workspace = true }
+whisper-rs = { workspace = true, features = ["metal"], optional = true }
+
+[target.'cfg(target_os = "windows")'.dependencies]
+whisper-rs = { workspace = true, features = ["vulkan"], optional = true }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+whisper-rs = { workspace = true, features = ["vulkan"], optional = true }
