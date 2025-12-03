@@ -290,7 +290,10 @@ impl ControllerState {
             click_helper_hotkey_enabled: false,
         };
 
+        #[cfg(any(feature = "stt", all(feature = "click_helper", target_os = "macos")))]
         let mut state = state_init;
+        #[cfg(not(any(feature = "stt", all(feature = "click_helper", target_os = "macos"))))]
+        let state = state_init;
 
         // Auto-start hotkey listeners if enabled in config
         #[cfg(all(feature = "click_helper", target_os = "macos"))]
