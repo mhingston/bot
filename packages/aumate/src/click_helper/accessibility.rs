@@ -188,25 +188,25 @@ mod macos {
 
     // Clickable roles - focused on truly interactive elements
     static CLICKABLE_ROLES: &[&str] = &[
-        "AXButton",             // 按钮
-        "AXLink",               // 链接
-        "AXMenuItem",           // 菜单项
-        "AXMenuBarItem",        // 菜单栏项
-        "AXPopUpButton",        // 下拉按钮
-        "AXCheckBox",           // 复选框
-        "AXRadioButton",        // 单选按钮
-        "AXTab",                // 标签页
-        "AXTabGroup",           // 标签组
-        "AXDisclosureTriangle", // 展开/折叠三角
-        "AXComboBox",           // 组合框
-        "AXTextField",          // 文本输入框
-        "AXTextArea",           // 文本区域
-        "AXSlider",             // 滑块
-        "AXIncrementor",        // 增减器
-        "AXColorWell",          // 颜色选择器
-        "AXSegmentedControl",   // 分段控件
-        "AXToolbarButton",      // 工具栏按钮
-        "AXSwitch",             // 开关
+        "AXButton", // 按钮
+        "AXLink",   // 链接
+                    // "AXMenuItem",           // 菜单项
+                    // "AXMenuBarItem",        // 菜单栏项
+                    // "AXPopUpButton",        // 下拉按钮
+                    // "AXCheckBox",           // 复选框
+                    // "AXRadioButton",        // 单选按钮
+                    // "AXTab",                // 标签页
+                    // "AXTabGroup",           // 标签组
+                    // "AXDisclosureTriangle", // 展开/折叠三角
+                    // "AXComboBox",           // 组合框
+                    // "AXTextField",          // 文本输入框
+                    // "AXTextArea",           // 文本区域
+                    // "AXSlider",             // 滑块
+                    // "AXIncrementor",        // 增减器
+                    // "AXColorWell",          // 颜色选择器
+                    // "AXSegmentedControl",   // 分段控件
+                    // "AXToolbarButton",      // 工具栏按钮
+                    // "AXSwitch",             // 开关
     ];
 
     fn create_cf_string(s: &[u8]) -> CFStringRef {

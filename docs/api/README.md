@@ -3,8 +3,6 @@
 ***
 
 <div align="center">
-  <img src="_media/logo.png" alt="TegoBot Logo" width="400"/>
-
   <p>
     <strong>High-performance</strong> desktop automation for <strong>Node.js</strong> and <strong>Rust</strong>.
   </p>
