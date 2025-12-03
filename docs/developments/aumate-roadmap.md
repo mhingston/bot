@@ -8,15 +8,17 @@ Aumate is a cross-platform desktop automation library with GUI support, built in
 
 ### Core Modules
 
-1. **Input** - Mouse and keyboard control via `enigo` and `rdev`
-2. **Screen** - Screen capture via `xcap`
-3. **Clipboard** - Text and image clipboard operations via `arboard`
-4. **Window** - Window management via `active-win-pos-rs`
-5. **GUI** - Floating window system with effects via `winit`, `wgpu`, and `egui`
+1. **Input** - Mouse and keyboard control via `enigo`
+2. **EventHooks** - Global keyboard/mouse event interception (vendored from rdev)
+3. **Screen** - Screen capture via `xcap`
+4. **Clipboard** - Text and image clipboard operations via `arboard`
+5. **Window** - Window management via `active-win-pos-rs`
+6. **GUI** - Floating window system with effects via `winit`, `wgpu`, and `egui`
 
 ### GUI Sub-modules
 
 - `window/` - Window controller, floating windows, configuration
+- `widget/` - Widget system for building UI (Label, Button, Input, layouts)
 - `effect/` - Particle effects system with 18 presets
 - `animation/` - Animation system with easing functions
 - `content/` - Content rendering (image, text)
@@ -98,16 +100,25 @@ Aumate is a cross-platform desktop automation library with GUI support, built in
 - [ ] Sensitive data detection
 - [ ] Export/import history
 
-### Phase 8: Advanced GUI Components
-- [ ] List component (virtual scrolling)
-- [ ] Button component
-- [ ] Input component
-- [ ] Select/dropdown component
-- [ ] Dialog component
-- [ ] Menu component
-- [ ] Layout components (horizontal, vertical, grid)
+### Phase 8: JavaScript GUI API (PyQt-style)
+- [ ] Widget definition system (`WidgetDef` enum)
+- [ ] Basic widgets: Label, Button, TextInput, Checkbox, Slider, ProgressBar
+- [ ] Layout widgets: HBox, VBox, Grid
+- [ ] Container widgets: Panel, ScrollArea, Group
+- [ ] Dialog widgets: Alert, Confirm, FileDialog
+- [ ] Event system with JavaScript callbacks (via `ThreadsafeFunction`)
+- [ ] Builder pattern API in TypeScript
+- [ ] napi-rs bindings for GuiApp, Window, Widget classes
 
-### Phase 9: Performance & Polish
+### Phase 9: Advanced GUI Components
+- [ ] List component (virtual scrolling)
+- [ ] Select/dropdown component
+- [ ] Menu component
+- [ ] Table component
+- [ ] Tree view component
+- [ ] Tab component
+
+### Phase 10: Performance & Polish
 - [ ] GPU-accelerated effects optimization
 - [ ] Memory usage optimization for large screenshots
 - [ ] Cross-platform testing (Windows, Linux)
@@ -121,7 +132,8 @@ Aumate is a cross-platform desktop automation library with GUI support, built in
 - **GPU Rendering**: wgpu 27.0
 - **UI Framework**: egui 0.33, egui-wgpu 0.33, egui-winit 0.33
 - **Screen Capture**: xcap 0.7
-- **Input Simulation**: enigo 0.6, rdev 0.5
+- **Input Simulation**: enigo 0.6
+- **Event Hooks**: eventhooks (vendored rdev grab functionality)
 - **Clipboard**: arboard 3.6
 - **Image Processing**: image 0.25
 - **Math**: glam (vectors, matrices)

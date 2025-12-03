@@ -42,6 +42,10 @@ pub struct FloatingWindow {
     pub(crate) is_dragging: bool,
     /// Whether this window has focus (used to prevent drag when other window is focused)
     has_focus: bool,
+    /// Widget-based content for programmatic UI
+    widget_content: Option<crate::gui::widget::WidgetDef>,
+    /// Widget renderer state
+    widget_renderer: crate::gui::widget::WidgetRenderer,
 }
 
 impl FloatingWindow {
@@ -92,6 +96,8 @@ impl FloatingWindow {
             mouse_pos: None,
             is_dragging: false,
             has_focus: false,
+            widget_content: None,
+            widget_renderer: crate::gui::widget::WidgetRenderer::new(),
         })
     }
 
@@ -152,6 +158,32 @@ impl FloatingWindow {
         self.config.content = content;
     }
 
+    /// Set widget-based content
+    pub fn set_widget_content(&mut self, content: Option<crate::gui::widget::WidgetDef>) {
+        self.widget_content = content;
+        // Clear renderer state when content changes
+        self.widget_renderer.clear_state();
+    }
+
+    /// Update a widget's state by ID
+    pub fn update_widget(&mut self, widget_id: &str, update: &super::commands::WidgetUpdate) {
+        use super::commands::WidgetUpdate;
+        use crate::gui::widget::WidgetStateUpdate;
+
+        let state_update = match update {
+            WidgetUpdate::SetText(text) => WidgetStateUpdate::SetText(text.clone()),
+            WidgetUpdate::SetChecked(checked) => WidgetStateUpdate::SetChecked(*checked),
+            WidgetUpdate::SetValue(value) => WidgetStateUpdate::SetValue(*value),
+            WidgetUpdate::SetVisible(_) | WidgetUpdate::SetEnabled(_) => {
+                // These require modifying the widget definition, not just state
+                // For now, we just ignore them
+                return;
+            }
+        };
+
+        self.widget_renderer.update_state(&widget_id.to_string(), state_update);
+    }
+
     /// Update particle system
     pub fn update(&mut self) {
         if let Some(ref mut system) = self.particle_system {
@@ -160,7 +192,7 @@ impl FloatingWindow {
     }
 
     /// Render the window content
-    pub fn render(&mut self, ctx: &Context, _rect: Rect) {
+    pub fn render(&mut self, ctx: &Context, _rect: Rect) -> Vec<crate::gui::widget::WidgetEvent> {
         // Update animations
         if let Some(ref mut anim) = self.show_animation {
             anim.update();
@@ -181,39 +213,65 @@ impl FloatingWindow {
             Vec2::new(content_width, content_height),
         );
 
-        CentralPanel::default().frame(transparent_frame).show(ctx, |ui| {
-            // Check if we have image content
-            let has_image_content = matches!(&self.config.content, Some(Content::Image { .. }));
+        // Collect widget events
+        let mut widget_events = Vec::new();
 
-            // Draw background based on shape (only when no image content)
-            // Use full alpha (255) to avoid compositor blending artifacts
-            if !has_image_content {
-                let bg_color = Color32::from_rgba_unmultiplied(50, 50, 80, 255);
-                match &self.config.shape {
-                    WindowShape::Rectangle => {
-                        ui.painter().rect_filled(content_rect, 0.0, bg_color);
-                    }
-                    WindowShape::Circle => {
-                        let radius = content_width.min(content_height) / 2.0;
-                        ui.painter().circle_filled(content_rect.center(), radius, bg_color);
-                    }
-                    WindowShape::Custom { .. } => {
-                        ui.painter().rect_filled(content_rect, 0.0, bg_color);
+        // Check if we have widget content - if so, render that instead
+        if let Some(ref widget_content) = self.widget_content.clone() {
+            CentralPanel::default().frame(transparent_frame).show(ctx, |ui| {
+                // Draw background for widget content
+                let bg_color = Color32::from_rgba_unmultiplied(40, 40, 50, 255);
+                ui.painter().rect_filled(content_rect, 4.0, bg_color);
+
+                // Constrain UI to content rect
+                #[allow(deprecated)]
+                ui.allocate_ui_at_rect(content_rect, |ui| {
+                    ui.style_mut().spacing.item_spacing = egui::vec2(4.0, 4.0);
+                    self.widget_renderer.render(ui, widget_content, &mut widget_events);
+                });
+
+                // Render particles on top
+                if let Some(ref system) = self.particle_system {
+                    WindowPainter::render_particles(ui, system, Pos2::new(margin, margin));
+                }
+            });
+        } else {
+            CentralPanel::default().frame(transparent_frame).show(ctx, |ui| {
+                // Check if we have image content
+                let has_image_content = matches!(&self.config.content, Some(Content::Image { .. }));
+
+                // Draw background based on shape (only when no image content)
+                // Use full alpha (255) to avoid compositor blending artifacts
+                if !has_image_content {
+                    let bg_color = Color32::from_rgba_unmultiplied(50, 50, 80, 255);
+                    match &self.config.shape {
+                        WindowShape::Rectangle => {
+                            ui.painter().rect_filled(content_rect, 0.0, bg_color);
+                        }
+                        WindowShape::Circle => {
+                            let radius = content_width.min(content_height) / 2.0;
+                            ui.painter().circle_filled(content_rect.center(), radius, bg_color);
+                        }
+                        WindowShape::Custom { .. } => {
+                            ui.painter().rect_filled(content_rect, 0.0, bg_color);
+                        }
                     }
                 }
-            }
 
-            // Render content
-            if let Some(ref content) = self.config.content {
-                // Render content to the full content_rect - shape masking is applied in the painter
-                WindowPainter::render_content(ui, content, content_rect, &self.config.shape);
-            }
+                // Render content
+                if let Some(ref content) = self.config.content {
+                    // Render content to the full content_rect - shape masking is applied in the painter
+                    WindowPainter::render_content(ui, content, content_rect, &self.config.shape);
+                }
 
-            // Render particles - offset by margin so they're positioned relative to content
-            if let Some(ref system) = self.particle_system {
-                WindowPainter::render_particles(ui, system, Pos2::new(margin, margin));
-            }
-        });
+                // Render particles - offset by margin so they're positioned relative to content
+                if let Some(ref system) = self.particle_system {
+                    WindowPainter::render_particles(ui, system, Pos2::new(margin, margin));
+                }
+            });
+        }
+
+        widget_events
     }
 
     /// Handle mouse press - x, y are in window-local coordinates
@@ -737,6 +795,19 @@ impl FloatingWindowApp {
                         {
                             log::info!("Exiting Click Helper mode");
                             self.click_helper_state = None;
+                        }
+                    }
+                    WindowCommand::SetWidgetContent { id, content } => {
+                        log::info!("Setting widget content for window {:?}", id);
+                        if let Some(state) = self.windows.get_mut(&id) {
+                            state.floating_window.set_widget_content(Some(content));
+                        }
+                    }
+                    WindowCommand::UpdateWidget { widget_id, update } => {
+                        log::info!("Updating widget: {}", widget_id);
+                        // Find the window containing this widget and update it
+                        for state in self.windows.values_mut() {
+                            state.floating_window.update_widget(&widget_id, &update);
                         }
                     }
                 }
@@ -1393,14 +1464,20 @@ impl ApplicationHandler for FloatingWindowApp {
                 let rect =
                     Rect::from_min_size(Pos2::ZERO, Vec2::new(logical_width, logical_height));
 
+                let mut widget_events = Vec::new();
                 let full_output = state.egui_ctx.run(raw_input, |ctx| {
                     // Check if this is a controller window
                     if let Some(ref mut controller) = state.controller_state {
                         controller.render(ctx);
                     } else {
-                        state.floating_window.render(ctx, rect);
+                        widget_events = state.floating_window.render(ctx, rect);
                     }
                 });
+
+                // Log widget events for debugging (will be dispatched to JS in future)
+                for event in &widget_events {
+                    log::debug!("Widget event: {:?}", event);
+                }
 
                 state.egui_state.handle_platform_output(&state.window, full_output.platform_output);
 

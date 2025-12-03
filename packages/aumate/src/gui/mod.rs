@@ -30,6 +30,7 @@ pub mod menu_bar;
 pub mod render;
 pub mod shape;
 pub mod util;
+pub mod widget;
 pub mod window;
 
 use crate::error::{AumateError, Result};
@@ -48,9 +49,14 @@ pub mod prelude {
         MenuBarManager, MenuBarMenu, MenuBarMenuItem, MenuBarRegistry, PredefinedMenuItemType,
     };
     pub use super::shape::WindowShape;
+    pub use super::widget::{
+        DialogResult, FileDialogResult, Spacing, TextAlign as WidgetTextAlign, WidgetDef,
+        WidgetEvent, WidgetId, WidgetProps, WidgetRenderer, WidgetState, WidgetStateUpdate,
+        WidgetStyle,
+    };
     pub use super::window::{
-        FloatingWindow, FloatingWindowBuilder, FloatingWindowManager, Position, Size, WindowConfig,
-        WindowLevel,
+        FloatingWindow, FloatingWindowBuilder, FloatingWindowManager, Position, Size, WidgetUpdate,
+        WindowConfig, WindowLevel,
     };
 }
 

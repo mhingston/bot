@@ -4,6 +4,7 @@ use super::config::WindowConfig;
 use crate::gui::content::Content;
 use crate::gui::effect::{PresetEffect, PresetEffectOptions};
 use crate::gui::menu_bar::{MenuBarIcon, MenuBarItem};
+use crate::gui::widget::WidgetDef;
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::sync::{Arc, RwLock};
 use winit::window::WindowId;
@@ -41,6 +42,10 @@ pub enum WindowCommand {
     StartClickHelperMode,
     /// Exit Click Helper mode
     ExitClickHelperMode,
+    /// Set widget-based content for a window (replaces the entire UI)
+    SetWidgetContent { id: WindowId, content: WidgetDef },
+    /// Update a specific widget's state by its ID
+    UpdateWidget { widget_id: String, update: WidgetUpdate },
 }
 
 /// Sender end of the command channel
@@ -131,4 +136,19 @@ impl WindowRegistry {
     pub fn clear(&self) {
         self.windows.write().unwrap().clear();
     }
+}
+
+/// Updates that can be applied to widget state
+#[derive(Debug, Clone)]
+pub enum WidgetUpdate {
+    /// Set text value (for TextInput)
+    SetText(String),
+    /// Set checked state (for Checkbox)
+    SetChecked(bool),
+    /// Set numeric value (for Slider, ProgressBar)
+    SetValue(f32),
+    /// Set visibility
+    SetVisible(bool),
+    /// Set enabled state
+    SetEnabled(bool),
 }
