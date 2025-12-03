@@ -1,6 +1,6 @@
 [package]
 name = "aumate"
-version = "0.2.2"
+version = "0.2.3"
 edition = "2024"
 rust-version = "1.85"
 description = "Cross-platform desktop automation library with GUI support"
@@ -26,6 +26,7 @@ crate-type = ["lib"]
 [package.metadata.docs.rs]
 # Build docs with only features that don't require system libraries
 # Excludes: screen (xcap requires libpipewire on Linux), gui (depends on screen)
+no-default-features = true
 features = ["input", "clipboard", "window"]
 # Document all features for feature-gated items
 all-features = false
