@@ -113,10 +113,10 @@ fn main() -> Result<(), AumateError> {
 
 ```bash
 # Ubuntu/Debian
-sudo apt-get install libxcb1-dev libxrandr-dev libdbus-1-dev libpipewire-0.3-dev
+sudo apt-get install libxcb1-dev libxrandr-dev libdbus-1-dev libpipewire-0.3-dev libasound2-dev
 
 # Fedora
-sudo dnf install libxcb-devel libXrandr-devel dbus-devel pipewire-devel
+sudo dnf install libxcb-devel libXrandr-devel dbus-devel pipewire-devel alsa-lib-devel
 ```
 
 ## Roadmap

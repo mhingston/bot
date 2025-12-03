@@ -56,6 +56,7 @@ jobs:
             libegl1-mesa-dev \
             libgles2-mesa-dev \
             libgbm-dev \
+            libasound2-dev \
             xvfb \
             libxi-dev \
             libxtst-dev \
@@ -114,6 +115,7 @@ jobs:
             libegl1-mesa-dev \
             libgles2-mesa-dev \
             libgbm-dev \
+            libasound2-dev \
             libxi-dev \
             libxtst-dev \
             libxdo-dev
