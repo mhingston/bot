@@ -1350,6 +1350,7 @@ impl ControllerState {
             opacity: 1.0,
             icon: None,
             content,
+            widget_content: None,
             effect: None, // Effect is passed separately
             show_animation: None,
             hide_animation: None,

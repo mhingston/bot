@@ -44,6 +44,40 @@ export type Widget = bot.Widget;
 export { Widget } from "@tego/bot";
 
 // ============================================================================
+// GuiApp and GuiWindow Classes
+// ============================================================================
+
+export type {
+  JsWidgetEvent as WidgetEvent,
+  JsWidgetUpdate as WidgetUpdate,
+  JsWindowConfig as WindowConfig,
+} from "@tego/bot";
+/**
+ * GUI Application that manages the GUI thread and windows.
+ *
+ * Create a single GuiApp instance to spawn the GUI thread, then use it
+ * to create windows with widget content.
+ *
+ * @example
+ * ```typescript
+ * import { GuiApp, label, button, vbox } from "@tego/botjs";
+ *
+ * const app = new GuiApp();
+ * const win = app.createWindow({ title: "Hello", width: 300, height: 200 });
+ * win.setContent(vbox([label("Hello World!"), button("Close").withId("close")]));
+ * win.show();
+ * app.run(); // Blocks until all windows are closed
+ * ```
+ */
+/**
+ * A GUI window that can display widget content.
+ *
+ * Windows are created via `GuiApp.createWindow()` and can display
+ * widget trees built with the widget builder functions.
+ */
+export { GuiApp, GuiWindow } from "@tego/bot";
+
+// ============================================================================
 // Basic Widget Constructors
 // ============================================================================
 

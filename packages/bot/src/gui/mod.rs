@@ -4,12 +4,403 @@
 //! allowing creation of declarative UIs from JavaScript/TypeScript.
 
 // Include all GUI code inline to avoid napi re-export issues
-// Allow dead code for methods that will be used when GuiApp/Window classes are added
 #![allow(dead_code)]
 
+use aumate::gui::prelude::*;
 use aumate::gui::widget::WidgetDef;
+use aumate::gui::window::commands::{CommandSender, WindowCommand};
 use napi::bindgen_prelude::*;
+use napi::threadsafe_function::ThreadsafeFunction;
 use napi_derive::napi;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
+use std::thread::JoinHandle;
+
+// ============================================================================
+// Global GUI State
+// ============================================================================
+
+struct GuiState {
+    sender: CommandSender,
+    handle: Option<JoinHandle<()>>,
+    next_window_id: u64,
+    #[allow(dead_code)]
+    window_callbacks: HashMap<u64, Arc<ThreadsafeFunction<JsWidgetEvent>>>,
+}
+
+static GUI_STATE: once_cell::sync::Lazy<Mutex<Option<GuiState>>> =
+    once_cell::sync::Lazy::new(|| Mutex::new(None));
+
+// ============================================================================
+// GuiApp Class
+// ============================================================================
+
+/// GUI Application that manages the GUI thread and windows.
+///
+/// Create a single GuiApp instance to spawn the GUI thread, then use it
+/// to create windows with widget content.
+///
+/// @example
+/// ```javascript
+/// const app = new GuiApp();
+/// const win = app.createWindow({ title: 'Hello', width: 300, height: 200 });
+/// win.setContent(vbox([label('Hello World!'), button('Close').withId('close')]));
+/// win.show();
+/// app.run(); // Blocks until all windows are closed
+/// ```
+#[napi]
+pub struct GuiApp {}
+
+#[napi]
+impl GuiApp {
+    /// Create a new GUI application.
+    /// This spawns the GUI thread in the background.
+    #[napi(constructor)]
+    pub fn new() -> Result<Self> {
+        let mut state = GUI_STATE.lock().map_err(|e| Error::from_reason(e.to_string()))?;
+
+        if state.is_some() {
+            return Err(Error::from_reason(
+                "GuiApp already initialized. Only one instance is allowed.",
+            ));
+        }
+
+        let (sender, handle) = FloatingWindow::spawn_controller().map_err(Error::from_reason)?;
+
+        *state = Some(GuiState {
+            sender,
+            handle: Some(handle),
+            next_window_id: 1,
+            window_callbacks: HashMap::new(),
+        });
+
+        Ok(GuiApp {})
+    }
+
+    /// Create a new window with the given configuration.
+    #[napi]
+    pub fn create_window(&self, config: JsWindowConfig) -> Result<GuiWindow> {
+        GuiWindow::new(config)
+    }
+
+    /// Run the GUI event loop. This blocks until all windows are closed
+    /// or `exit()` is called.
+    ///
+    /// On macOS, this runs the event loop on the current (main) thread.
+    /// On other platforms, the event loop runs in a background thread.
+    #[napi]
+    pub fn run(&self) -> Result<()> {
+        // On macOS, run the event loop on the main thread
+        FloatingWindow::run_event_loop().map_err(Error::from_reason)?;
+
+        // Wait for the handle thread to finish
+        let handle = {
+            let mut state = GUI_STATE.lock().map_err(|e| Error::from_reason(e.to_string()))?;
+            state.as_mut().and_then(|s| s.handle.take())
+        };
+
+        if let Some(h) = handle {
+            let _ = h.join();
+        }
+        Ok(())
+    }
+
+    /// Exit the GUI application and close all windows.
+    #[napi]
+    pub fn exit(&self) -> Result<()> {
+        let state = GUI_STATE.lock().map_err(|e| Error::from_reason(e.to_string()))?;
+        if let Some(ref s) = *state {
+            let _ = s.sender.send(WindowCommand::ExitApplication);
+        }
+        Ok(())
+    }
+}
+
+// ============================================================================
+// Window Configuration
+// ============================================================================
+
+/// Window configuration options
+#[napi(object)]
+#[derive(Debug, Clone, Default)]
+pub struct JsWindowConfig {
+    /// Window title
+    pub title: Option<String>,
+    /// Window width in pixels
+    pub width: Option<u32>,
+    /// Window height in pixels
+    pub height: Option<u32>,
+    /// X position on screen
+    pub x: Option<f64>,
+    /// Y position on screen
+    pub y: Option<f64>,
+    /// Whether window is always on top
+    pub always_on_top: Option<bool>,
+    /// Whether window is resizable
+    pub resizable: Option<bool>,
+    /// Whether window has decorations (title bar, borders)
+    pub decorations: Option<bool>,
+    /// Whether window is transparent
+    pub transparent: Option<bool>,
+}
+
+// ============================================================================
+// Widget Event
+// ============================================================================
+
+/// Widget event from UI interactions
+#[napi(object)]
+#[derive(Debug, Clone)]
+pub struct JsWidgetEvent {
+    /// Event type: "button_click", "text_changed", "text_submit", "checkbox_changed", "slider_changed"
+    pub event_type: String,
+    /// Widget ID that triggered the event
+    pub widget_id: String,
+    /// String value (for text events)
+    pub value: Option<String>,
+    /// Boolean value (for checkbox events)
+    pub checked: Option<bool>,
+    /// Numeric value (for slider events)
+    pub number_value: Option<f64>,
+}
+
+impl From<WidgetEvent> for JsWidgetEvent {
+    fn from(event: WidgetEvent) -> Self {
+        match event {
+            WidgetEvent::ButtonClick { id } => JsWidgetEvent {
+                event_type: "button_click".to_string(),
+                widget_id: id,
+                value: None,
+                checked: None,
+                number_value: None,
+            },
+            WidgetEvent::TextChanged { id, value } => JsWidgetEvent {
+                event_type: "text_changed".to_string(),
+                widget_id: id,
+                value: Some(value),
+                checked: None,
+                number_value: None,
+            },
+            WidgetEvent::TextSubmit { id, value } => JsWidgetEvent {
+                event_type: "text_submit".to_string(),
+                widget_id: id,
+                value: Some(value),
+                checked: None,
+                number_value: None,
+            },
+            WidgetEvent::CheckboxChanged { id, checked } => JsWidgetEvent {
+                event_type: "checkbox_changed".to_string(),
+                widget_id: id,
+                value: None,
+                checked: Some(checked),
+                number_value: None,
+            },
+            WidgetEvent::SliderChanged { id, value } => JsWidgetEvent {
+                event_type: "slider_changed".to_string(),
+                widget_id: id,
+                value: None,
+                checked: None,
+                number_value: Some(value as f64),
+            },
+            WidgetEvent::FocusGained { id } => JsWidgetEvent {
+                event_type: "focus_gained".to_string(),
+                widget_id: id,
+                value: None,
+                checked: None,
+                number_value: None,
+            },
+            WidgetEvent::FocusLost { id } => JsWidgetEvent {
+                event_type: "focus_lost".to_string(),
+                widget_id: id,
+                value: None,
+                checked: None,
+                number_value: None,
+            },
+            WidgetEvent::MouseEnter { id } => JsWidgetEvent {
+                event_type: "mouse_enter".to_string(),
+                widget_id: id,
+                value: None,
+                checked: None,
+                number_value: None,
+            },
+            WidgetEvent::MouseLeave { id } => JsWidgetEvent {
+                event_type: "mouse_leave".to_string(),
+                widget_id: id,
+                value: None,
+                checked: None,
+                number_value: None,
+            },
+        }
+    }
+}
+
+// ============================================================================
+// GuiWindow Class
+// ============================================================================
+
+/// A GUI window that can display widget content.
+///
+/// Windows are created via `GuiApp.createWindow()` and can display
+/// widget trees built with the widget builder functions.
+#[napi]
+pub struct GuiWindow {
+    window_id: u64,
+    config: WindowConfig,
+    content: Option<WidgetDef>,
+    shown: bool,
+}
+
+#[napi]
+impl GuiWindow {
+    pub(crate) fn new(js_config: JsWindowConfig) -> Result<Self> {
+        let mut state = GUI_STATE.lock().map_err(|e| Error::from_reason(e.to_string()))?;
+        let state = state.as_mut().ok_or_else(|| Error::from_reason("GuiApp not initialized"))?;
+
+        let window_id = state.next_window_id;
+        state.next_window_id += 1;
+
+        let level = if js_config.always_on_top.unwrap_or(false) {
+            WindowLevel::AlwaysOnTop
+        } else {
+            WindowLevel::Normal
+        };
+
+        let config = WindowConfig {
+            id: Some(format!("js-window-{}", window_id)),
+            title: js_config.title,
+            position: Position::new(js_config.x.unwrap_or(100.0), js_config.y.unwrap_or(100.0)),
+            size: Size::new(js_config.width.unwrap_or(400), js_config.height.unwrap_or(300)),
+            level,
+            resizable: js_config.resizable.unwrap_or(true),
+            draggable: true,
+            ..Default::default()
+        };
+
+        Ok(GuiWindow { window_id, config, content: None, shown: false })
+    }
+
+    /// Set the widget content for this window.
+    #[napi]
+    pub fn set_content(&mut self, widget: &Widget) -> Result<&Self> {
+        self.content = Some(widget.inner.clone());
+
+        // Note: If the window is already shown, we would need to send a command
+        // to update the widget content. For now, content must be set before show().
+        // TODO: Add support for dynamic content updates via CloseByName + Create
+
+        Ok(self)
+    }
+
+    /// Register a callback for widget events.
+    ///
+    /// Note: Event callbacks are not yet implemented. This is a placeholder
+    /// for future implementation.
+    ///
+    /// @example
+    /// ```javascript
+    /// win.onEvent((event) => {
+    ///   if (event.eventType === 'button_click') {
+    ///     console.log('Button clicked:', event.widgetId);
+    ///   }
+    /// });
+    /// ```
+    #[napi]
+    pub fn on_event(
+        &mut self,
+        #[napi(ts_arg_type = "(event: JsWidgetEvent) => void")] callback: ThreadsafeFunction<
+            JsWidgetEvent,
+        >,
+    ) -> Result<&Self> {
+        let mut state = GUI_STATE.lock().map_err(|e| Error::from_reason(e.to_string()))?;
+        if let Some(ref mut s) = *state {
+            s.window_callbacks.insert(self.window_id, Arc::new(callback));
+        }
+        Ok(self)
+    }
+
+    /// Show the window.
+    #[napi]
+    pub fn show(&mut self) -> Result<()> {
+        if self.shown {
+            return Ok(());
+        }
+
+        let state = GUI_STATE.lock().map_err(|e| Error::from_reason(e.to_string()))?;
+        let state = state.as_ref().ok_or_else(|| Error::from_reason("GuiApp not initialized"))?;
+
+        // Set widget content if we have it
+        let mut config = self.config.clone();
+        if let Some(ref content) = self.content {
+            config.widget_content = Some(content.clone());
+        }
+
+        state
+            .sender
+            .send(WindowCommand::Create { config, effect: None })
+            .map_err(|e| Error::from_reason(e.to_string()))?;
+
+        self.shown = true;
+        Ok(())
+    }
+
+    /// Close the window.
+    #[napi]
+    pub fn close(&self) -> Result<()> {
+        let state = GUI_STATE.lock().map_err(|e| Error::from_reason(e.to_string()))?;
+        let state = state.as_ref().ok_or_else(|| Error::from_reason("GuiApp not initialized"))?;
+
+        state
+            .sender
+            .send(WindowCommand::CloseByName { name: self.config.id.clone().unwrap_or_default() })
+            .map_err(|e| Error::from_reason(e.to_string()))?;
+
+        Ok(())
+    }
+
+    /// Update a widget's state by ID.
+    #[napi]
+    pub fn update_widget(&self, widget_id: String, update: JsWidgetUpdate) -> Result<()> {
+        let state = GUI_STATE.lock().map_err(|e| Error::from_reason(e.to_string()))?;
+        let state = state.as_ref().ok_or_else(|| Error::from_reason("GuiApp not initialized"))?;
+
+        let widget_update = if let Some(text) = update.text {
+            WidgetUpdate::SetText(text)
+        } else if let Some(checked) = update.checked {
+            WidgetUpdate::SetChecked(checked)
+        } else if let Some(value) = update.value {
+            WidgetUpdate::SetValue(value as f32)
+        } else if let Some(visible) = update.visible {
+            WidgetUpdate::SetVisible(visible)
+        } else if let Some(enabled) = update.enabled {
+            WidgetUpdate::SetEnabled(enabled)
+        } else {
+            return Err(Error::from_reason("No update specified"));
+        };
+
+        state
+            .sender
+            .send(WindowCommand::UpdateWidget { widget_id, update: widget_update })
+            .map_err(|e| Error::from_reason(e.to_string()))?;
+
+        Ok(())
+    }
+}
+
+/// Widget update options
+#[napi(object)]
+#[derive(Debug, Clone, Default)]
+pub struct JsWidgetUpdate {
+    /// New text value
+    pub text: Option<String>,
+    /// New checked state
+    pub checked: Option<bool>,
+    /// New numeric value
+    pub value: Option<f64>,
+    /// New visibility state
+    pub visible: Option<bool>,
+    /// New enabled state
+    pub enabled: Option<bool>,
+}
 
 // ============================================================================
 // Widget Style Types

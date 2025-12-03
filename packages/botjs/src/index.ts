@@ -875,17 +875,26 @@ export {
 // GUI Widget System - Declarative UI Builder
 // ============================================================================
 
-export type { Widget, WidgetStyle } from "./gui";
+export type {
+  Widget,
+  WidgetEvent,
+  WidgetStyle,
+  WidgetUpdate,
+  WindowConfig,
+} from "./gui";
 export {
+  // Basic widgets
   button,
   checkbox,
+  // App and Window classes
+  GuiApp,
+  GuiWindow,
   grid,
   group,
   // Layout widgets
   hbox,
   // Image widget
   image,
-  // Basic widgets
   label,
   // Container widgets
   panel,

@@ -79,6 +79,8 @@ pub struct WindowConfig {
     pub icon: Option<WindowIcon>,
     /// Window content
     pub content: Option<Content>,
+    /// Widget-based content (takes precedence over content if set)
+    pub widget_content: Option<crate::gui::widget::WidgetDef>,
     /// Particle effect
     pub effect: Option<(PresetEffect, PresetEffectOptions)>,
     /// Show animation

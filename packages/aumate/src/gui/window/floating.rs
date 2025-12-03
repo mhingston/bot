@@ -17,8 +17,19 @@ use crate::screenshot::ScreenshotMode;
 use crate::click_helper::ClickHelperMode;
 
 use egui::{CentralPanel, Color32, Context, Pos2, Rect, Vec2};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use winit::application::ApplicationHandler;
+
+// macOS event loop state for deferred event loop execution
+#[cfg(target_os = "macos")]
+struct MacOsEventLoopState {
+    tx: super::commands::CommandSender,
+    rx: super::commands::CommandReceiver,
+    ready_tx: Option<std::sync::mpsc::Sender<()>>,
+}
+
+#[cfg(target_os = "macos")]
+static MACOS_EVENT_LOOP_STATE: Mutex<Option<MacOsEventLoopState>> = Mutex::new(None);
 use winit::dpi::{LogicalPosition, LogicalSize, PhysicalPosition};
 use winit::event::{ElementState, MouseButton, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
@@ -132,6 +143,115 @@ impl FloatingWindow {
 
         let mut app = FloatingWindowApp::new_controller(controller, tx, rx);
         event_loop.run_app(&mut app).map_err(|e| e.to_string())
+    }
+
+    /// Spawn GUI controller in background thread, return command sender and thread handle.
+    ///
+    /// **Note**: On macOS, this spawns a thread but the EventLoop must be run on the main thread.
+    /// Use `spawn_controller_main_thread` for macOS compatibility.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// let (sender, handle) = FloatingWindow::spawn_controller()?;
+    ///
+    /// // Create windows by sending commands
+    /// sender.send(WindowCommand::Create { config, effect: None })?;
+    ///
+    /// // Wait for GUI thread to exit
+    /// handle.join().unwrap();
+    /// ```
+    #[cfg(not(target_os = "macos"))]
+    pub fn spawn_controller() -> Result<(CommandSender, std::thread::JoinHandle<()>), String> {
+        let (tx, rx) = super::commands::create_command_channel();
+        let sender = tx.clone();
+
+        let handle = std::thread::spawn(move || {
+            // Create a minimal hidden controller window
+            let controller = FloatingWindow::builder()
+                .title("aumate-controller")
+                .size(1, 1)
+                .position(-10000.0, -10000.0) // Off-screen
+                .shape(WindowShape::Rectangle)
+                .build()
+                .expect("Failed to create controller window");
+
+            let event_loop = EventLoop::new().expect("Failed to create event loop");
+            event_loop.set_control_flow(ControlFlow::Poll);
+
+            let mut app = FloatingWindowApp::new_controller(controller, tx, rx);
+            let _ = event_loop.run_app(&mut app);
+        });
+
+        Ok((sender, handle))
+    }
+
+    /// macOS version - returns sender and a closure to run the event loop.
+    ///
+    /// On macOS, the EventLoop MUST be created and run on the main thread.
+    /// This function returns the command sender and a closure that must be called
+    /// on the main thread to run the event loop.
+    #[cfg(target_os = "macos")]
+    pub fn spawn_controller() -> Result<(CommandSender, std::thread::JoinHandle<()>), String> {
+        use std::sync::mpsc;
+
+        let (tx, rx) = super::commands::create_command_channel();
+        let sender = tx.clone();
+
+        // Create a channel to signal when the GUI is ready
+        let (ready_tx, ready_rx) = mpsc::channel::<()>();
+
+        // On macOS, we still spawn a thread but it waits for commands
+        // The actual event loop runs when run_event_loop is called
+        let handle = std::thread::spawn(move || {
+            // Wait for signal that we should exit (this thread doesn't run the event loop)
+            let _ = ready_rx.recv();
+        });
+
+        // Store the receiver in a static so we can run the event loop later
+        *MACOS_EVENT_LOOP_STATE.lock().unwrap() =
+            Some(MacOsEventLoopState { tx, rx, ready_tx: Some(ready_tx) });
+
+        Ok((sender, handle))
+    }
+
+    /// Run the event loop on the current thread (required for macOS).
+    ///
+    /// This function blocks until all windows are closed or ExitApplication is sent.
+    /// On macOS, this MUST be called from the main thread.
+    #[cfg(target_os = "macos")]
+    pub fn run_event_loop() -> Result<(), String> {
+        let state = MACOS_EVENT_LOOP_STATE
+            .lock()
+            .unwrap()
+            .take()
+            .ok_or("Event loop state not initialized")?;
+
+        let controller = FloatingWindow::builder()
+            .title("aumate-controller")
+            .size(1, 1)
+            .position(-10000.0, -10000.0)
+            .shape(WindowShape::Rectangle)
+            .build()?;
+
+        let event_loop = EventLoop::new().map_err(|e| e.to_string())?;
+        event_loop.set_control_flow(ControlFlow::Poll);
+
+        let mut app = FloatingWindowApp::new_controller(controller, state.tx, state.rx);
+
+        // Signal that we're done if the handle thread is waiting
+        if let Some(ready_tx) = state.ready_tx {
+            let _ = ready_tx.send(());
+        }
+
+        event_loop.run_app(&mut app).map_err(|e| e.to_string())
+    }
+
+    /// Run the event loop on the current thread (no-op on non-macOS).
+    #[cfg(not(target_os = "macos"))]
+    pub fn run_event_loop() -> Result<(), String> {
+        // On non-macOS, the event loop runs in the spawned thread
+        Ok(())
     }
 
     /// Get window ID
@@ -863,7 +983,12 @@ impl FloatingWindowApp {
             }
 
             match builder.build() {
-                Ok(floating_window) => {
+                Ok(mut floating_window) => {
+                    // Set widget content if provided in config
+                    if let Some(widget_content) = config.widget_content.clone() {
+                        floating_window.set_widget_content(Some(widget_content));
+                    }
+
                     // Create the window
                     let margin = floating_window.effect_margin;
                     let window_width = config.size.width as f32 + margin * 2.0;
