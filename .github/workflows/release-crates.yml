@@ -65,11 +65,20 @@ jobs:
       - name: Check formatting
         run: cargo fmt --all -- --check
 
-      - name: Run Clippy
-        run: cargo clippy --workspace --all-features -- -D warnings
+      - name: Run Clippy (default features)
+        run: cargo clippy --workspace -- -D warnings
 
-      - name: Run tests
-        run: cargo test --workspace --all-features
+      - name: Run Clippy (click_helper feature)
+        run: cargo clippy -p aumate --features click_helper -- -D warnings
+
+      # Note: stt feature requires Vulkan SDK on Linux, skipped in CI
+      # It will be tested on macOS/Windows or locally
+
+      - name: Run tests (default features)
+        run: cargo test --workspace
+
+      - name: Run tests (click_helper feature)
+        run: cargo test -p aumate --features click_helper
 
       - name: Check package can be published
         run: cargo publish --dry-run -p aumate
