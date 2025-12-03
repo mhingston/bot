@@ -75,6 +75,21 @@ regex = "1.11"
 # Cryptographic hashing
 sha2 = "0.10"
 
+# Audio capture
+cpal = "0.15"
+hound = "3.5"
+
+# Speech-to-text
+whisper-rs = "0.14"
+
+# ONNX Runtime for VAD
+ort = { version = "2.0.0-rc.10", default-features = false, features = ["download-binaries"] }
+ndarray = "0.16"
+
+# HTTP client for model downloads
+reqwest = { version = "0.12", default-features = false, features = ["stream", "rustls-tls"] }
+futures-util = "0.3"
+
 # Menu & tray
 muda = "0.17.1"
 tray-icon = "0.21.2"

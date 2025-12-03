@@ -47,6 +47,7 @@ window = ["dep:active-win-pos-rs"]
 gui = [
     "screen",
     "clipboard",
+    "stt",
     "dep:winit",
     "dep:egui",
     "dep:egui-wgpu",
@@ -70,6 +71,21 @@ gui = [
     "dep:serde_json",
     "dep:uuid",
     "dep:regex",
+    "dep:sha2",
+]
+# Speech-to-text feature
+stt = [
+    "input",
+    "clipboard",
+    "dep:cpal",
+    "dep:hound",
+    "dep:whisper-rs",
+    "dep:ort",
+    "dep:ndarray",
+    "dep:reqwest",
+    "dep:futures-util",
+    "dep:serde",
+    "dep:serde_json",
     "dep:sha2",
 ]
 
@@ -122,6 +138,15 @@ resvg = { workspace = true, optional = true }
 tiny-skia = { workspace = true, optional = true }
 raw-window-handle = { workspace = true, optional = true }
 fontdue = { workspace = true, optional = true }
+
+# STT feature dependencies
+cpal = { workspace = true, optional = true }
+hound = { workspace = true, optional = true }
+whisper-rs = { workspace = true, optional = true }
+ort = { workspace = true, optional = true }
+ndarray = { workspace = true, optional = true }
+reqwest = { workspace = true, optional = true }
+futures-util = { workspace = true, optional = true }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc = { workspace = true }
