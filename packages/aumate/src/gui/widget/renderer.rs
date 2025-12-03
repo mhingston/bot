@@ -18,6 +18,8 @@ pub struct WidgetState {
     pub checked: bool,
     /// Numeric value for sliders
     pub value: f32,
+    /// Selected index for dropdowns, radio groups, and tabs
+    pub selected: usize,
 }
 
 /// Widget renderer context
@@ -95,6 +97,19 @@ impl WidgetRenderer {
             }
             WidgetDef::Group { title, child, collapsed, props } => {
                 self.render_group(ui, title.as_deref(), child, *collapsed, props, events);
+            }
+            WidgetDef::Dropdown { options, selected, placeholder, props } => {
+                self.render_dropdown(ui, options, *selected, placeholder.as_deref(), props, events);
+            }
+            WidgetDef::RadioGroup { options, selected, horizontal, props } => {
+                self.render_radio_group(ui, options, *selected, *horizontal, props, events);
+            }
+            WidgetDef::TextArea { value, placeholder, rows, props } => {
+                self.render_text_area(ui, value, placeholder.as_deref(), *rows, props, events);
+            }
+
+            WidgetDef::Tabs { tabs, active, props } => {
+                self.render_tabs(ui, tabs, *active, props, events);
             }
         }
     }
@@ -444,6 +459,171 @@ impl WidgetRenderer {
             ui.group(|ui| {
                 self.render(ui, child, events);
             });
+        }
+    }
+
+    fn render_dropdown(
+        &mut self,
+        ui: &mut Ui,
+        options: &[String],
+        initial_selected: Option<usize>,
+        placeholder: Option<&str>,
+        props: &WidgetProps,
+        events: &mut Vec<WidgetEvent>,
+    ) {
+        let id = props.id.clone().unwrap_or_default();
+        let state = self.state.entry(id.clone()).or_insert_with(|| WidgetState {
+            value: initial_selected.map(|i| i as f32).unwrap_or(-1.0),
+            ..Default::default()
+        });
+
+        let selected_idx = if state.value >= 0.0 { Some(state.value as usize) } else { None };
+        let display_text =
+            selected_idx.and_then(|i| options.get(i)).cloned().unwrap_or_else(|| {
+                placeholder.map(|s| s.to_string()).unwrap_or_else(|| "Select...".to_string())
+            });
+
+        let response = egui::ComboBox::from_id_salt(ui.id().with(&id))
+            .selected_text(display_text)
+            .show_ui(ui, |ui| {
+                for (idx, option) in options.iter().enumerate() {
+                    let is_selected = selected_idx == Some(idx);
+                    if ui.selectable_label(is_selected, option).clicked() {
+                        state.value = idx as f32;
+                        if !id.is_empty() {
+                            events.push(WidgetEvent::SelectionChanged {
+                                id: id.clone(),
+                                index: idx,
+                                value: option.clone(),
+                            });
+                        }
+                    }
+                }
+            });
+
+        if let Some(tooltip) = &props.tooltip {
+            response.response.on_hover_text(tooltip);
+        }
+    }
+
+    fn render_radio_group(
+        &mut self,
+        ui: &mut Ui,
+        options: &[String],
+        initial_selected: Option<usize>,
+        horizontal: bool,
+        props: &WidgetProps,
+        events: &mut Vec<WidgetEvent>,
+    ) {
+        let id = props.id.clone().unwrap_or_default();
+        let state = self.state.entry(id.clone()).or_insert_with(|| WidgetState {
+            value: initial_selected.map(|i| i as f32).unwrap_or(-1.0),
+            ..Default::default()
+        });
+
+        let selected_idx = if state.value >= 0.0 { Some(state.value as usize) } else { None };
+
+        let render_options = |ui: &mut Ui| {
+            for (idx, option) in options.iter().enumerate() {
+                let is_selected = selected_idx == Some(idx);
+                if ui.radio(is_selected, option).clicked() {
+                    state.value = idx as f32;
+                    if !id.is_empty() {
+                        events.push(WidgetEvent::RadioChanged {
+                            id: id.clone(),
+                            index: idx,
+                            value: option.clone(),
+                        });
+                    }
+                }
+            }
+        };
+
+        if horizontal {
+            ui.horizontal(render_options);
+        } else {
+            ui.vertical(render_options);
+        }
+    }
+
+    fn render_text_area(
+        &mut self,
+        ui: &mut Ui,
+        initial_value: &str,
+        placeholder: Option<&str>,
+        rows: u32,
+        props: &WidgetProps,
+        events: &mut Vec<WidgetEvent>,
+    ) {
+        let id = props.id.clone().unwrap_or_default();
+        let state = self.state.entry(id.clone()).or_insert_with(|| WidgetState {
+            text: initial_value.to_string(),
+            ..Default::default()
+        });
+
+        let mut text_edit = egui::TextEdit::multiline(&mut state.text).desired_rows(rows as usize);
+
+        if let Some(hint) = placeholder {
+            text_edit = text_edit.hint_text(hint);
+        }
+
+        if let Some(min_width) = props.style.min_width {
+            text_edit = text_edit.desired_width(min_width);
+        }
+
+        let response = ui.add_enabled(props.enabled, text_edit);
+
+        if response.changed() && !id.is_empty() {
+            events.push(WidgetEvent::TextChanged { id: id.clone(), value: state.text.clone() });
+        }
+
+        if let Some(tooltip) = &props.tooltip {
+            response.on_hover_text(tooltip);
+        }
+    }
+
+    fn render_tabs(
+        &mut self,
+        ui: &mut Ui,
+        tabs: &[(String, Box<WidgetDef>)],
+        initial_active: usize,
+        props: &WidgetProps,
+        events: &mut Vec<WidgetEvent>,
+    ) {
+        let id = props.id.clone().unwrap_or_default();
+        let state = self.state.entry(id.clone()).or_insert_with(|| WidgetState {
+            selected: initial_active,
+            ..Default::default()
+        });
+
+        // Render tab bar
+        ui.horizontal(|ui| {
+            for (i, (label, _)) in tabs.iter().enumerate() {
+                let is_active = state.selected == i;
+                let tab_text = if is_active {
+                    egui::RichText::new(label).strong()
+                } else {
+                    egui::RichText::new(label)
+                };
+
+                if ui.selectable_label(is_active, tab_text).clicked() && !is_active {
+                    state.selected = i;
+                    if !id.is_empty() {
+                        events.push(WidgetEvent::TabChanged {
+                            id: id.clone(),
+                            index: i,
+                            label: label.clone(),
+                        });
+                    }
+                }
+            }
+        });
+
+        ui.separator();
+
+        // Render active tab content
+        if let Some((_, content)) = tabs.get(state.selected) {
+            self.render(ui, content, events);
         }
     }
 

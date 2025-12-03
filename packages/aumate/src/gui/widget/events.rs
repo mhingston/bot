@@ -32,6 +32,15 @@ pub enum WidgetEvent {
 
     /// Mouse left widget area
     MouseLeave { id: WidgetId },
+
+    /// Dropdown selection changed
+    SelectionChanged { id: WidgetId, index: usize, value: String },
+
+    /// Radio button selection changed
+    RadioChanged { id: WidgetId, index: usize, value: String },
+
+    /// Tab selection changed
+    TabChanged { id: WidgetId, index: usize, label: String },
 }
 
 impl WidgetEvent {
@@ -47,6 +56,9 @@ impl WidgetEvent {
             WidgetEvent::FocusLost { id } => id,
             WidgetEvent::MouseEnter { id } => id,
             WidgetEvent::MouseLeave { id } => id,
+            WidgetEvent::SelectionChanged { id, .. } => id,
+            WidgetEvent::RadioChanged { id, .. } => id,
+            WidgetEvent::TabChanged { id, .. } => id,
         }
     }
 
@@ -62,6 +74,9 @@ impl WidgetEvent {
             WidgetEvent::FocusLost { .. } => "focus_lost",
             WidgetEvent::MouseEnter { .. } => "mouse_enter",
             WidgetEvent::MouseLeave { .. } => "mouse_leave",
+            WidgetEvent::SelectionChanged { .. } => "selection_changed",
+            WidgetEvent::RadioChanged { .. } => "radio_changed",
+            WidgetEvent::TabChanged { .. } => "tab_changed",
         }
     }
 }

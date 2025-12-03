@@ -876,6 +876,7 @@ export {
 // ============================================================================
 
 export type {
+  TabDef,
   Widget,
   WidgetEvent,
   WidgetStyle,
@@ -886,6 +887,8 @@ export {
   // Basic widgets
   button,
   checkbox,
+  // Advanced widgets
+  dropdown,
   // App and Window classes
   GuiApp,
   GuiWindow,
@@ -899,10 +902,14 @@ export {
   // Container widgets
   panel,
   progressBar,
+  radioGroup,
   scrollArea,
   separator,
   slider,
   spacer,
+  tabs,
+  textArea,
+  textAreaWithValue,
   textInput,
   textInputWithValue,
   vbox,

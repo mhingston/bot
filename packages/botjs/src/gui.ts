@@ -461,3 +461,133 @@ export function group(title: string, child: bot.Widget): bot.Widget {
 export function image(data: Buffer, width: number, height: number): bot.Widget {
   return bot.image(data, width, height);
 }
+
+// ============================================================================
+// Advanced Widget Constructors
+// ============================================================================
+
+/**
+ * Create a dropdown select widget
+ *
+ * @param options - Array of option strings to display
+ * @returns A Widget instance
+ *
+ * @example
+ * ```typescript
+ * import { dropdown } from "@tego/botjs";
+ *
+ * // Simple dropdown
+ * const colorPicker = dropdown(["Red", "Green", "Blue"])
+ *   .withId("color")
+ *   .withPlaceholder("Select a color");
+ *
+ * // Pre-selected dropdown
+ * const sizePicker = dropdown(["Small", "Medium", "Large"])
+ *   .withId("size")
+ *   .withSelected(1); // Medium selected
+ * ```
+ */
+export function dropdown(options: string[]): bot.Widget {
+  return bot.dropdown(options);
+}
+
+/**
+ * Create a radio button group widget
+ *
+ * @param options - Array of option strings to display
+ * @returns A Widget instance
+ *
+ * @example
+ * ```typescript
+ * import { radioGroup } from "@tego/botjs";
+ *
+ * // Vertical radio group (default)
+ * const paymentMethod = radioGroup(["Credit Card", "PayPal", "Bank Transfer"])
+ *   .withId("payment");
+ *
+ * // Horizontal radio group
+ * const gender = radioGroup(["Male", "Female", "Other"])
+ *   .withId("gender")
+ *   .withHorizontal(true);
+ * ```
+ */
+export function radioGroup(options: string[]): bot.Widget {
+  return bot.radioGroup(options);
+}
+
+/**
+ * Create a multi-line text area widget
+ *
+ * @returns A Widget instance
+ *
+ * @example
+ * ```typescript
+ * import { textArea } from "@tego/botjs";
+ *
+ * // Simple text area
+ * const description = textArea()
+ *   .withId("description")
+ *   .withPlaceholder("Enter description...");
+ *
+ * // Text area with custom rows
+ * const notes = textArea()
+ *   .withId("notes")
+ *   .withRows(6);
+ * ```
+ */
+export function textArea(): bot.Widget {
+  return bot.textArea();
+}
+
+/**
+ * Create a multi-line text area widget with an initial value
+ *
+ * @param value - The initial text value
+ * @returns A Widget instance
+ *
+ * @example
+ * ```typescript
+ * import { textAreaWithValue } from "@tego/botjs";
+ *
+ * const bio = textAreaWithValue("Enter your bio here...")
+ *   .withId("bio")
+ *   .withRows(4);
+ * ```
+ */
+export function textAreaWithValue(value: string): bot.Widget {
+  return bot.textAreaWithValue(value);
+}
+
+/**
+ * Tab definition for creating tabbed interfaces
+ */
+export interface TabDef {
+  label: string;
+  content: bot.Widget;
+}
+
+/**
+ * Create a tabbed container widget
+ *
+ * @param tabDefs - Array of tab definitions with label and content
+ * @returns A Widget instance
+ *
+ * @example
+ * ```typescript
+ * import { tabs, label, vbox, button } from "@tego/botjs";
+ *
+ * // Simple tabs
+ * const tabWidget = tabs([
+ *   { label: "Home", content: label("Welcome!") },
+ *   { label: "Settings", content: vbox([
+ *     label("Settings Page"),
+ *     button("Save").withId("save"),
+ *   ])},
+ * ]).withId("main-tabs");
+ * ```
+ */
+export function tabs(tabDefs: TabDef[]): bot.Widget {
+  const labels = tabDefs.map((t) => t.label);
+  const contents = tabDefs.map((t) => t.content);
+  return bot.tabs(labels, contents);
+}

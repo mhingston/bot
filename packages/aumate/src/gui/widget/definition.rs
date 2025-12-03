@@ -115,6 +115,38 @@ pub enum WidgetDef {
 
     /// Collapsible group with title
     Group { title: Option<String>, child: Box<WidgetDef>, collapsed: bool, props: WidgetProps },
+
+    // ==================== Advanced Widgets ====================
+    /// Dropdown select widget
+    Dropdown {
+        options: Vec<String>,
+        selected: Option<usize>,
+        placeholder: Option<String>,
+        props: WidgetProps,
+    },
+
+    /// Radio button group
+    RadioGroup {
+        options: Vec<String>,
+        selected: Option<usize>,
+        horizontal: bool,
+        props: WidgetProps,
+    },
+
+    /// Multi-line text area
+    TextArea {
+        value: String,
+        placeholder: Option<String>,
+        rows: u32,
+        props: WidgetProps,
+    },
+
+    /// Tab container with multiple pages
+    Tabs {
+        tabs: Vec<(String, Box<WidgetDef>)>,
+        active: usize,
+        props: WidgetProps,
+    },
 }
 
 impl WidgetDef {
@@ -219,6 +251,40 @@ impl WidgetDef {
         }
     }
 
+    // ==================== Advanced Widget Constructors ====================
+
+    /// Create a dropdown select widget
+    pub fn dropdown(options: Vec<String>) -> Self {
+        Self::Dropdown { options, selected: None, placeholder: None, props: WidgetProps::new() }
+    }
+
+    /// Create a radio button group
+    pub fn radio_group(options: Vec<String>) -> Self {
+        Self::RadioGroup { options, selected: None, horizontal: false, props: WidgetProps::new() }
+    }
+
+    /// Create a multi-line text area
+    pub fn text_area() -> Self {
+        Self::TextArea {
+            value: String::new(),
+            placeholder: None,
+            rows: 4,
+            props: WidgetProps::new(),
+        }
+    }
+
+    /// Create a multi-line text area with initial value
+    pub fn text_area_with_value(value: impl Into<String>) -> Self {
+        Self::TextArea { value: value.into(), placeholder: None, rows: 4, props: WidgetProps::new() }
+    }
+
+    /// Create a tab container
+    pub fn tabs(tabs: Vec<(String, WidgetDef)>) -> Self {
+        let boxed_tabs: Vec<(String, Box<WidgetDef>)> =
+            tabs.into_iter().map(|(label, content)| (label, Box::new(content))).collect();
+        Self::Tabs { tabs: boxed_tabs, active: 0, props: WidgetProps::new() }
+    }
+
     // ==================== Builder Methods ====================
 
     /// Set the widget ID
@@ -305,6 +371,40 @@ impl WidgetDef {
         self
     }
 
+    /// Set selected index for dropdown or radio group
+    pub fn with_selected(mut self, index: usize) -> Self {
+        match &mut self {
+            WidgetDef::Dropdown { selected, .. } => *selected = Some(index),
+            WidgetDef::RadioGroup { selected, .. } => *selected = Some(index),
+            _ => {}
+        }
+        self
+    }
+
+    /// Set horizontal layout for radio group
+    pub fn with_horizontal(mut self, horizontal: bool) -> Self {
+        if let WidgetDef::RadioGroup { horizontal: h, .. } = &mut self {
+            *h = horizontal;
+        }
+        self
+    }
+
+    /// Set number of rows for text area
+    pub fn with_rows(mut self, rows: u32) -> Self {
+        if let WidgetDef::TextArea { rows: r, .. } = &mut self {
+            *r = rows;
+        }
+        self
+    }
+
+    /// Set active tab index for tabs widget
+    pub fn with_active(mut self, index: usize) -> Self {
+        if let WidgetDef::Tabs { active, .. } = &mut self {
+            *active = index;
+        }
+        self
+    }
+
     // ==================== Helper Methods ====================
 
     /// Get mutable reference to widget props
@@ -325,6 +425,10 @@ impl WidgetDef {
             WidgetDef::Panel { props, .. } => props,
             WidgetDef::ScrollArea { props, .. } => props,
             WidgetDef::Group { props, .. } => props,
+            WidgetDef::Dropdown { props, .. } => props,
+            WidgetDef::RadioGroup { props, .. } => props,
+            WidgetDef::TextArea { props, .. } => props,
+            WidgetDef::Tabs { props, .. } => props,
         }
     }
 
@@ -346,6 +450,10 @@ impl WidgetDef {
             WidgetDef::Panel { props, .. } => props,
             WidgetDef::ScrollArea { props, .. } => props,
             WidgetDef::Group { props, .. } => props,
+            WidgetDef::Dropdown { props, .. } => props,
+            WidgetDef::RadioGroup { props, .. } => props,
+            WidgetDef::TextArea { props, .. } => props,
+            WidgetDef::Tabs { props, .. } => props,
         }
     }
 

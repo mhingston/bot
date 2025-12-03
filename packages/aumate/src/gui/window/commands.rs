@@ -4,13 +4,15 @@ use super::config::WindowConfig;
 use crate::gui::content::Content;
 use crate::gui::effect::{PresetEffect, PresetEffectOptions};
 use crate::gui::menu_bar::{MenuBarIcon, MenuBarItem};
-use crate::gui::widget::WidgetDef;
+use crate::gui::widget::{WidgetDef, WidgetEvent};
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::sync::{Arc, RwLock};
 use winit::window::WindowId;
 
+/// Event sender for widget events from a window
+pub type WidgetEventSender = Sender<(String, WidgetEvent)>;
+
 /// Commands sent from controller to the event loop
-#[derive(Debug)]
 pub enum WindowCommand {
     /// Create a new window with the given configuration
     Create { config: WindowConfig, effect: Option<(PresetEffect, PresetEffectOptions)> },
@@ -46,6 +48,68 @@ pub enum WindowCommand {
     SetWidgetContent { id: WindowId, content: WidgetDef },
     /// Update a specific widget's state by its ID
     UpdateWidget { widget_id: String, update: WidgetUpdate },
+    /// Register an event callback sender for a window by name
+    RegisterEventCallback { window_name: String, event_sender: WidgetEventSender },
+}
+
+impl std::fmt::Debug for WindowCommand {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Create { config, effect } => {
+                f.debug_struct("Create").field("config", config).field("effect", effect).finish()
+            }
+            Self::Close { id } => f.debug_struct("Close").field("id", id).finish(),
+            Self::CloseByName { name } => {
+                f.debug_struct("CloseByName").field("name", name).finish()
+            }
+            Self::UpdateEffectOptions { id, options } => f
+                .debug_struct("UpdateEffectOptions")
+                .field("id", id)
+                .field("options", options)
+                .finish(),
+            Self::CloseAll => write!(f, "CloseAll"),
+            Self::AddMenuBarItem { item } => {
+                f.debug_struct("AddMenuBarItem").field("item", item).finish()
+            }
+            Self::RemoveMenuBarItem { id } => {
+                f.debug_struct("RemoveMenuBarItem").field("id", id).finish()
+            }
+            Self::UpdateMenuBarIcon { id, icon } => {
+                f.debug_struct("UpdateMenuBarIcon").field("id", id).field("icon", icon).finish()
+            }
+            Self::UpdateMenuBarTooltip { id, tooltip } => f
+                .debug_struct("UpdateMenuBarTooltip")
+                .field("id", id)
+                .field("tooltip", tooltip)
+                .finish(),
+            Self::UpdateContent { id, content } => {
+                f.debug_struct("UpdateContent").field("id", id).field("content", content).finish()
+            }
+            Self::StartScreenshotMode { enabled_actions } => f
+                .debug_struct("StartScreenshotMode")
+                .field("enabled_actions", enabled_actions)
+                .finish(),
+            Self::ExitScreenshotMode => write!(f, "ExitScreenshotMode"),
+            Self::ExitApplication => write!(f, "ExitApplication"),
+            Self::StartClickHelperMode => write!(f, "StartClickHelperMode"),
+            Self::ExitClickHelperMode => write!(f, "ExitClickHelperMode"),
+            Self::SetWidgetContent { id, content } => f
+                .debug_struct("SetWidgetContent")
+                .field("id", id)
+                .field("content", content)
+                .finish(),
+            Self::UpdateWidget { widget_id, update } => f
+                .debug_struct("UpdateWidget")
+                .field("widget_id", widget_id)
+                .field("update", update)
+                .finish(),
+            Self::RegisterEventCallback { window_name, .. } => f
+                .debug_struct("RegisterEventCallback")
+                .field("window_name", window_name)
+                .field("event_sender", &"<Sender>")
+                .finish(),
+        }
+    }
 }
 
 /// Sender end of the command channel

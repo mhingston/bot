@@ -30,6 +30,20 @@ struct MacOsEventLoopState {
 
 #[cfg(target_os = "macos")]
 static MACOS_EVENT_LOOP_STATE: Mutex<Option<MacOsEventLoopState>> = Mutex::new(None);
+
+/// Initialized event loop for non-blocking mode (macOS only)
+/// Uses thread_local since EventLoop isn't Send/Sync but is always used on main thread
+#[cfg(target_os = "macos")]
+struct InitializedEventLoop {
+    event_loop: EventLoop<()>,
+    app: FloatingWindowApp,
+}
+
+#[cfg(target_os = "macos")]
+thread_local! {
+    static INITIALIZED_EVENT_LOOP: std::cell::RefCell<Option<InitializedEventLoop>> = const { std::cell::RefCell::new(None) };
+}
+
 use winit::dpi::{LogicalPosition, LogicalSize, PhysicalPosition};
 use winit::event::{ElementState, MouseButton, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, ControlFlow, EventLoop};
@@ -219,8 +233,12 @@ impl FloatingWindow {
     ///
     /// This function blocks until all windows are closed or ExitApplication is sent.
     /// On macOS, this MUST be called from the main thread.
+    ///
+    /// Uses pump_events to allow periodic yielding for callback processing.
     #[cfg(target_os = "macos")]
     pub fn run_event_loop() -> Result<(), String> {
+        use winit::platform::pump_events::{EventLoopExtPumpEvents, PumpStatus};
+
         let state = MACOS_EVENT_LOOP_STATE
             .lock()
             .unwrap()
@@ -234,7 +252,7 @@ impl FloatingWindow {
             .shape(WindowShape::Rectangle)
             .build()?;
 
-        let event_loop = EventLoop::new().map_err(|e| e.to_string())?;
+        let mut event_loop = EventLoop::new().map_err(|e| e.to_string())?;
         event_loop.set_control_flow(ControlFlow::Poll);
 
         let mut app = FloatingWindowApp::new_controller(controller, state.tx, state.rx);
@@ -244,7 +262,95 @@ impl FloatingWindow {
             let _ = ready_tx.send(());
         }
 
-        event_loop.run_app(&mut app).map_err(|e| e.to_string())
+        // Use pump_events loop to allow yielding to Node.js event loop
+        loop {
+            let status = event_loop.pump_app_events(None, &mut app);
+
+            match status {
+                PumpStatus::Exit(code) => {
+                    return if code == 0 { Ok(()) } else { Err(format!("Exit code: {}", code)) };
+                }
+                PumpStatus::Continue => {
+                    // Small sleep to avoid busy-waiting and allow Node.js to process callbacks
+                    std::thread::sleep(std::time::Duration::from_millis(1));
+                }
+            }
+        }
+    }
+
+    /// Initialize the event loop for non-blocking mode (macOS only).
+    ///
+    /// Call this once before using `run_event_loop_once()`.
+    /// Returns an error if already initialized.
+    #[cfg(target_os = "macos")]
+    pub fn init_event_loop() -> Result<(), String> {
+        INITIALIZED_EVENT_LOOP.with(|cell| {
+            let mut initialized = cell.borrow_mut();
+            if initialized.is_some() {
+                return Err("Event loop already initialized".to_string());
+            }
+
+            // Take the state from MACOS_EVENT_LOOP_STATE
+            let state = MACOS_EVENT_LOOP_STATE
+                .lock()
+                .unwrap()
+                .take()
+                .ok_or("Event loop state not set (call spawn_controller first)")?;
+
+            let controller = FloatingWindow::builder()
+                .title("aumate-controller")
+                .size(1, 1)
+                .position(-10000.0, -10000.0)
+                .shape(WindowShape::Rectangle)
+                .build()?;
+
+            let event_loop = EventLoop::new().map_err(|e| e.to_string())?;
+            event_loop.set_control_flow(ControlFlow::Poll);
+
+            let app = FloatingWindowApp::new_controller(controller, state.tx, state.rx);
+
+            // Signal that we're done if the handle thread is waiting
+            if let Some(ready_tx) = state.ready_tx {
+                let _ = ready_tx.send(());
+            }
+
+            *initialized = Some(InitializedEventLoop { event_loop, app });
+
+            Ok(())
+        })
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    pub fn init_event_loop() -> Result<(), String> {
+        Ok(())
+    }
+
+    /// Pump the event loop once (non-blocking).
+    ///
+    /// Returns `true` if the app should continue running, `false` if it should exit.
+    /// You must call `init_event_loop()` first.
+    #[cfg(target_os = "macos")]
+    pub fn run_event_loop_once() -> Result<bool, String> {
+        use winit::platform::pump_events::{EventLoopExtPumpEvents, PumpStatus};
+
+        INITIALIZED_EVENT_LOOP.with(|cell| {
+            let mut guard = cell.borrow_mut();
+            let state = guard.as_mut().ok_or("Event loop not initialized (call init_event_loop first)")?;
+
+            let status = state.event_loop.pump_app_events(None, &mut state.app);
+
+            match status {
+                PumpStatus::Exit(_) => Ok(false),
+                PumpStatus::Continue => Ok(true),
+            }
+        })
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    pub fn run_event_loop_once() -> Result<bool, String> {
+        // On non-macOS, the event loop runs in a background thread
+        // This is effectively a no-op but allows cross-platform code
+        Ok(true)
     }
 
     /// Run the event loop on the current thread (no-op on non-macOS).
@@ -710,6 +816,8 @@ struct FloatingWindowApp {
     controller_window_id: Option<WindowId>,
     /// Pending configs to create (from controller commands)
     pending_configs: Vec<(WindowConfig, Option<(PresetEffect, PresetEffectOptions)>)>,
+    /// Event senders for widget events by window name
+    event_senders: std::collections::HashMap<String, super::commands::WidgetEventSender>,
     /// Menu bar manager for tray icons
     menu_bar_manager: MenuBarManager,
     /// Screenshot mode state (if active)
@@ -734,6 +842,7 @@ impl FloatingWindowApp {
             registry: WindowRegistry::new(),
             controller_window_id: None,
             pending_configs: Vec::new(),
+            event_senders: std::collections::HashMap::new(),
             menu_bar_manager: MenuBarManager::new(),
             screenshot_state: None,
             pending_screenshot_start: None,
@@ -753,6 +862,7 @@ impl FloatingWindowApp {
             registry: WindowRegistry::new(),
             controller_window_id: None,
             pending_configs: Vec::new(),
+            event_senders: std::collections::HashMap::new(),
             menu_bar_manager: MenuBarManager::new(),
             screenshot_state: None,
             pending_screenshot_start: None,
@@ -776,6 +886,7 @@ impl FloatingWindowApp {
             registry: WindowRegistry::new(),
             controller_window_id: None,
             pending_configs: Vec::new(),
+            event_senders: std::collections::HashMap::new(),
             menu_bar_manager: MenuBarManager::new(),
             screenshot_state: None,
             pending_screenshot_start: None,
@@ -929,6 +1040,10 @@ impl FloatingWindowApp {
                         for state in self.windows.values_mut() {
                             state.floating_window.update_widget(&widget_id, &update);
                         }
+                    }
+                    WindowCommand::RegisterEventCallback { window_name, event_sender } => {
+                        log::info!("Registering event callback for window: {}", window_name);
+                        self.event_senders.insert(window_name, event_sender);
                     }
                 }
             }
@@ -1599,9 +1714,28 @@ impl ApplicationHandler for FloatingWindowApp {
                     }
                 });
 
-                // Log widget events for debugging (will be dispatched to JS in future)
-                for event in &widget_events {
-                    log::debug!("Widget event: {:?}", event);
+                // Dispatch widget events to registered callback (if any)
+                if !widget_events.is_empty() {
+                    let window_name = state
+                        .floating_window
+                        .config
+                        .title
+                        .clone()
+                        .unwrap_or_default();
+
+                    if let Some(sender) = self.event_senders.get(&window_name) {
+                        for event in widget_events {
+                            log::debug!("Dispatching widget event: {:?}", event);
+                            if sender.send((window_name.clone(), event)).is_err() {
+                                log::warn!("Event receiver dropped for window: {}", window_name);
+                            }
+                        }
+                    } else {
+                        // Just log if no callback registered
+                        for event in &widget_events {
+                            log::debug!("Widget event (no callback): {:?}", event);
+                        }
+                    }
                 }
 
                 state.egui_state.handle_platform_output(&state.window, full_output.platform_output);

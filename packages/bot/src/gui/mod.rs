@@ -8,11 +8,12 @@
 
 use aumate::gui::prelude::*;
 use aumate::gui::widget::WidgetDef;
-use aumate::gui::window::commands::{CommandSender, WindowCommand};
+use aumate::gui::window::commands::{CommandSender, WidgetEventSender, WindowCommand};
 use napi::bindgen_prelude::*;
 use napi::threadsafe_function::ThreadsafeFunction;
 use napi_derive::napi;
 use std::collections::HashMap;
+use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 
@@ -24,8 +25,14 @@ struct GuiState {
     sender: CommandSender,
     handle: Option<JoinHandle<()>>,
     next_window_id: u64,
-    #[allow(dead_code)]
-    window_callbacks: HashMap<u64, Arc<ThreadsafeFunction<JsWidgetEvent>>>,
+    /// Callbacks by window name
+    window_callbacks: HashMap<String, Arc<ThreadsafeFunction<JsWidgetEvent>>>,
+    /// Event receiver for widget events from GUI thread
+    event_receiver: Option<mpsc::Receiver<(String, WidgetEvent)>>,
+    /// Event sender to pass to GUI thread
+    event_sender: Option<WidgetEventSender>,
+    /// Queue of pending events for polling API
+    pending_events: Vec<(String, WidgetEvent)>,
 }
 
 static GUI_STATE: once_cell::sync::Lazy<Mutex<Option<GuiState>>> =
@@ -67,11 +74,17 @@ impl GuiApp {
 
         let (sender, handle) = FloatingWindow::spawn_controller().map_err(Error::from_reason)?;
 
+        // Create event channel for widget events
+        let (event_tx, event_rx) = mpsc::channel();
+
         *state = Some(GuiState {
             sender,
             handle: Some(handle),
             next_window_id: 1,
             window_callbacks: HashMap::new(),
+            event_receiver: Some(event_rx),
+            event_sender: Some(event_tx),
+            pending_events: Vec::new(),
         });
 
         Ok(GuiApp {})
@@ -88,9 +101,12 @@ impl GuiApp {
     ///
     /// On macOS, this runs the event loop on the current (main) thread.
     /// On other platforms, the event loop runs in a background thread.
+    ///
+    /// **Note**: For event callbacks to work, use `runAsync()` instead which
+    /// integrates with Node.js's event loop.
     #[napi]
     pub fn run(&self) -> Result<()> {
-        // On macOS, run the event loop on the main thread
+        // On macOS, run the event loop on the main thread (blocking)
         FloatingWindow::run_event_loop().map_err(Error::from_reason)?;
 
         // Wait for the handle thread to finish
@@ -102,7 +118,66 @@ impl GuiApp {
         if let Some(h) = handle {
             let _ = h.join();
         }
+
         Ok(())
+    }
+
+    /// Initialize the event loop for non-blocking mode.
+    ///
+    /// Call this once before using `runOnce()`. This sets up the GUI
+    /// event loop for incremental pumping.
+    #[napi]
+    pub fn init(&self) -> Result<()> {
+        FloatingWindow::init_event_loop().map_err(Error::from_reason)
+    }
+
+    /// Pump the GUI event loop once (non-blocking).
+    ///
+    /// Returns `true` if the app should continue running, `false` if it should exit.
+    /// Call `init()` once before using this method.
+    ///
+    /// Usage pattern:
+    /// ```javascript
+    /// app.init();
+    /// function pump() {
+    ///   if (app.runOnce()) {
+    ///     const events = app.pollEvents();
+    ///     events.forEach(handleEvent);
+    ///     setImmediate(pump);
+    ///   }
+    /// }
+    /// pump();
+    /// ```
+    #[napi]
+    pub fn run_once(&self) -> Result<bool> {
+        FloatingWindow::run_event_loop_once().map_err(Error::from_reason)
+    }
+
+    /// Poll for pending widget events.
+    ///
+    /// This drains the event receiver and returns all pending events.
+    /// Call this after `runOnce()` to get events that occurred.
+    #[napi]
+    pub fn poll_events(&self) -> Result<Vec<JsWidgetEvent>> {
+        let mut events = Vec::new();
+
+        let mut state = GUI_STATE.lock().map_err(|e| Error::from_reason(e.to_string()))?;
+        if let Some(ref mut s) = *state {
+            // First, drain any events from the receiver into pending_events
+            if let Some(ref rx) = s.event_receiver {
+                while let Ok((window_name, event)) = rx.try_recv() {
+                    s.pending_events.push((window_name, event));
+                }
+            }
+
+            // Now convert pending events to JS events
+            for (_window_name, event) in s.pending_events.drain(..) {
+                let js_event: JsWidgetEvent = event.into();
+                events.push(js_event);
+            }
+        }
+
+        Ok(events)
     }
 
     /// Exit the GUI application and close all windows.
@@ -230,6 +305,27 @@ impl From<WidgetEvent> for JsWidgetEvent {
                 checked: None,
                 number_value: None,
             },
+            WidgetEvent::SelectionChanged { id, index, value } => JsWidgetEvent {
+                event_type: "selection_changed".to_string(),
+                widget_id: id,
+                value: Some(value),
+                checked: None,
+                number_value: Some(index as f64),
+            },
+            WidgetEvent::RadioChanged { id, index, value } => JsWidgetEvent {
+                event_type: "radio_changed".to_string(),
+                widget_id: id,
+                value: Some(value),
+                checked: None,
+                number_value: Some(index as f64),
+            },
+            WidgetEvent::TabChanged { id, index, label } => JsWidgetEvent {
+                event_type: "tab_changed".to_string(),
+                widget_id: id,
+                value: Some(label),
+                checked: None,
+                number_value: Some(index as f64),
+            },
         }
     }
 }
@@ -248,6 +344,8 @@ pub struct GuiWindow {
     config: WindowConfig,
     content: Option<WidgetDef>,
     shown: bool,
+    /// Whether this window has an event callback registered
+    has_event_callback: bool,
 }
 
 #[napi]
@@ -276,7 +374,7 @@ impl GuiWindow {
             ..Default::default()
         };
 
-        Ok(GuiWindow { window_id, config, content: None, shown: false })
+        Ok(GuiWindow { window_id, config, content: None, shown: false, has_event_callback: false })
     }
 
     /// Set the widget content for this window.
@@ -293,8 +391,8 @@ impl GuiWindow {
 
     /// Register a callback for widget events.
     ///
-    /// Note: Event callbacks are not yet implemented. This is a placeholder
-    /// for future implementation.
+    /// Events are dispatched when users interact with widgets (button clicks,
+    /// text changes, checkbox toggles, etc.).
     ///
     /// @example
     /// ```javascript
@@ -311,10 +409,14 @@ impl GuiWindow {
             JsWidgetEvent,
         >,
     ) -> Result<&Self> {
+        let window_name = self.config.title.clone().unwrap_or_default();
+
         let mut state = GUI_STATE.lock().map_err(|e| Error::from_reason(e.to_string()))?;
         if let Some(ref mut s) = *state {
-            s.window_callbacks.insert(self.window_id, Arc::new(callback));
+            s.window_callbacks.insert(window_name, Arc::new(callback));
         }
+
+        self.has_event_callback = true;
         Ok(self)
     }
 
@@ -332,6 +434,19 @@ impl GuiWindow {
         let mut config = self.config.clone();
         if let Some(ref content) = self.content {
             config.widget_content = Some(content.clone());
+        }
+
+        // Always register the event sender so events can be polled
+        // This supports both callback-based (onEvent) and polling-based (pollEvents) approaches
+        if let Some(ref event_sender) = state.event_sender {
+            let window_name = self.config.title.clone().unwrap_or_default();
+            state
+                .sender
+                .send(WindowCommand::RegisterEventCallback {
+                    window_name,
+                    event_sender: event_sender.clone(),
+                })
+                .map_err(|e| Error::from_reason(e.to_string()))?;
         }
 
         state
@@ -577,6 +692,30 @@ impl Widget {
         Widget { inner: self.inner.clone().with_collapsed(collapsed) }
     }
 
+    /// Set selected index (for dropdown, radio group)
+    #[napi]
+    pub fn with_selected(&self, index: u32) -> Widget {
+        Widget { inner: self.inner.clone().with_selected(index as usize) }
+    }
+
+    /// Set horizontal layout (for radio group)
+    #[napi]
+    pub fn with_horizontal(&self, horizontal: bool) -> Widget {
+        Widget { inner: self.inner.clone().with_horizontal(horizontal) }
+    }
+
+    /// Set number of rows (for text area)
+    #[napi]
+    pub fn with_rows(&self, rows: u32) -> Widget {
+        Widget { inner: self.inner.clone().with_rows(rows) }
+    }
+
+    /// Set the active tab index for tabs widget
+    #[napi]
+    pub fn with_active(&self, index: u32) -> Widget {
+        Widget { inner: self.inner.clone().with_active(index as usize) }
+    }
+
     /// Get the inner WidgetDef (for internal use)
     pub(crate) fn into_inner(self) -> WidgetDef {
         self.inner
@@ -704,4 +843,45 @@ pub fn group(title: String, child: &Widget) -> Widget {
 #[napi]
 pub fn image(data: Buffer, width: u32, height: u32) -> Widget {
     Widget::from(WidgetDef::image(data.to_vec(), width, height))
+}
+
+// ============================================================================
+// Advanced Widget Constructors
+// ============================================================================
+
+/// Create a dropdown select widget
+#[napi]
+pub fn dropdown(options: Vec<String>) -> Widget {
+    Widget::from(WidgetDef::dropdown(options))
+}
+
+/// Create a radio button group
+#[napi]
+pub fn radio_group(options: Vec<String>) -> Widget {
+    Widget::from(WidgetDef::radio_group(options))
+}
+
+/// Create a multi-line text area
+#[napi]
+pub fn text_area() -> Widget {
+    Widget::from(WidgetDef::text_area())
+}
+
+/// Create a multi-line text area with initial value
+#[napi]
+pub fn text_area_with_value(value: String) -> Widget {
+    Widget::from(WidgetDef::text_area_with_value(value))
+}
+
+/// Create a tabbed container widget
+///
+/// Takes separate arrays of labels and content widgets. Each label[i] corresponds to content[i].
+#[napi]
+pub fn tabs(labels: Vec<String>, contents: Vec<&Widget>) -> Widget {
+    let tabs: Vec<(String, WidgetDef)> = labels
+        .into_iter()
+        .zip(contents)
+        .map(|(label, content)| (label, content.inner.clone()))
+        .collect();
+    Widget::from(WidgetDef::tabs(tabs))
 }
