@@ -26,7 +26,6 @@ egui-winit = "0.33.2"
 egui-wgpu = "0.33.2"
 
 # Rendering backend
-softbuffer = "0.4.6"
 wgpu = "27.0.1"
 
 # Image processing

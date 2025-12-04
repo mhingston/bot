@@ -7,7 +7,6 @@
 - **Technology Selection**:
   - `egui` - Immediate mode GUI framework, suitable for procedural development
   - `winit` - Cross-platform window management
-  - `softbuffer` - CPU rendering backend (lightweight)
 - **Use Cases**: Basic UI components, simple animations, floating window basics
 
 ### Phase 2: egui + wgpu (Advanced Rendering and Effects)
@@ -1794,9 +1793,6 @@ raw-window-handle = "0.6"  # Latest version
 # UI framework
 egui = "0.28"  # Latest version
 egui-winit = "0.28"  # Latest version
-
-# Rendering backend
-softbuffer = "0.5"  # Latest version, CPU rendering
 
 # Image processing
 image = "0.25"  # Latest version
