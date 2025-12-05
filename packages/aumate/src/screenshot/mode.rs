@@ -13,8 +13,8 @@ use super::options_panel::OptionsPanel;
 use super::registry::{ActionRegistry, create_default_registry};
 use super::selection::Selection;
 use super::settings::ScreenshotSettings;
-use super::stroke::Annotations;
-use super::ui::{AnnotatePopup, SettingsButton, SettingsToolbar};
+use super::stroke::{Annotations, StrokeSettings};
+use super::ui::{SettingsButton, SettingsToolbar};
 use crate::error::{AumateError, Result};
 
 /// Screenshot mode state
@@ -88,8 +88,8 @@ pub struct ScreenshotMode {
     hovered_button: Option<String>,
     /// Whether annotation mode is active
     annotate_active: bool,
-    /// Annotation popup for stroke settings
-    annotate_popup: AnnotatePopup,
+    /// Stroke settings for drawing (synced from options panel)
+    stroke_settings: StrokeSettings,
     /// Annotations drawn on screenshot
     annotations: Annotations,
     /// Last cursor position (for drawing)
@@ -163,7 +163,7 @@ impl ScreenshotMode {
             screen_size,
             hovered_button: None,
             annotate_active: false,
-            annotate_popup: AnnotatePopup::new(),
+            stroke_settings: StrokeSettings::default(),
             annotations: Annotations::new(),
             last_cursor_pos: None,
             hovered_handle: None,
@@ -206,6 +206,21 @@ impl ScreenshotMode {
         self.screen_size = (width, height);
     }
 
+    /// Sync stroke settings from options panel
+    fn sync_stroke_settings(&mut self) {
+        if let Some(ref panel) = self.options_panel {
+            self.stroke_settings.color = panel.common.color;
+            self.stroke_settings.width = panel.common.stroke_width;
+            // Map line style
+            use super::options_panel::LineStyle;
+            self.stroke_settings.style = match panel.common.line_style {
+                LineStyle::Solid => super::stroke::StrokeStyle::Solid,
+                LineStyle::Dashed => super::stroke::StrokeStyle::Dashed,
+                LineStyle::Dotted => super::stroke::StrokeStyle::Dotted,
+            };
+        }
+    }
+
     /// Get currently hovered button
     pub fn hovered_button(&self) -> Option<&str> {
         self.hovered_button.as_deref()
@@ -243,16 +258,6 @@ impl ScreenshotMode {
                         self.state = ModeState::Selecting;
                     }
                     ModeState::ToolbarVisible => {
-                        // Check if clicking inside the popup area (egui handles its own clicks)
-                        if self.annotate_popup.visible {
-                            if let Some(pos) = self.last_cursor_pos {
-                                // Check if inside popup (approximate bounds)
-                                if self.annotate_popup.contains(egui::pos2(pos.0, pos.1)) {
-                                    return None; // Let popup handle the click
-                                }
-                            }
-                        }
-
                         // Check if clicking on a resize handle
                         if let Some(pos) = self.last_cursor_pos {
                             if let Some(handle) = self.handle_at_pos(pos) {
@@ -283,15 +288,12 @@ impl ScreenshotMode {
                             }
                         }
 
-                        // Check if clicking on options panel
-                        if let Some(ref mut panel) = self.options_panel {
+                        // Check if clicking on options panel (egui widgets handle interaction)
+                        if let Some(ref panel) = self.options_panel {
                             if let Some(pos) = self.last_cursor_pos {
                                 let click_pos = egui::pos2(pos.0, pos.1);
-                                if panel.handle_click(click_pos) {
-                                    // Options were changed, update annotate popup settings
-                                    self.annotate_popup.settings.color = panel.common.color;
-                                    self.annotate_popup.settings.width = panel.common.stroke_width;
-                                    return None;
+                                if panel.contains(click_pos) {
+                                    return None; // Let egui handle the click
                                 }
                             }
                         }
@@ -301,6 +303,9 @@ impl ScreenshotMode {
                         if self.registry.has_active_drawing_tool() {
                             if let Some(pos) = self.last_cursor_pos {
                                 if self.is_inside_selection(pos) {
+                                    // Sync stroke settings from options panel
+                                    self.sync_stroke_settings();
+
                                     // Record snapshot before starting draw for undo
                                     let snapshot = self.annotations.snapshot();
                                     self.history.record(snapshot);
@@ -309,7 +314,7 @@ impl ScreenshotMode {
                                     let selection_bounds = self.selection.bounds();
                                     let mut draw_ctx = DrawingContext::new(
                                         &mut self.annotations,
-                                        &self.annotate_popup.settings,
+                                        &self.stroke_settings,
                                         selection_bounds,
                                         self.scale_factor as f32,
                                     );
@@ -317,11 +322,6 @@ impl ScreenshotMode {
                                     return None;
                                 }
                             }
-                        }
-
-                        // Close popup if clicking outside
-                        if self.annotate_popup.visible {
-                            self.annotate_popup.hide();
                         }
 
                         // Click outside action bar, options panel, and selection - reset
@@ -347,7 +347,6 @@ impl ScreenshotMode {
                                 self.action_bar = None;
                                 self.options_panel = None;
                                 self.annotate_active = false;
-                                self.annotate_popup.hide();
                                 self.state = ModeState::Idle;
                             }
                         }
@@ -380,7 +379,7 @@ impl ScreenshotMode {
                     let selection_bounds = self.selection.bounds();
                     let mut draw_ctx = DrawingContext::new(
                         &mut self.annotations,
-                        &self.annotate_popup.settings,
+                        &self.stroke_settings,
                         selection_bounds,
                         self.scale_factor as f32,
                     );
@@ -540,7 +539,7 @@ impl ScreenshotMode {
                     let selection_bounds = self.selection.bounds();
                     let mut draw_ctx = DrawingContext::new(
                         &mut self.annotations,
-                        &self.annotate_popup.settings,
+                        &self.stroke_settings,
                         selection_bounds,
                         self.scale_factor as f32,
                     );
@@ -614,21 +613,9 @@ impl ScreenshotMode {
                 // Update annotate_active based on registry state
                 self.annotate_active = self.registry.is_tool_active("annotate");
 
-                // Handle annotate popup visibility
-                if id == "annotate" {
-                    if self.annotate_active {
-                        // Find annotate button position from action bar
-                        if let Some(ref bar) = self.action_bar {
-                            // Position popup above the action bar
-                            let bar_pos = bar.position();
-                            self.annotate_popup.show(egui::pos2(bar_pos.x, bar_pos.y - 150.0));
-                        }
-                    } else {
-                        self.annotate_popup.hide();
-                    }
-                } else if !self.annotate_active {
-                    // If another tool was activated, hide annotate popup
-                    self.annotate_popup.hide();
+                // Sync stroke settings when activating annotate tool
+                if id == "annotate" && self.annotate_active {
+                    self.sync_stroke_settings();
                 }
             }
             _ => {}
@@ -741,9 +728,6 @@ impl ScreenshotMode {
                 }
             },
         );
-
-        // Render annotation popup (outside the Area so it's on top)
-        self.annotate_popup.render(ctx);
 
         // Render settings toolbar (top-left, above selection) with coords and resolution
         if self.state == ModeState::ToolbarVisible {
