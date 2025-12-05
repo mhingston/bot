@@ -115,6 +115,7 @@ stt = [
     "dep:sha2",
 ]
 # OCR feature (Candle-based TrOCR)
+# Note: On macOS, also enable ml-metal for GPU acceleration
 ocr = [
     "ml",
     "screen",
@@ -122,6 +123,8 @@ ocr = [
     "dep:reqwest",
     "dep:futures-util",
 ]
+# OCR with Metal acceleration (macOS) - convenience alias
+ocr-metal = ["ocr", "ml-metal"]
 # Click Helper feature
 click_helper = [
     "gui",

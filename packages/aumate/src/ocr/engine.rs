@@ -378,9 +378,13 @@ impl OcrEngine {
                 .map_err(|e| AumateError::Ml(format!("Failed to squeeze: {}", e)))?;
 
             // Greedy decoding: take argmax
+            // last_logits has shape [1, vocab_size], argmax on dim 1 gives [1]
+            // We need to squeeze or index to get a scalar
             let next_token = last_logits
-                .argmax(1)
+                .argmax(candle_core::D::Minus1)
                 .map_err(|e| AumateError::Ml(format!("Failed to argmax: {}", e)))?
+                .squeeze(0)
+                .map_err(|e| AumateError::Ml(format!("Failed to squeeze argmax result: {}", e)))?
                 .to_scalar::<u32>()
                 .map_err(|e| AumateError::Ml(format!("Failed to get scalar: {}", e)))?;
 
