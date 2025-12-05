@@ -283,6 +283,19 @@ impl ScreenshotMode {
                             }
                         }
 
+                        // Check if clicking on options panel
+                        if let Some(ref mut panel) = self.options_panel {
+                            if let Some(pos) = self.last_cursor_pos {
+                                let click_pos = egui::pos2(pos.0, pos.1);
+                                if panel.handle_click(click_pos) {
+                                    // Options were changed, update annotate popup settings
+                                    self.annotate_popup.settings.color = panel.common.color;
+                                    self.annotate_popup.settings.width = panel.common.stroke_width;
+                                    return None;
+                                }
+                            }
+                        }
+
                         // If any drawing tool is active and clicking in selection area, start drawing
                         // Use the new action-based drawing lifecycle
                         if self.registry.has_active_drawing_tool() {
@@ -311,20 +324,25 @@ impl ScreenshotMode {
                             self.annotate_popup.hide();
                         }
 
-                        // Click outside action bar and selection - reset
+                        // Click outside action bar, options panel, and selection - reset
                         if !self.is_inside_selection(self.last_cursor_pos.unwrap_or((0.0, 0.0))) {
+                            let click_pos = egui::pos2(
+                                self.last_cursor_pos.unwrap_or((0.0, 0.0)).0,
+                                self.last_cursor_pos.unwrap_or((0.0, 0.0)).1,
+                            );
                             // Check if clicking inside action bar
                             let inside_action_bar = self
                                 .action_bar
                                 .as_ref()
-                                .map(|bar| {
-                                    bar.contains(egui::pos2(
-                                        self.last_cursor_pos.unwrap_or((0.0, 0.0)).0,
-                                        self.last_cursor_pos.unwrap_or((0.0, 0.0)).1,
-                                    ))
-                                })
+                                .map(|bar| bar.contains(click_pos))
                                 .unwrap_or(false);
-                            if !inside_action_bar {
+                            // Check if clicking inside options panel
+                            let inside_options_panel = self
+                                .options_panel
+                                .as_ref()
+                                .map(|panel| panel.contains(click_pos))
+                                .unwrap_or(false);
+                            if !inside_action_bar && !inside_options_panel {
                                 self.selection.reset();
                                 self.action_bar = None;
                                 self.options_panel = None;
@@ -349,6 +367,10 @@ impl ScreenshotMode {
                 if self.action_bar_dragging {
                     if let Some(ref mut bar) = self.action_bar {
                         bar.stop_drag();
+                        // Update options panel position to follow action bar
+                        if let Some(ref mut panel) = self.options_panel {
+                            panel.update_position(bar.position(), bar.size());
+                        }
                     }
                     self.action_bar_dragging = false;
                 }
@@ -501,6 +523,10 @@ impl ScreenshotMode {
                     if let Some(ref mut bar) = self.action_bar {
                         let screen_size = egui::vec2(self.screen_size.0, self.screen_size.1);
                         bar.update_drag(egui::pos2(pos.0, pos.1), screen_size);
+                        // Update options panel position to follow action bar during drag
+                        if let Some(ref mut panel) = self.options_panel {
+                            panel.update_position(bar.position(), bar.size());
+                        }
                     }
                     return;
                 }
