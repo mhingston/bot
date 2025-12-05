@@ -171,6 +171,8 @@ pub struct ControllerState {
     clipboard_needs_refresh: bool,
     /// Entry count for current filter
     clipboard_entry_count: usize,
+    /// Image preview texture cache (entry_id -> texture)
+    clipboard_image_cache: HashMap<String, TextureHandle>,
     // ==================== Speech to Text State ====================
     #[cfg(feature = "stt")]
     /// STT configuration
@@ -258,6 +260,7 @@ impl ControllerState {
             clipboard_selected: None,
             clipboard_needs_refresh: true,
             clipboard_entry_count: 0,
+            clipboard_image_cache: HashMap::new(),
             // STT state
             #[cfg(feature = "stt")]
             stt_config: SttConfig::load().unwrap_or_default(),
@@ -885,6 +888,53 @@ impl ControllerState {
                                     }
                                 });
 
+                                // Image preview for image entries
+                                if let crate::clipboard_manager::ClipboardContent::Image {
+                                    data,
+                                    width,
+                                    height,
+                                } = &entry.content
+                                {
+                                    // Check if texture is already cached
+                                    let texture_id = format!("clipboard_img_{}", entry.id);
+                                    if !self.clipboard_image_cache.contains_key(&entry.id) {
+                                        // Decode PNG and create texture
+                                        if let Ok(img) = image::load_from_memory(data) {
+                                            let rgba = img.to_rgba8();
+                                            let (w, h) = rgba.dimensions();
+                                            let texture = ui.ctx().load_texture(
+                                                &texture_id,
+                                                egui::ColorImage::from_rgba_unmultiplied(
+                                                    [w as usize, h as usize],
+                                                    &rgba.into_raw(),
+                                                ),
+                                                egui::TextureOptions::LINEAR,
+                                            );
+                                            self.clipboard_image_cache
+                                                .insert(entry.id.clone(), texture);
+                                        }
+                                    }
+
+                                    // Display the image preview with max width 400px
+                                    if let Some(texture) = self.clipboard_image_cache.get(&entry.id)
+                                    {
+                                        const MAX_PREVIEW_WIDTH: f32 = 400.0;
+                                        let aspect_ratio = *height as f32 / *width as f32;
+                                        let display_width = (*width as f32).min(MAX_PREVIEW_WIDTH);
+                                        let display_height = display_width * aspect_ratio;
+
+                                        ui.add_space(4.0);
+                                        ui.add(
+                                            egui::Image::new(texture)
+                                                .fit_to_exact_size(egui::vec2(
+                                                    display_width,
+                                                    display_height,
+                                                ))
+                                                .corner_radius(4.0),
+                                        );
+                                    }
+                                }
+
                                 // Action buttons (when selected)
                                 if is_selected {
                                     ui.horizontal(|ui| {
@@ -977,6 +1027,8 @@ impl ControllerState {
                 } else {
                     log::info!("Cleared all clipboard entries");
                     self.clipboard_needs_refresh = true;
+                    // Clear image cache
+                    self.clipboard_image_cache.clear();
                 }
             }
         }
@@ -1004,6 +1056,8 @@ impl ControllerState {
                         }
                         self.clipboard_selected = None;
                         self.clipboard_needs_refresh = true;
+                        // Remove from image cache if present
+                        self.clipboard_image_cache.remove(&id);
                     }
                 }
             }
