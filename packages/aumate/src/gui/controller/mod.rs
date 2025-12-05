@@ -117,6 +117,25 @@ impl ControllerState {
         // Ensure features are initialized
         self.ensure_initialized(ctx);
 
+        // Draw background image if set (behind everything using layer painter)
+        if let Some(Content::Image { data, width, height, .. }) = &self.controller_background {
+            #[allow(deprecated)]
+            let screen_rect = ctx.input(|i| i.screen_rect());
+            let texture = ctx.load_texture(
+                "controller_bg",
+                egui::ColorImage::from_rgba_unmultiplied([*width as usize, *height as usize], data),
+                egui::TextureOptions::LINEAR,
+            );
+            // Use layer painter at Background level
+            let painter = ctx.layer_painter(egui::LayerId::background());
+            painter.image(
+                texture.id(),
+                screen_rect,
+                egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
+                egui::Color32::WHITE,
+            );
+        }
+
         // Define frame styles
         let title_frame = egui::Frame::new()
             .fill(egui::Color32::from_rgba_unmultiplied(20, 20, 25, 240))

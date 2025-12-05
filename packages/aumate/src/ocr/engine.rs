@@ -371,17 +371,24 @@ impl OcrEngine {
         let max_tokens = 512;
 
         // Check if using KV cache (default false for TrOCR base models)
+        // Note: Candle TrOCR caches unconditionally, so when use_cache=false,
+        // we must reset cache before each forward pass
         let use_cache = self.use_cache;
 
         // Autoregressive decoding loop
         for i in 0..max_tokens {
             // When using cache, only pass the new token after first iteration
-            // When not using cache, pass the full sequence each time
+            // When not using cache, reset cache and pass full sequence each time
             let (input_tokens, past_kv_len) = if use_cache && i > 0 {
                 // With cache: only pass the last token
                 (vec![*tokens.last().unwrap()], i)
             } else {
-                // Without cache: pass full sequence, past_kv_len=0
+                // Without cache: reset cache each iteration to avoid stale state
+                // (Candle TrOCR caches unconditionally regardless of config)
+                if !use_cache && i > 0 {
+                    model.reset_kv_cache();
+                }
+                // Pass full sequence, past_kv_len=0
                 (tokens.clone(), 0)
             };
 
