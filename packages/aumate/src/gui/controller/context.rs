@@ -1,5 +1,6 @@
 //! Controller context for dependency injection
 
+use crate::gui::content::Content;
 use crate::gui::window::{CommandSender, WindowRegistry};
 use egui::TextureHandle;
 use std::collections::HashMap;
@@ -17,12 +18,25 @@ pub struct ControllerContext<'a> {
 
     /// egui context for repaint requests and other UI operations
     pub egui_ctx: &'a egui::Context,
+
+    /// Controller background image (shared state)
+    pub controller_background: &'a mut Option<Content>,
 }
 
 impl<'a> ControllerContext<'a> {
     /// Request a UI repaint
     pub fn request_repaint(&self) {
         self.egui_ctx.request_repaint();
+    }
+
+    /// Check if controller has a background image
+    pub fn has_controller_background(&self) -> bool {
+        self.controller_background.is_some()
+    }
+
+    /// Set the controller background image
+    pub fn set_controller_background(&mut self, content: Option<Content>) {
+        *self.controller_background = content;
     }
 
     /// Get or create a cached texture

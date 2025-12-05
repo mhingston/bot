@@ -73,6 +73,8 @@ pub struct OcrEngine {
     variant: Option<OcrModelVariant>,
     /// Image size for preprocessing
     image_size: usize,
+    /// Whether to use KV cache for decoding
+    use_cache: bool,
 }
 
 impl OcrEngine {
@@ -85,7 +87,8 @@ impl OcrEngine {
             device,
             model_path: None,
             variant: None,
-            image_size: 384, // Default TrOCR image size
+            image_size: 384,  // Default TrOCR image size
+            use_cache: false, // Default to no cache (TrOCR base models don't use it)
         }
     }
 
@@ -99,6 +102,7 @@ impl OcrEngine {
             model_path: None,
             variant: None,
             image_size: 384,
+            use_cache: false,
         })
     }
 
@@ -201,11 +205,18 @@ impl OcrEngine {
         let model = trocr::TrOCRModel::new(&encoder_config, &decoder_config, vb)
             .map_err(|e| AumateError::Other(format!("Failed to create model: {}", e)))?;
 
+        // Store use_cache setting from config (default false for TrOCR)
+        self.use_cache = config.decoder.use_cache.unwrap_or(false);
+
         self.model = Some(TrOCRModel { model });
         self.tokenizer = Some(tokenizer);
         self.model_path = Some(model_dir.to_path_buf());
 
-        log::info!("TrOCR model loaded successfully on {:?}", self.device);
+        log::info!(
+            "TrOCR model loaded successfully on {:?} (use_cache={})",
+            self.device,
+            self.use_cache
+        );
         Ok(())
     }
 
@@ -359,14 +370,27 @@ impl OcrEngine {
         let mut tokens = vec![bos_token_id];
         let max_tokens = 512;
 
+        // Check if using KV cache (default false for TrOCR base models)
+        let use_cache = self.use_cache;
+
         // Autoregressive decoding loop
         for i in 0..max_tokens {
-            let tokens_tensor = Tensor::new(tokens.as_slice(), &self.device)
+            // When using cache, only pass the new token after first iteration
+            // When not using cache, pass the full sequence each time
+            let (input_tokens, past_kv_len) = if use_cache && i > 0 {
+                // With cache: only pass the last token
+                (vec![*tokens.last().unwrap()], i)
+            } else {
+                // Without cache: pass full sequence, past_kv_len=0
+                (tokens.clone(), 0)
+            };
+
+            let tokens_tensor = Tensor::new(input_tokens.as_slice(), &self.device)
                 .map_err(|e| AumateError::Ml(format!("Failed to create tokens tensor: {}", e)))?
                 .unsqueeze(0)
                 .map_err(|e| AumateError::Ml(format!("Failed to unsqueeze: {}", e)))?;
 
-            let logits = model.decoder_forward(&tokens_tensor, &encoder_output, i)?;
+            let logits = model.decoder_forward(&tokens_tensor, &encoder_output, past_kv_len)?;
 
             // Get logits for last position
             let seq_len =

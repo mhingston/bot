@@ -98,6 +98,7 @@ impl ControllerState {
             registry: &mut self.window_registry,
             icon_cache: &mut self.icon_cache,
             egui_ctx,
+            controller_background: &mut self.controller_background,
         };
 
         // Initialize all features
@@ -136,6 +137,7 @@ impl ControllerState {
                 registry: &mut self.window_registry,
                 icon_cache: &mut self.icon_cache,
                 egui_ctx: ctx,
+                controller_background: &mut self.controller_background,
             };
             self.features.update_all(&mut ctx_for_update);
         }
@@ -147,6 +149,7 @@ impl ControllerState {
                 registry: &mut self.window_registry,
                 icon_cache: &mut self.icon_cache,
                 egui_ctx: ctx,
+                controller_background: &mut self.controller_background,
             };
             render_title_bar(ui, &controller_ctx);
         });
@@ -162,6 +165,7 @@ impl ControllerState {
                     registry: &mut self.window_registry,
                     icon_cache: &mut self.icon_cache,
                     egui_ctx: ctx,
+                    controller_background: &mut self.controller_background,
                 };
                 render_navigation(ui, &mut self.features, &mut controller_ctx);
             });
@@ -174,6 +178,7 @@ impl ControllerState {
                     registry: &mut self.window_registry,
                     icon_cache: &mut self.icon_cache,
                     egui_ctx: ctx,
+                    controller_background: &mut self.controller_background,
                 };
                 self.features.render_active(ui, &mut controller_ctx);
             });
