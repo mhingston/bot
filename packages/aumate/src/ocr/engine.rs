@@ -364,40 +364,27 @@ impl OcrEngine {
 
         // Get special tokens
         let eos_token_id = tokenizer.token_to_id("</s>").unwrap_or(2);
-        let bos_token_id = tokenizer.token_to_id("<s>").unwrap_or(0);
+        // Use decoder_start_token_id (usually 2 for TrOCR)
+        let decoder_start_token_id = 2u32;
 
-        // Start with BOS token
-        let mut tokens = vec![bos_token_id];
+        // Start with decoder start token
+        let mut token_ids: Vec<u32> = vec![decoder_start_token_id];
         let max_tokens = 512;
 
-        // Check if using KV cache (default false for TrOCR base models)
-        // Note: Candle TrOCR caches unconditionally, so when use_cache=false,
-        // we must reset cache before each forward pass
-        let use_cache = self.use_cache;
+        // Autoregressive decoding loop (following official Candle example pattern)
+        for index in 0..max_tokens {
+            // On first iteration: pass all tokens, start_pos=0
+            // On subsequent iterations: pass only the last token, start_pos=previous length
+            let context_size = if index >= 1 { 1 } else { token_ids.len() };
+            let start_pos = token_ids.len().saturating_sub(context_size);
+            let input_ids = &token_ids[start_pos..];
 
-        // Autoregressive decoding loop
-        for i in 0..max_tokens {
-            // When using cache, only pass the new token after first iteration
-            // When not using cache, reset cache and pass full sequence each time
-            let (input_tokens, past_kv_len) = if use_cache && i > 0 {
-                // With cache: only pass the last token
-                (vec![*tokens.last().unwrap()], i)
-            } else {
-                // Without cache: reset cache each iteration to avoid stale state
-                // (Candle TrOCR caches unconditionally regardless of config)
-                if !use_cache && i > 0 {
-                    model.reset_kv_cache();
-                }
-                // Pass full sequence, past_kv_len=0
-                (tokens.clone(), 0)
-            };
-
-            let tokens_tensor = Tensor::new(input_tokens.as_slice(), &self.device)
+            let tokens_tensor = Tensor::new(input_ids, &self.device)
                 .map_err(|e| AumateError::Ml(format!("Failed to create tokens tensor: {}", e)))?
                 .unsqueeze(0)
                 .map_err(|e| AumateError::Ml(format!("Failed to unsqueeze: {}", e)))?;
 
-            let logits = model.decoder_forward(&tokens_tensor, &encoder_output, past_kv_len)?;
+            let logits = model.decoder_forward(&tokens_tensor, &encoder_output, start_pos)?;
 
             // Get logits for last position
             let seq_len =
@@ -424,13 +411,13 @@ impl OcrEngine {
                 break;
             }
 
-            tokens.push(next_token);
+            token_ids.push(next_token);
         }
 
-        // Decode tokens to text (skip BOS token)
-        let text_tokens: Vec<u32> = tokens
+        // Decode tokens to text (skip decoder start token)
+        let text_tokens: Vec<u32> = token_ids
             .into_iter()
-            .skip(1) // Skip BOS
+            .skip(1) // Skip decoder start token
             .filter(|&t| t != eos_token_id)
             .collect();
 
