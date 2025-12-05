@@ -188,6 +188,14 @@ fn draw_thick_line(
                             StrokeStyle::Solid => true,
                             StrokeStyle::Dashed => (step / 8) % 2 == 0,
                             StrokeStyle::Dotted => (step / 4) % 2 == 0,
+                            StrokeStyle::DashDot => {
+                                let cycle = step % 16;
+                                cycle < 8 || (10..12).contains(&cycle)
+                            }
+                            StrokeStyle::DashDotDot => {
+                                let cycle = step % 20;
+                                cycle < 8 || (10..12).contains(&cycle) || (14..16).contains(&cycle)
+                            }
                         };
                         if should_draw {
                             blend_pixel(image, px as u32, py as u32, color);

@@ -148,6 +148,38 @@ impl AnnotateAction {
                     dot_spacing,
                 );
             }
+            StrokeStyle::DashDot => {
+                // Draw dash-dot pattern
+                let dash_length = stroke.settings.width * 3.0;
+                let gap_length = stroke.settings.width * 1.5;
+                let dot_radius = stroke.settings.width / 2.0;
+                Self::render_dash_dot_line(
+                    ui,
+                    &stroke.points,
+                    egui_stroke,
+                    stroke.settings.color,
+                    dash_length,
+                    gap_length,
+                    dot_radius,
+                    1,
+                );
+            }
+            StrokeStyle::DashDotDot => {
+                // Draw dash-dot-dot pattern
+                let dash_length = stroke.settings.width * 3.0;
+                let gap_length = stroke.settings.width * 1.5;
+                let dot_radius = stroke.settings.width / 2.0;
+                Self::render_dash_dot_line(
+                    ui,
+                    &stroke.points,
+                    egui_stroke,
+                    stroke.settings.color,
+                    dash_length,
+                    gap_length,
+                    dot_radius,
+                    2,
+                );
+            }
         }
     }
 
@@ -246,6 +278,73 @@ impl AnnotateAction {
                 } else {
                     accumulated += segment_length - pos_along;
                     break;
+                }
+            }
+        }
+    }
+
+    /// Render a dash-dot or dash-dot-dot line along points
+    /// dots_per_cycle: 1 for dash-dot, 2 for dash-dot-dot
+    #[allow(clippy::too_many_arguments)]
+    fn render_dash_dot_line(
+        ui: &egui::Ui,
+        points: &[Pos2],
+        stroke: egui::Stroke,
+        dot_color: egui::Color32,
+        dash_length: f32,
+        gap_length: f32,
+        dot_radius: f32,
+        dots_per_cycle: usize,
+    ) {
+        if points.len() < 2 {
+            return;
+        }
+
+        // State: 0 = drawing dash, 1..=dots_per_cycle = drawing gap then dot
+        let mut state = 0usize;
+        let mut accumulated = 0.0;
+        let mut current_start = points[0];
+
+        for window in points.windows(2) {
+            let start = window[0];
+            let end = window[1];
+            let segment_vec = end - start;
+            let segment_length = segment_vec.length();
+
+            if segment_length < 0.001 {
+                continue;
+            }
+
+            let direction = segment_vec / segment_length;
+            let mut pos_along = 0.0;
+
+            while pos_along < segment_length {
+                let target_length = if state == 0 { dash_length } else { gap_length };
+                let remaining_in_state = target_length - accumulated;
+                let remaining_in_segment = segment_length - pos_along;
+                let step = remaining_in_state.min(remaining_in_segment);
+
+                if state == 0 {
+                    // Drawing dash
+                    let line_end = start + direction * (pos_along + step);
+                    ui.painter().line_segment([current_start, line_end], stroke);
+                    current_start = line_end;
+                } else {
+                    // Gap before dot
+                    current_start = start + direction * (pos_along + step);
+                }
+
+                pos_along += step;
+                accumulated += step;
+
+                if accumulated >= target_length {
+                    if state > 0 && state <= dots_per_cycle {
+                        // Draw dot at current position
+                        ui.painter().circle_filled(current_start, dot_radius, dot_color);
+                    }
+                    // Advance state
+                    state = (state + 1) % (1 + dots_per_cycle);
+                    accumulated = 0.0;
                 }
             }
         }

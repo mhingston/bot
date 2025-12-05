@@ -9,6 +9,8 @@ pub enum StrokeStyle {
     Solid,
     Dashed,
     Dotted,
+    DashDot,
+    DashDotDot,
 }
 
 /// Stroke settings for annotation

@@ -217,6 +217,8 @@ impl ScreenshotMode {
                 LineStyle::Solid => super::stroke::StrokeStyle::Solid,
                 LineStyle::Dashed => super::stroke::StrokeStyle::Dashed,
                 LineStyle::Dotted => super::stroke::StrokeStyle::Dotted,
+                LineStyle::DashDot => super::stroke::StrokeStyle::DashDot,
+                LineStyle::DashDotDot => super::stroke::StrokeStyle::DashDotDot,
             };
         }
     }
