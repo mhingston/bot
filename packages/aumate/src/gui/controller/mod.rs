@@ -237,6 +237,10 @@ pub fn create_default_registry() -> FeatureRegistry {
     #[cfg(feature = "ocr")]
     registry.register(Box::new(crate::ocr::OcrFeature::new()));
 
+    // Image Match feature (feature-gated, included with gui)
+    #[cfg(feature = "image_match")]
+    registry.register(Box::new(crate::image_match::ImageMatchFeature::new()));
+
     // Click Helper feature (feature-gated + macOS only)
     #[cfg(all(feature = "click_helper", target_os = "macos"))]
     registry.register(Box::new(crate::click_helper::ClickHelperFeature::new()));

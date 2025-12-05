@@ -397,3 +397,179 @@ pub fn find_windows_by_process(process_name: String) -> Result<Vec<WindowInfoRes
         aumate::prelude::find_windows_by_process(&process_name).map_err(aumate_to_napi_error)?;
     Ok(windows.into_iter().map(|w| w.into()).collect())
 }
+
+// ============================================================================
+// Image Template Matching
+// ============================================================================
+
+/// Configuration for image template matching
+#[napi(object)]
+pub struct MatchConfigJs {
+    /// Search at multiple scales (default: true)
+    pub search_multiple_scales: Option<bool>,
+    /// Convert images to grayscale for matching (default: false)
+    pub use_grayscale: Option<bool>,
+    /// Scale factors to search at (default: [1.0, 0.9, 0.8, 0.7, 0.6, 0.5])
+    pub scale_steps: Option<Vec<f64>>,
+    /// Minimum confidence threshold 0.0-1.0 (default: 0.8)
+    pub confidence: Option<f64>,
+    /// Maximum number of results (default: 100)
+    pub limit: Option<u32>,
+}
+
+/// Result from image template matching
+#[napi(object)]
+pub struct MatchResultJs {
+    /// X coordinate of match (top-left)
+    pub x: u32,
+    /// Y coordinate of match (top-left)
+    pub y: u32,
+    /// Width of matched region
+    pub width: u32,
+    /// Height of matched region
+    pub height: u32,
+    /// Confidence score 0.0-1.0
+    pub confidence: f64,
+    /// Scale at which match was found
+    pub scale: f64,
+}
+
+impl From<aumate::image_match::MatchResult> for MatchResultJs {
+    fn from(r: aumate::image_match::MatchResult) -> Self {
+        Self {
+            x: r.x,
+            y: r.y,
+            width: r.width,
+            height: r.height,
+            confidence: r.confidence as f64,
+            scale: r.scale as f64,
+        }
+    }
+}
+
+fn config_js_to_match_config(config: Option<MatchConfigJs>) -> aumate::image_match::MatchConfig {
+    match config {
+        Some(c) => {
+            let mut mc = aumate::image_match::MatchConfig::default();
+            if let Some(v) = c.search_multiple_scales {
+                mc.search_multiple_scales = v;
+            }
+            if let Some(v) = c.use_grayscale {
+                mc.use_grayscale = v;
+            }
+            if let Some(v) = c.scale_steps {
+                mc.scale_steps = v.into_iter().map(|s| s as f32).collect();
+            }
+            if let Some(v) = c.confidence {
+                mc.confidence = v as f32;
+            }
+            if let Some(v) = c.limit {
+                mc.limit = v as usize;
+            }
+            mc
+        }
+        None => aumate::image_match::MatchConfig::default(),
+    }
+}
+
+/// Find first match of template image on screen
+///
+/// @param template - PNG-encoded image buffer of the template to find
+/// @param config - Optional matching configuration
+/// @returns Match result or null if not found
+#[napi]
+pub async fn find_on_screen(
+    template: Buffer,
+    config: Option<MatchConfigJs>,
+) -> Result<Option<MatchResultJs>> {
+    let template_image = image::load_from_memory(&template)
+        .map_err(|e| Error::from_reason(format!("Failed to decode template image: {}", e)))?;
+
+    let mc = config_js_to_match_config(config);
+
+    let result = aumate::image_match::find_on_screen(&template_image, Some(mc))
+        .map_err(aumate_to_napi_error)?;
+
+    Ok(result.map(|r| r.into()))
+}
+
+/// Find all matches of template image on screen
+///
+/// @param template - PNG-encoded image buffer of the template to find
+/// @param config - Optional matching configuration
+/// @returns Array of match results sorted by confidence
+#[napi]
+pub async fn find_all_on_screen(
+    template: Buffer,
+    config: Option<MatchConfigJs>,
+) -> Result<Vec<MatchResultJs>> {
+    let template_image = image::load_from_memory(&template)
+        .map_err(|e| Error::from_reason(format!("Failed to decode template image: {}", e)))?;
+
+    let mc = config_js_to_match_config(config);
+
+    let results = aumate::image_match::find_all_on_screen(&template_image, Some(mc))
+        .map_err(aumate_to_napi_error)?;
+
+    Ok(results.into_iter().map(|r| r.into()).collect())
+}
+
+/// Find first match of template image in a screen region
+///
+/// @param template - PNG-encoded image buffer of the template to find
+/// @param x - X coordinate of search region
+/// @param y - Y coordinate of search region
+/// @param width - Width of search region
+/// @param height - Height of search region
+/// @param config - Optional matching configuration
+/// @returns Match result or null if not found (coordinates are absolute screen coordinates)
+#[napi]
+pub async fn find_in_region(
+    template: Buffer,
+    x: u32,
+    y: u32,
+    width: u32,
+    height: u32,
+    config: Option<MatchConfigJs>,
+) -> Result<Option<MatchResultJs>> {
+    let template_image = image::load_from_memory(&template)
+        .map_err(|e| Error::from_reason(format!("Failed to decode template image: {}", e)))?;
+
+    let mc = config_js_to_match_config(config);
+
+    let result =
+        aumate::image_match::find_in_region(&template_image, x, y, width, height, Some(mc))
+            .map_err(aumate_to_napi_error)?;
+
+    Ok(result.map(|r| r.into()))
+}
+
+/// Find all matches of template image in a screen region
+///
+/// @param template - PNG-encoded image buffer of the template to find
+/// @param x - X coordinate of search region
+/// @param y - Y coordinate of search region
+/// @param width - Width of search region
+/// @param height - Height of search region
+/// @param config - Optional matching configuration
+/// @returns Array of match results (coordinates are absolute screen coordinates)
+#[napi]
+pub async fn find_all_in_region(
+    template: Buffer,
+    x: u32,
+    y: u32,
+    width: u32,
+    height: u32,
+    config: Option<MatchConfigJs>,
+) -> Result<Vec<MatchResultJs>> {
+    let template_image = image::load_from_memory(&template)
+        .map_err(|e| Error::from_reason(format!("Failed to decode template image: {}", e)))?;
+
+    let mc = config_js_to_match_config(config);
+
+    let results =
+        aumate::image_match::find_all_in_region(&template_image, x, y, width, height, Some(mc))
+            .map_err(aumate_to_napi_error)?;
+
+    Ok(results.into_iter().map(|r| r.into()).collect())
+}

@@ -18,6 +18,9 @@ napi-derive.workspace = true
 # Core library
 aumate = { path = "../aumate", default-features = false, features = ["input", "screen", "clipboard", "window", "gui"] }
 
+# Image processing (for decoding template images)
+image.workspace = true
+
 # File dialogs
 rfd.workspace = true
 

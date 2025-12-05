@@ -59,6 +59,7 @@ eventhooks = [
 gui = [
     "screen",
     "clipboard",
+    "image_match",
     "dep:winit",
     "dep:egui",
     "dep:egui-wgpu",
@@ -131,6 +132,12 @@ click_helper = [
     "input",
     "eventhooks",
 ]
+# Image template matching feature
+image_match = [
+    "screen",
+    "dep:image",
+    "dep:imageproc",
+]
 
 [dependencies]
 # Core (always included)
@@ -147,6 +154,7 @@ enigo = { workspace = true, optional = true }
 # Screen feature
 xcap = { workspace = true, optional = true }
 image = { workspace = true, optional = true }
+imageproc = { workspace = true, optional = true }
 
 # Clipboard feature
 arboard = { workspace = true, optional = true }

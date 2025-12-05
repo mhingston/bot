@@ -65,6 +65,9 @@ pub mod stt;
 #[cfg(feature = "ocr")]
 pub mod ocr;
 
+#[cfg(feature = "image_match")]
+pub mod image_match;
+
 #[cfg(all(feature = "click_helper", target_os = "macos"))]
 pub mod click_helper;
 

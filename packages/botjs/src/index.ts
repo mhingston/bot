@@ -873,6 +873,29 @@ export {
 } from "./screenshot";
 
 // ============================================================================
+// Image Template Matching
+// ============================================================================
+
+export type {
+  ImageResource,
+  MatchConfig,
+  MatchResult,
+} from "./image-match";
+export {
+  findAllInRegion,
+  findAllOnScreen,
+  findInRegion,
+  findOnScreen,
+  getMatchBounds,
+  getMatchCenter,
+  imageResource,
+  imageResourceFromBuffer,
+  imageResourceSync,
+  waitFor,
+  waitForGone,
+} from "./image-match";
+
+// ============================================================================
 // GUI Widget System - Declarative UI Builder
 // ============================================================================
 
