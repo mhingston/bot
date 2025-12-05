@@ -331,22 +331,49 @@ impl OcrEngine {
         // Convert to RGB
         let image = image.to_rgb8();
 
-        // Convert to tensor (normalized)
-        let (width, height) = (image.width() as usize, image.height() as usize);
-        let data: Vec<f32> = image
-            .pixels()
-            .flat_map(|p| {
-                // Normalize to [-1, 1] range (ImageNet normalization)
-                let r = (p[0] as f32 / 255.0 - 0.5) / 0.5;
-                let g = (p[1] as f32 / 255.0 - 0.5) / 0.5;
-                let b = (p[2] as f32 / 255.0 - 0.5) / 0.5;
-                [r, g, b]
-            })
-            .collect();
+        // Get dimensions
+        let height = self.image_size;
+        let width = self.image_size;
 
-        // Create tensor with shape [1, 3, height, width]
-        let tensor = Tensor::from_vec(data, (1, 3, height, width), &self.device)
-            .map_err(|e| AumateError::Ml(format!("Failed to create image tensor: {}", e)))?;
+        // Get raw pixel data (HWC format: height * width * 3)
+        let data = image.into_raw();
+
+        // Create tensor in HWC format then convert to CHW
+        // Following official Candle TrOCR example pattern:
+        // 1. Create tensor as (height, width, channels)
+        // 2. Permute to (channels, height, width)
+        // 3. Normalize: (pixel / 255.0 - mean) / std where mean=std=0.5
+        let tensor = Tensor::from_vec(data, (height, width, 3), &self.device)
+            .map_err(|e| AumateError::Ml(format!("Failed to create image tensor: {}", e)))?
+            .permute((2, 0, 1))
+            .map_err(|e| AumateError::Ml(format!("Failed to permute tensor: {}", e)))?;
+
+        // Normalize: (pixel / 255.0 - 0.5) / 0.5 = pixel / 127.5 - 1.0
+        let mean = Tensor::new(&[0.5f32, 0.5, 0.5], &self.device)
+            .map_err(|e| AumateError::Ml(format!("Failed to create mean tensor: {}", e)))?
+            .reshape((3, 1, 1))
+            .map_err(|e| AumateError::Ml(format!("Failed to reshape mean: {}", e)))?;
+
+        let std = Tensor::new(&[0.5f32, 0.5, 0.5], &self.device)
+            .map_err(|e| AumateError::Ml(format!("Failed to create std tensor: {}", e)))?
+            .reshape((3, 1, 1))
+            .map_err(|e| AumateError::Ml(format!("Failed to reshape std: {}", e)))?;
+
+        let tensor = tensor
+            .to_dtype(DType::F32)
+            .map_err(|e| AumateError::Ml(format!("Failed to convert dtype: {}", e)))?;
+
+        let tensor = (tensor / 255.0)
+            .map_err(|e| AumateError::Ml(format!("Failed to scale: {}", e)))?
+            .broadcast_sub(&mean)
+            .map_err(|e| AumateError::Ml(format!("Failed to subtract mean: {}", e)))?
+            .broadcast_div(&std)
+            .map_err(|e| AumateError::Ml(format!("Failed to divide by std: {}", e)))?;
+
+        // Add batch dimension: (3, H, W) -> (1, 3, H, W)
+        let tensor = tensor
+            .unsqueeze(0)
+            .map_err(|e| AumateError::Ml(format!("Failed to add batch dim: {}", e)))?;
 
         Ok(tensor)
     }
