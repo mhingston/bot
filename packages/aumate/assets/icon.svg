@@ -20,68 +20,70 @@
         <feMergeNode in="SourceGraphic"/>
       </feMerge>
     </filter>
-    <filter id="innerShadow" x="-50%" y="-50%" width="200%" height="200%">
-      <feOffset dx="0" dy="4"/>
-      <feGaussianBlur stdDeviation="6" result="blur"/>
-      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
-    </filter>
+    <!-- Clip path for rounded corners -->
+    <clipPath id="roundedCorners">
+      <rect x="0" y="0" width="1024" height="1024" rx="180" ry="180"/>
+    </clipPath>
   </defs>
 
-  <!-- Background with rounded corners -->
-  <rect x="0" y="0" width="1024" height="1024" rx="180" ry="180" fill="url(#bgGradient)"/>
+  <!-- Apply clip path to entire content for transparent corners -->
+  <g clip-path="url(#roundedCorners)">
+    <!-- Background -->
+    <rect x="0" y="0" width="1024" height="1024" fill="url(#bgGradient)"/>
 
-  <!-- Subtle circuit pattern background -->
-  <g opacity="0.1" stroke="#00d4ff" stroke-width="2" fill="none">
-    <path d="M100,200 H200 V300"/>
-    <path d="M924,200 H824 V300"/>
-    <path d="M100,824 H200 V724"/>
-    <path d="M924,824 H824 V724"/>
-    <circle cx="200" cy="200" r="8" fill="#00d4ff"/>
-    <circle cx="824" cy="200" r="8" fill="#00d4ff"/>
-    <circle cx="200" cy="824" r="8" fill="#00d4ff"/>
-    <circle cx="824" cy="824" r="8" fill="#00d4ff"/>
+    <!-- Subtle circuit pattern background -->
+    <g opacity="0.1" stroke="#00d4ff" stroke-width="2" fill="none">
+      <path d="M100,200 H200 V300"/>
+      <path d="M924,200 H824 V300"/>
+      <path d="M100,824 H200 V724"/>
+      <path d="M924,824 H824 V724"/>
+      <circle cx="200" cy="200" r="8" fill="#00d4ff"/>
+      <circle cx="824" cy="200" r="8" fill="#00d4ff"/>
+      <circle cx="200" cy="824" r="8" fill="#00d4ff"/>
+      <circle cx="824" cy="824" r="8" fill="#00d4ff"/>
+    </g>
+
+    <!-- Main "A" letter - stylized with robot/automation feel -->
+    <g filter="url(#glow)">
+      <!-- Letter A main body -->
+      <path d="M512 180
+               L280 780
+               L340 780
+               L400 620
+               H624
+               L684 780
+               L744 780
+               L512 180 Z
+               M430 550
+               L512 340
+               L594 550
+               Z"
+            fill="url(#letterGradient)"
+            stroke="#00ffff"
+            stroke-width="3"/>
+    </g>
+
+    <!-- Robot "eyes" on the crossbar of A - representing automation/AI -->
+    <g filter="url(#glow)">
+      <!-- Left eye -->
+      <circle cx="440" cy="500" r="28" fill="url(#robotEyeGradient)"/>
+      <circle cx="440" cy="500" r="14" fill="#1a1a2e"/>
+      <circle cx="446" cy="494" r="6" fill="#ffffff" opacity="0.8"/>
+
+      <!-- Right eye -->
+      <circle cx="584" cy="500" r="28" fill="url(#robotEyeGradient)"/>
+      <circle cx="584" cy="500" r="14" fill="#1a1a2e"/>
+      <circle cx="590" cy="494" r="6" fill="#ffffff" opacity="0.8"/>
+    </g>
+
+    <!-- Antenna on top of A -->
+    <g filter="url(#glow)">
+      <line x1="512" y1="180" x2="512" y2="120" stroke="#00d4ff" stroke-width="8" stroke-linecap="round"/>
+      <circle cx="512" cy="100" r="20" fill="url(#robotEyeGradient)"/>
+      <circle cx="512" cy="100" r="10" fill="#ffffff" opacity="0.6"/>
+    </g>
+
+    <!-- Bottom accent line -->
+    <rect x="320" y="820" width="384" height="8" rx="4" fill="#00d4ff" opacity="0.6"/>
   </g>
-
-  <!-- Main "A" letter - stylized with robot/automation feel -->
-  <g filter="url(#glow)">
-    <!-- Letter A main body -->
-    <path d="M512 180
-             L280 780
-             L340 780
-             L400 620
-             H624
-             L684 780
-             L744 780
-             L512 180 Z
-             M430 550
-             L512 340
-             L594 550
-             Z"
-          fill="url(#letterGradient)"
-          stroke="#00ffff"
-          stroke-width="3"/>
-  </g>
-
-  <!-- Robot "eyes" on the crossbar of A - representing automation/AI -->
-  <g filter="url(#glow)">
-    <!-- Left eye -->
-    <circle cx="440" cy="500" r="28" fill="url(#robotEyeGradient)"/>
-    <circle cx="440" cy="500" r="14" fill="#1a1a2e"/>
-    <circle cx="446" cy="494" r="6" fill="#ffffff" opacity="0.8"/>
-
-    <!-- Right eye -->
-    <circle cx="584" cy="500" r="28" fill="url(#robotEyeGradient)"/>
-    <circle cx="584" cy="500" r="14" fill="#1a1a2e"/>
-    <circle cx="590" cy="494" r="6" fill="#ffffff" opacity="0.8"/>
-  </g>
-
-  <!-- Antenna on top of A -->
-  <g filter="url(#glow)">
-    <line x1="512" y1="180" x2="512" y2="120" stroke="#00d4ff" stroke-width="8" stroke-linecap="round"/>
-    <circle cx="512" cy="100" r="20" fill="url(#robotEyeGradient)"/>
-    <circle cx="512" cy="100" r="10" fill="#ffffff" opacity="0.6"/>
-  </g>
-
-  <!-- Bottom accent line -->
-  <rect x="320" y="820" width="384" height="8" rx="4" fill="#00d4ff" opacity="0.6"/>
 </svg>
