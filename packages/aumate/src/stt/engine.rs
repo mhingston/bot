@@ -5,12 +5,18 @@
 use super::audio::AudioData;
 use crate::error::{AumateError, Result};
 use crate::ml::{Device, DeviceConfig, get_device};
+use byteorder::{ByteOrder, LittleEndian};
 use candle_core::{DType, Tensor};
 use candle_nn::VarBuilder;
 use candle_transformers::models::whisper::{self as m, Config};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 use tokenizers::Tokenizer;
+
+/// Pre-computed mel filter coefficients for 80 mel bins
+const MEL_FILTERS_80: &[u8] = include_bytes!("melfilters.bytes");
+/// Pre-computed mel filter coefficients for 128 mel bins
+const MEL_FILTERS_128: &[u8] = include_bytes!("melfilters128.bytes");
 
 /// Whisper model variant
 pub enum WhisperModel {
@@ -179,18 +185,25 @@ impl WhisperEngine {
 
     /// Get mel filters for the specified number of mel bins
     fn get_mel_filters(num_mel_bins: usize) -> Result<Vec<f32>> {
-        // The candle-transformers whisper module has built-in mel filters
-        // for 80 and 128 mel bins (the two configurations used by Whisper models)
-        // We need to create the proper size filter bank
-        let n_fft_half = m::N_FFT / 2 + 1; // 401 for N_FFT=800
-        match num_mel_bins {
-            80 => Ok(vec![0.0f32; 80 * n_fft_half]),
-            128 => Ok(vec![0.0f32; 128 * n_fft_half]),
-            _ => Err(AumateError::Other(format!(
-                "Unsupported num_mel_bins: {}. Expected 80 or 128.",
-                num_mel_bins
-            ))),
-        }
+        // Load pre-computed mel filter coefficients from embedded binary data
+        let mel_bytes = match num_mel_bins {
+            80 => MEL_FILTERS_80,
+            128 => MEL_FILTERS_128,
+            _ => {
+                return Err(AumateError::Other(format!(
+                    "Unsupported num_mel_bins: {}. Expected 80 or 128.",
+                    num_mel_bins
+                )));
+            }
+        };
+
+        // Convert bytes to f32 array (little-endian)
+        let mut mel_filters = vec![0f32; mel_bytes.len() / 4];
+        LittleEndian::read_f32_into(mel_bytes, &mut mel_filters);
+
+        log::debug!("Loaded {} mel filters ({} floats)", num_mel_bins, mel_filters.len());
+
+        Ok(mel_filters)
     }
 
     /// Unload the current model
@@ -315,9 +328,15 @@ impl WhisperEngine {
                 .map_err(|e| AumateError::Other(format!("Failed to squeeze: {}", e)))?;
 
             // Greedy decoding: take argmax
-            let next_token = last_logits
+            // After squeeze(1), shape is [1, vocab_size], argmax(1) gives [1]
+            // We need to get the single value from [1] tensor
+            let next_token_tensor = last_logits
                 .argmax(1)
-                .map_err(|e| AumateError::Other(format!("Failed to argmax: {}", e)))?
+                .map_err(|e| AumateError::Other(format!("Failed to argmax: {}", e)))?;
+
+            let next_token = next_token_tensor
+                .squeeze(0)
+                .map_err(|e| AumateError::Other(format!("Failed to squeeze argmax: {}", e)))?
                 .to_scalar::<u32>()
                 .map_err(|e| AumateError::Other(format!("Failed to get scalar: {}", e)))?;
 

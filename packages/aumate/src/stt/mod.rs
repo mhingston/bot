@@ -3,7 +3,6 @@
 //! This module provides speech-to-text functionality with:
 //! - Global hotkey support for push-to-talk and toggle modes
 //! - Audio capture via cpal
-//! - Voice Activity Detection (VAD) for auto-stop on silence
 //! - Whisper engine for transcription (Candle-based)
 //! - Output to keystrokes or clipboard
 //! - Model management with download support
@@ -15,7 +14,6 @@ mod engine;
 mod hotkey;
 mod model;
 mod output;
-mod vad;
 
 pub use audio::{AudioData, AudioRecorder};
 pub use config::{HotkeyConfig, HotkeyMode, OutputMode, SttConfig};
@@ -23,7 +21,6 @@ pub use controller::SttFeature;
 pub use engine::{TranscriptionResult, WhisperEngine};
 pub use hotkey::{HotkeyEvent, HotkeyManager};
 pub use output::OutputHandler;
-pub use vad::VoiceActivityDetector;
 
 // Re-export model types - use local model.rs for backward compatibility,
 // but also expose shared types from ml module
@@ -46,7 +43,6 @@ pub struct SttController {
     engine: Option<WhisperEngine>,
     model_manager: ModelManager,
     hotkey_manager: Option<HotkeyManager>,
-    vad: Option<VoiceActivityDetector>,
     output_handler: Option<OutputHandler>,
     is_recording: Arc<Mutex<bool>>,
     last_transcription: Arc<Mutex<Option<String>>>,
@@ -64,7 +60,6 @@ impl SttController {
             engine: None,
             model_manager,
             hotkey_manager: None,
-            vad: None,
             output_handler: None,
             is_recording: Arc::new(Mutex::new(false)),
             last_transcription: Arc::new(Mutex::new(None)),
@@ -114,15 +109,6 @@ impl SttController {
             let mut engine = WhisperEngine::new();
             if engine.load_model(&model_path).is_ok() {
                 self.engine = Some(engine);
-            }
-        }
-
-        // Initialize VAD if enabled
-        if self.config.vad_enabled {
-            if let Some(vad_path) = self.model_manager.get_vad_model_path() {
-                if let Ok(vad) = VoiceActivityDetector::new(&vad_path) {
-                    self.vad = Some(vad);
-                }
             }
         }
 

@@ -1,6 +1,6 @@
 //! Model management for STT
 //!
-//! Handles downloading, storing, and managing Whisper and VAD models.
+//! Handles downloading, storing, and managing Whisper models.
 
 use crate::error::{AumateError, Result};
 use futures_util::StreamExt;
@@ -37,12 +37,6 @@ pub const WHISPER_MODELS: &[(&str, &str, u64, &str)] = &[
         "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.bin",
     ),
 ];
-
-/// Silero VAD model URL
-pub const VAD_MODEL_URL: &str =
-    "https://github.com/snakers4/silero-vad/raw/master/src/silero_vad/data/silero_vad.onnx";
-pub const VAD_MODEL_ID: &str = "silero-vad";
-pub const VAD_MODEL_SIZE: u64 = 2_000_000; // ~2MB
 
 /// Information about a model
 #[derive(Debug, Clone)]
@@ -168,31 +162,6 @@ impl ModelManager {
         if path.exists() { Some(path) } else { None }
     }
 
-    /// Get the path to the VAD model
-    pub fn get_vad_model_path(&self) -> Option<PathBuf> {
-        let path = self.models_dir.join("silero_vad.onnx");
-        if path.exists() { Some(path) } else { None }
-    }
-
-    /// Check if VAD model is downloaded
-    pub fn is_vad_downloaded(&self) -> bool {
-        self.get_vad_model_path().is_some()
-    }
-
-    /// Get VAD model info
-    pub fn get_vad_model_info(&self) -> ModelInfo {
-        let local_path = self.models_dir.join("silero_vad.onnx");
-        let is_downloaded = local_path.exists();
-        ModelInfo {
-            id: VAD_MODEL_ID.to_string(),
-            name: "Silero VAD".to_string(),
-            size_bytes: VAD_MODEL_SIZE,
-            url: VAD_MODEL_URL.to_string(),
-            is_downloaded,
-            local_path: if is_downloaded { Some(local_path) } else { None },
-        }
-    }
-
     /// Get download progress for a model
     pub fn get_download_progress(&self, model_id: &str) -> Option<DownloadProgress> {
         self.downloads.lock().unwrap().get(model_id).cloned()
@@ -205,21 +174,14 @@ impl ModelManager {
         progress_callback: Option<Box<dyn Fn(DownloadProgress) + Send>>,
     ) -> Result<PathBuf> {
         // Find the model
-        let model_info =
-            self.list_available_models()
-                .into_iter()
-                .find(|m| m.id == model_id)
-                .or_else(|| {
-                    if model_id == VAD_MODEL_ID { Some(self.get_vad_model_info()) } else { None }
-                })
-                .ok_or_else(|| AumateError::Other(format!("Unknown model: {}", model_id)))?;
+        let model_info = self
+            .list_available_models()
+            .into_iter()
+            .find(|m| m.id == model_id)
+            .ok_or_else(|| AumateError::Other(format!("Unknown model: {}", model_id)))?;
 
         // Determine output path
-        let filename = if model_id == VAD_MODEL_ID {
-            "silero_vad.onnx".to_string()
-        } else {
-            format!("{}.bin", model_id)
-        };
+        let filename = format!("{}.bin", model_id);
         let output_path = self.models_dir.join(&filename);
         let temp_path = self.models_dir.join(format!("{}.tmp", filename));
 
@@ -352,11 +314,7 @@ impl ModelManager {
 
     /// Delete a downloaded model
     pub fn delete_model(&self, model_id: &str) -> Result<()> {
-        let filename = if model_id == VAD_MODEL_ID {
-            "silero_vad.onnx".to_string()
-        } else {
-            format!("{}.bin", model_id)
-        };
+        let filename = format!("{}.bin", model_id);
         let path = self.models_dir.join(filename);
         if path.exists() {
             std::fs::remove_file(&path)?;

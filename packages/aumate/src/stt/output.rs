@@ -48,6 +48,10 @@ impl OutputHandler {
                 self.copy_to_clipboard(text)?;
                 self.paste()?;
             }
+            OutputMode::Logger => {
+                // Logger mode - only log, no typing or clipboard
+                log::info!("STT Output (Logger): \"{}\"", truncate_for_log(text, 100));
+            }
         }
 
         Ok(())

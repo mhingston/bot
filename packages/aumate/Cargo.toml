@@ -1,6 +1,6 @@
 [package]
 name = "aumate"
-version = "0.2.7"
+version = "0.2.8"
 edition = "2024"
 rust-version = "1.85"
 description = "Cross-platform desktop automation library with GUI support"
@@ -114,6 +114,7 @@ stt = [
     "dep:reqwest",
     "dep:futures-util",
     "dep:sha2",
+    "dep:byteorder",
 ]
 # OCR feature (Candle-based TrOCR)
 # Note: On macOS, also enable ml-metal for GPU acceleration
@@ -126,6 +127,8 @@ ocr = [
 ]
 # OCR with Metal acceleration (macOS) - convenience alias
 ocr-metal = ["ocr", "ml-metal"]
+# STT with Metal acceleration (macOS) - convenience alias
+stt-metal = ["stt", "ml-metal"]
 # Click Helper feature
 click_helper = [
     "gui",
@@ -203,6 +206,7 @@ hf-hub = { workspace = true, optional = true }
 # STT feature dependencies
 cpal = { workspace = true, optional = true }
 hound = { workspace = true, optional = true }
+byteorder = { workspace = true, optional = true }
 
 ort = { workspace = true, optional = true }
 ndarray = { workspace = true, optional = true }

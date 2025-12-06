@@ -2,16 +2,31 @@
 //!
 //! Provides speech-to-text functionality with model management and hotkey support.
 
+use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread;
 
 use crate::error::Result;
-use crate::gui::controller::{ControllerContext, ControllerFeature, TabInfo};
-use crate::stt::{
-    DownloadProgress, DownloadStatus, HotkeyEvent as SttHotkeyEvent,
-    HotkeyManager as SttHotkeyManager, HotkeyMode, ModelInfo, ModelManager, OutputMode, SttConfig,
+use crate::gui::controller::{AsyncTask, ControllerContext, ControllerFeature, TabInfo};
+use crate::ml::{
+    DeviceConfig, DownloadProgress, DownloadStatus, ModelInfo, ModelManager, ModelType,
+    device_name, is_gpu_available,
 };
+use crate::stt::{
+    AudioRecorder, HotkeyEvent as SttHotkeyEvent, HotkeyManager as SttHotkeyManager, HotkeyMode,
+    OutputMode, SttConfig, WhisperEngine,
+};
+
+/// Available device options for STT inference
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum SttDevice {
+    /// CPU (always available)
+    #[default]
+    Cpu,
+    /// GPU acceleration (Metal on macOS, CUDA on Linux/Windows)
+    Gpu,
+}
 
 /// STT feature for speech-to-text
 pub struct SttFeature {
@@ -27,16 +42,30 @@ pub struct SttFeature {
     stt_download_progress: Arc<Mutex<Option<DownloadProgress>>>,
     /// Whether STT is initialized with a valid model
     stt_initialized: bool,
-    /// Whether currently recording (shared with hotkey callback)
+    /// Whether currently recording (shared with hotkey callback for UI display)
     stt_is_recording: Arc<AtomicBool>,
-    /// Last transcription result
-    stt_last_transcription: Option<String>,
+    /// Last transcription result (shared with background thread)
+    stt_last_transcription: Arc<Mutex<Option<String>>>,
+    /// Last recorded audio data (for debug playback)
+    stt_last_audio: Arc<Mutex<Option<crate::stt::AudioData>>>,
     /// Status message
     stt_status: String,
     /// Hotkey manager for global hotkeys
     stt_hotkey_manager: Option<SttHotkeyManager>,
     /// Debug output log (last N messages, shared with hotkey callback)
     stt_debug_log: Arc<Mutex<Vec<String>>>,
+    /// Flag indicating transcription is in progress
+    stt_transcribing: Arc<AtomicBool>,
+    /// Loaded Whisper engine (for preloaded model)
+    stt_whisper_engine: Option<WhisperEngine>,
+    /// Async task for model loading
+    load_model_task: Option<AsyncTask<std::result::Result<WhisperEngine, String>>>,
+    /// Selected device for inference
+    selected_device: SttDevice,
+    /// Whether GPU is available on this system
+    gpu_available: bool,
+    /// Whether audio playback is in progress
+    stt_is_playing: Arc<AtomicBool>,
 }
 
 impl SttFeature {
@@ -49,28 +78,23 @@ impl SttFeature {
             stt_download_progress: Arc::new(Mutex::new(None)),
             stt_initialized: false,
             stt_is_recording: Arc::new(AtomicBool::new(false)),
-            stt_last_transcription: None,
+            stt_last_transcription: Arc::new(Mutex::new(None)),
+            stt_last_audio: Arc::new(Mutex::new(None)),
             stt_status: "Not initialized".to_string(),
             stt_hotkey_manager: None,
             stt_debug_log: Arc::new(Mutex::new(Vec::new())),
+            stt_transcribing: Arc::new(AtomicBool::new(false)),
+            stt_whisper_engine: None,
+            load_model_task: None,
+            selected_device: SttDevice::default(),
+            gpu_available: is_gpu_available(),
+            stt_is_playing: Arc::new(AtomicBool::new(false)),
         }
     }
 
     /// Add a debug message to the log
     fn add_debug_message(&self, message: &str) {
-        use std::time::{SystemTime, UNIX_EPOCH};
-        let secs =
-            SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs() % 86400).unwrap_or(0);
-        let hours = (secs / 3600) % 24;
-        let mins = (secs % 3600) / 60;
-        let secs = secs % 60;
-        let timestamp = format!("{:02}:{:02}:{:02}", hours, mins, secs);
-        let mut log = self.stt_debug_log.lock().unwrap();
-        log.push(format!("[{}] {}", timestamp, message));
-        // Keep only last 20 messages
-        if log.len() > 20 {
-            log.remove(0);
-        }
+        Self::add_debug_message_to_log(&self.stt_debug_log, message);
     }
 
     /// Add a debug message to a shared log
@@ -91,28 +115,74 @@ impl SttFeature {
 
     /// Initialize STT hotkey manager
     fn init_stt_hotkey(&mut self) {
-        let config = self.stt_config.hotkey.clone();
+        let hotkey_config = self.stt_config.hotkey.clone();
         let is_recording = self.stt_is_recording.clone();
+        let is_transcribing = self.stt_transcribing.clone();
         let debug_log = self.stt_debug_log.clone();
+        let last_transcription = self.stt_last_transcription.clone();
+        let last_audio = self.stt_last_audio.clone();
+        let model_id = self.stt_config.model_id.clone();
+        let language = self.stt_config.language.clone();
+        let input_device = self.stt_config.input_device.clone();
+        let output_mode = self.stt_config.output_mode;
 
         self.add_debug_message(&format!(
             "Initializing hotkey: {} (mode: {:?})",
-            config.display_string(),
-            config.mode
+            hotkey_config.display_string(),
+            hotkey_config.mode
         ));
 
+        // Shared state for the recording thread
+        let should_stop = Arc::new(AtomicBool::new(false));
+        let should_stop_for_callback = should_stop.clone();
+
         let mut manager = SttHotkeyManager::new();
-        manager.set_config(config.clone());
+        manager.set_config(hotkey_config.clone());
         manager.set_callback(move |event| match event {
             SttHotkeyEvent::RecordStart => {
+                // Don't start if already recording or transcribing
+                if is_recording.load(Ordering::Relaxed) || is_transcribing.load(Ordering::Relaxed) {
+                    return;
+                }
+
                 is_recording.store(true, Ordering::Relaxed);
-                let msg = format!("Recording STARTED (hotkey: {})", config.display_string());
+                should_stop_for_callback.store(false, Ordering::Relaxed);
+
+                let msg = format!("Hotkey pressed: {}", hotkey_config.display_string());
                 log::info!("STT: {}", msg);
                 Self::add_debug_message_to_log(&debug_log, &msg);
+
+                // Clone everything needed for the recording thread
+                let is_recording_thread = is_recording.clone();
+                let is_transcribing_thread = is_transcribing.clone();
+                let should_stop_thread = should_stop_for_callback.clone();
+                let debug_log_thread = debug_log.clone();
+                let last_transcription_thread = last_transcription.clone();
+                let last_audio_thread = last_audio.clone();
+                let model_id_thread = model_id.clone();
+                let language_thread = language.clone();
+                let input_device_thread = input_device.clone();
+                let output_mode_thread = output_mode;
+
+                // Spawn recording thread
+                thread::spawn(move || {
+                    Self::run_recording_thread(
+                        is_recording_thread,
+                        is_transcribing_thread,
+                        should_stop_thread,
+                        debug_log_thread,
+                        last_transcription_thread,
+                        last_audio_thread,
+                        model_id_thread,
+                        language_thread,
+                        input_device_thread,
+                        output_mode_thread,
+                    );
+                });
             }
             SttHotkeyEvent::RecordStop => {
-                is_recording.store(false, Ordering::Relaxed);
-                let msg = format!("Recording STOPPED (hotkey: {})", config.display_string());
+                should_stop_for_callback.store(true, Ordering::Relaxed);
+                let msg = format!("Hotkey released: {}", hotkey_config.display_string());
                 log::info!("STT: {}", msg);
                 Self::add_debug_message_to_log(&debug_log, &msg);
             }
@@ -128,6 +198,207 @@ impl SttFeature {
             log::info!("STT: {}", msg);
             self.add_debug_message(&msg);
             self.stt_hotkey_manager = Some(manager);
+        }
+    }
+
+    /// Background thread that handles recording and transcription
+    #[allow(clippy::too_many_arguments)]
+    fn run_recording_thread(
+        is_recording: Arc<AtomicBool>,
+        is_transcribing: Arc<AtomicBool>,
+        should_stop: Arc<AtomicBool>,
+        debug_log: Arc<Mutex<Vec<String>>>,
+        last_transcription: Arc<Mutex<Option<String>>>,
+        last_audio: Arc<Mutex<Option<crate::stt::AudioData>>>,
+        model_id: String,
+        language: Option<String>,
+        input_device: Option<String>,
+        output_mode: OutputMode,
+    ) {
+        // Create audio recorder
+        let mut recorder = match AudioRecorder::new() {
+            Ok(mut r) => {
+                r.set_input_device(input_device);
+                r
+            }
+            Err(e) => {
+                let msg = format!("Failed to create audio recorder: {}", e);
+                log::error!("STT: {}", msg);
+                Self::add_debug_message_to_log(&debug_log, &msg);
+                is_recording.store(false, Ordering::Relaxed);
+                return;
+            }
+        };
+
+        // Start recording
+        if let Err(e) = recorder.start_recording() {
+            let msg = format!("Failed to start recording: {}", e);
+            log::error!("STT: {}", msg);
+            Self::add_debug_message_to_log(&debug_log, &msg);
+            is_recording.store(false, Ordering::Relaxed);
+            return;
+        }
+
+        Self::add_debug_message_to_log(&debug_log, "Recording STARTED");
+
+        // Wait for stop signal
+        while !should_stop.load(Ordering::Relaxed) {
+            thread::sleep(std::time::Duration::from_millis(10));
+        }
+
+        // Stop recording
+        let audio_data = match recorder.stop_recording() {
+            Ok(data) => data,
+            Err(e) => {
+                let msg = format!("Failed to stop recording: {}", e);
+                log::error!("STT: {}", msg);
+                Self::add_debug_message_to_log(&debug_log, &msg);
+                is_recording.store(false, Ordering::Relaxed);
+                return;
+            }
+        };
+
+        is_recording.store(false, Ordering::Relaxed);
+
+        let duration_ms = audio_data.duration_ms();
+        Self::add_debug_message_to_log(
+            &debug_log,
+            &format!(
+                "Recording STOPPED ({} ms, {} samples)",
+                duration_ms,
+                audio_data.samples.len()
+            ),
+        );
+
+        // Store audio for debug playback
+        *last_audio.lock().unwrap() = Some(audio_data.clone());
+
+        // Skip if too short
+        if duration_ms < 100 {
+            Self::add_debug_message_to_log(
+                &debug_log,
+                "Recording too short, skipping transcription",
+            );
+            return;
+        }
+
+        // Start transcription
+        is_transcribing.store(true, Ordering::Relaxed);
+        Self::add_debug_message_to_log(&debug_log, "Starting transcription...");
+
+        // Get model path
+        let model_manager = match ModelManager::new() {
+            Ok(m) => m,
+            Err(e) => {
+                let msg = format!("Failed to create model manager: {}", e);
+                log::error!("STT: {}", msg);
+                Self::add_debug_message_to_log(&debug_log, &msg);
+                is_transcribing.store(false, Ordering::Relaxed);
+                return;
+            }
+        };
+
+        // Check if model is downloaded
+        if !model_manager.is_downloaded(ModelType::Whisper, &model_id) {
+            let msg = format!("Model not downloaded: {}", model_id);
+            log::error!("STT: {}", msg);
+            Self::add_debug_message_to_log(&debug_log, &msg);
+            is_transcribing.store(false, Ordering::Relaxed);
+            return;
+        }
+
+        let model_path = model_manager.model_dir(ModelType::Whisper, &model_id);
+
+        // Load and run Whisper
+        let mut engine = WhisperEngine::new();
+        engine.set_language(language);
+
+        if let Err(e) = engine.load_model(&model_path) {
+            let msg = format!("Failed to load model: {}", e);
+            log::error!("STT: {}", msg);
+            Self::add_debug_message_to_log(&debug_log, &msg);
+            is_transcribing.store(false, Ordering::Relaxed);
+            return;
+        }
+
+        match engine.transcribe(&audio_data) {
+            Ok(result) => {
+                let msg = format!(
+                    "Transcription complete ({} ms): \"{}\"",
+                    result.duration_ms, result.text
+                );
+                log::info!("STT: {}", msg);
+                Self::add_debug_message_to_log(&debug_log, &msg);
+
+                // Store result
+                *last_transcription.lock().unwrap() = Some(result.text.clone());
+
+                // Handle output
+                Self::handle_output(&result.text, output_mode);
+            }
+            Err(e) => {
+                let msg = format!("Transcription failed: {}", e);
+                log::error!("STT: {}", msg);
+                Self::add_debug_message_to_log(&debug_log, &msg);
+            }
+        }
+
+        is_transcribing.store(false, Ordering::Relaxed);
+    }
+
+    /// Handle transcription output
+    fn handle_output(text: &str, output_mode: OutputMode) {
+        if text.is_empty() {
+            return;
+        }
+
+        match output_mode {
+            OutputMode::Keystrokes => {
+                #[cfg(feature = "input")]
+                {
+                    use crate::input::Keyboard;
+                    if let Ok(keyboard) = Keyboard::new() {
+                        if let Err(e) = keyboard.type_string(text) {
+                            log::error!("STT: Failed to type text: {}", e);
+                        }
+                    }
+                }
+            }
+            OutputMode::Clipboard => {
+                #[cfg(feature = "clipboard")]
+                {
+                    use crate::clipboard;
+                    if let Err(e) = clipboard::set_text(text) {
+                        log::error!("STT: Failed to copy to clipboard: {}", e);
+                    }
+                }
+            }
+            OutputMode::Both => {
+                #[cfg(feature = "clipboard")]
+                {
+                    use crate::clipboard;
+                    if let Err(e) = clipboard::set_text(text) {
+                        log::error!("STT: Failed to copy to clipboard: {}", e);
+                    }
+                }
+                #[cfg(feature = "input")]
+                {
+                    use crate::input::Keyboard;
+                    if let Ok(keyboard) = Keyboard::new() {
+                        #[cfg(target_os = "macos")]
+                        let modifiers = vec!["meta".to_string()];
+                        #[cfg(not(target_os = "macos"))]
+                        let modifiers = vec!["control".to_string()];
+
+                        if let Err(e) = keyboard.key_tap("v", Some(&modifiers)) {
+                            log::error!("STT: Failed to paste: {}", e);
+                        }
+                    }
+                }
+            }
+            OutputMode::Logger => {
+                // Logger mode - transcription is already logged, no additional action needed
+            }
         }
     }
 
@@ -155,7 +426,7 @@ impl SttFeature {
         }
 
         if let Some(ref manager) = self.stt_model_manager {
-            self.stt_available_models = manager.list_available_models();
+            self.stt_available_models = manager.list_whisper_models();
 
             // Update status based on model availability
             let has_model = self
@@ -191,10 +462,7 @@ impl SttFeature {
         let progress_arc = self.stt_download_progress.clone();
 
         // Find model info
-        let model_info =
-            manager.list_available_models().into_iter().find(|m| m.id == model_id).or_else(|| {
-                if model_id == "silero-vad" { Some(manager.get_vad_model_info()) } else { None }
-            });
+        let model_info = manager.list_whisper_models().into_iter().find(|m| m.id == model_id);
 
         let Some(model_info) = model_info else {
             log::error!("Unknown model: {}", model_id);
@@ -206,6 +474,9 @@ impl SttFeature {
             let mut progress = progress_arc.lock().unwrap();
             *progress = Some(DownloadProgress {
                 model_id: model_id_owned.clone(),
+                current_file: String::new(),
+                file_index: 0,
+                total_files: model_info.files.len(),
                 downloaded_bytes: 0,
                 total_bytes: model_info.size_bytes,
                 status: DownloadStatus::Pending,
@@ -238,7 +509,7 @@ impl SttFeature {
             });
 
             // Download the model
-            match manager.download_model_sync(&model_id_owned, Some(callback)) {
+            match manager.download_model_sync(ModelType::Whisper, &model_id_owned, Some(callback)) {
                 Ok(path) => {
                     log::info!("Model downloaded to: {:?}", path);
                     let mut progress = progress_for_thread.lock().unwrap();
@@ -262,13 +533,214 @@ impl SttFeature {
     /// Delete a downloaded model
     fn delete_stt_model(&mut self, model_id: &str) {
         if let Some(ref manager) = self.stt_model_manager {
-            if let Err(e) = manager.delete_model(model_id) {
+            if let Err(e) = manager.delete_model(ModelType::Whisper, model_id) {
                 log::error!("Failed to delete model {}: {}", model_id, e);
             } else {
                 log::info!("Deleted model: {}", model_id);
                 self.stt_models_need_refresh = true;
             }
         }
+    }
+
+    /// Start loading model asynchronously (non-blocking)
+    fn start_model_load(&mut self, model_path: PathBuf) {
+        let task = AsyncTask::new();
+        let callback = task.callback();
+        let use_gpu = self.selected_device == SttDevice::Gpu;
+        let language = self.stt_config.language.clone();
+
+        self.stt_status = "Loading model...".to_string();
+        self.add_debug_message(&format!(
+            "Loading model: {:?} (GPU: {})",
+            model_path.file_name().unwrap_or_default(),
+            use_gpu
+        ));
+
+        thread::spawn(move || {
+            log::info!("Loading STT model async: {:?} (GPU: {})", model_path, use_gpu);
+            let device_config =
+                if use_gpu { DeviceConfig::with_gpu() } else { DeviceConfig::cpu_only() };
+            let result = match WhisperEngine::with_device(device_config) {
+                Ok(mut engine) => {
+                    engine.set_language(language);
+                    engine.load_model(&model_path).map(|_| engine).map_err(|e| e.to_string())
+                }
+                Err(e) => Err(e.to_string()),
+            };
+            callback(result);
+        });
+
+        self.load_model_task = Some(task);
+    }
+
+    /// Check for async task completion
+    fn check_async_tasks(&mut self, ctx: &mut ControllerContext) {
+        // Check model loading task
+        if let Some(ref task) = self.load_model_task {
+            if let Some(result) = task.take() {
+                match result {
+                    Ok(engine) => {
+                        let dev_name = device_name(engine.device());
+                        let msg = format!("Model loaded ({}) - Ready", dev_name);
+                        self.add_debug_message(&msg);
+                        self.stt_whisper_engine = Some(engine);
+                        self.stt_status = msg;
+                        self.stt_initialized = true;
+                        log::info!("STT model loaded successfully on {}", dev_name);
+                    }
+                    Err(e) => {
+                        let msg = format!("Failed to load model: {}", e);
+                        self.add_debug_message(&msg);
+                        self.stt_status = msg.clone();
+                        log::error!("Failed to load STT model: {}", e);
+                    }
+                }
+                self.load_model_task = None;
+                ctx.request_repaint();
+            }
+        }
+
+        // Check download progress and refresh models list when complete
+        let download_info = {
+            let progress = self.stt_download_progress.lock().unwrap();
+            progress
+                .as_ref()
+                .filter(|p| p.status == DownloadStatus::Completed)
+                .map(|p| p.model_id.clone())
+        };
+
+        if let Some(completed_model_id) = download_info {
+            // Request models refresh
+            self.stt_models_need_refresh = true;
+
+            // Check if the model now shows as downloaded in the models list
+            let model_confirmed_downloaded = self
+                .stt_available_models
+                .iter()
+                .any(|m| m.id == completed_model_id && m.is_downloaded);
+
+            // Only clear the download progress after the model list confirms the download
+            if model_confirmed_downloaded {
+                *self.stt_download_progress.lock().unwrap() = None;
+            }
+        }
+    }
+
+    /// Play back the last recorded audio
+    fn play_last_audio(&self) {
+        use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
+
+        let audio_data = {
+            let guard = self.stt_last_audio.lock().unwrap();
+            match guard.as_ref() {
+                Some(data) => data.clone(),
+                None => {
+                    self.add_debug_message("No audio to play");
+                    return;
+                }
+            }
+        };
+
+        if self.stt_is_playing.load(Ordering::Relaxed) {
+            self.add_debug_message("Already playing");
+            return;
+        }
+
+        let is_playing = self.stt_is_playing.clone();
+        let debug_log = self.stt_debug_log.clone();
+
+        self.add_debug_message(&format!(
+            "Playing audio: {} ms, {} samples at {} Hz",
+            audio_data.duration_ms(),
+            audio_data.samples.len(),
+            audio_data.sample_rate
+        ));
+
+        thread::spawn(move || {
+            is_playing.store(true, Ordering::Relaxed);
+
+            let host = cpal::default_host();
+            let device = match host.default_output_device() {
+                Some(d) => d,
+                None => {
+                    Self::add_debug_message_to_log(&debug_log, "No output device available");
+                    is_playing.store(false, Ordering::Relaxed);
+                    return;
+                }
+            };
+
+            let config = match device.default_output_config() {
+                Ok(c) => c,
+                Err(e) => {
+                    Self::add_debug_message_to_log(
+                        &debug_log,
+                        &format!("Failed to get output config: {}", e),
+                    );
+                    is_playing.store(false, Ordering::Relaxed);
+                    return;
+                }
+            };
+
+            let output_sample_rate = config.sample_rate().0;
+            let output_channels = config.channels() as usize;
+
+            // Resample if needed
+            let resampled = audio_data.resample(output_sample_rate);
+            let samples = resampled.samples.clone();
+            let sample_idx = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+            let sample_idx_clone = sample_idx.clone();
+            let total_samples = samples.len();
+
+            let stream = match config.sample_format() {
+                cpal::SampleFormat::F32 => device.build_output_stream(
+                    &config.into(),
+                    move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
+                        for frame in data.chunks_mut(output_channels) {
+                            let idx = sample_idx_clone.fetch_add(1, Ordering::Relaxed);
+                            let sample = if idx < total_samples { samples[idx] } else { 0.0 };
+                            for s in frame.iter_mut() {
+                                *s = sample;
+                            }
+                        }
+                    },
+                    |err| log::error!("Audio playback error: {}", err),
+                    None,
+                ),
+                _ => {
+                    Self::add_debug_message_to_log(&debug_log, "Unsupported output format");
+                    is_playing.store(false, Ordering::Relaxed);
+                    return;
+                }
+            };
+
+            let stream = match stream {
+                Ok(s) => s,
+                Err(e) => {
+                    Self::add_debug_message_to_log(
+                        &debug_log,
+                        &format!("Failed to build output stream: {}", e),
+                    );
+                    is_playing.store(false, Ordering::Relaxed);
+                    return;
+                }
+            };
+
+            if let Err(e) = stream.play() {
+                Self::add_debug_message_to_log(
+                    &debug_log,
+                    &format!("Failed to play stream: {}", e),
+                );
+                is_playing.store(false, Ordering::Relaxed);
+                return;
+            }
+
+            // Wait for playback to complete
+            let duration_ms = (total_samples as f32 / output_sample_rate as f32 * 1000.0) as u64;
+            thread::sleep(std::time::Duration::from_millis(duration_ms + 100));
+
+            Self::add_debug_message_to_log(&debug_log, "Playback complete");
+            is_playing.store(false, Ordering::Relaxed);
+        });
     }
 }
 
@@ -287,16 +759,31 @@ impl ControllerFeature for SttFeature {
         TabInfo::new("stt", "Speech to Text", 40) // After clipboard (30)
     }
 
-    fn render(&mut self, ui: &mut egui::Ui, _ctx: &mut ControllerContext) {
+    fn render(&mut self, ui: &mut egui::Ui, ctx: &mut ControllerContext) {
         // Initialize model manager if needed
         self.ensure_stt_model_manager();
         self.refresh_stt_models();
 
+        // Check async tasks (model loading, download complete)
+        self.check_async_tasks(ctx);
+
         ui.heading("Speech to Text");
         ui.add_space(8.0);
 
-        // Get current recording state
+        // Get current states
         let is_recording = self.stt_is_recording.load(Ordering::Relaxed);
+        let is_transcribing = self.stt_transcribing.load(Ordering::Relaxed);
+
+        // Update status based on current state
+        if is_recording {
+            self.stt_status = "Recording...".to_string();
+        } else if is_transcribing {
+            self.stt_status = "Transcribing...".to_string();
+        } else if self.stt_initialized {
+            self.stt_status = "Ready".to_string();
+        }
+
+        let is_loading_model = self.load_model_task.is_some();
 
         // Status section
         ui.group(|ui| {
@@ -304,6 +791,8 @@ impl ControllerFeature for SttFeature {
                 ui.label("Status:");
                 let status_color = if is_recording {
                     egui::Color32::RED
+                } else if is_transcribing || is_loading_model {
+                    egui::Color32::YELLOW
                 } else if self.stt_initialized {
                     egui::Color32::GREEN
                 } else {
@@ -313,7 +802,8 @@ impl ControllerFeature for SttFeature {
             });
 
             // Show last transcription if available
-            if let Some(ref text) = self.stt_last_transcription {
+            let last_text = self.stt_last_transcription.lock().unwrap().clone();
+            if let Some(ref text) = last_text {
                 ui.add_space(4.0);
                 ui.horizontal(|ui| {
                     ui.label("Last:");
@@ -321,12 +811,24 @@ impl ControllerFeature for SttFeature {
                 });
             }
 
-            // Recording indicator
+            // Recording / Transcribing / Loading indicator
             if is_recording {
                 ui.add_space(4.0);
                 ui.horizontal(|ui| {
                     ui.spinner();
-                    ui.label("Recording...");
+                    ui.label(egui::RichText::new("Recording...").color(egui::Color32::RED));
+                });
+            } else if is_loading_model {
+                ui.add_space(4.0);
+                ui.horizontal(|ui| {
+                    ui.spinner();
+                    ui.label("Loading model...");
+                });
+            } else if is_transcribing {
+                ui.add_space(4.0);
+                ui.horizontal(|ui| {
+                    ui.spinner();
+                    ui.label(egui::RichText::new("Transcribing...").color(egui::Color32::YELLOW));
                 });
             }
         });
@@ -417,29 +919,6 @@ impl ControllerFeature for SttFeature {
                     }
                 }
             });
-
-            ui.add_space(8.0);
-
-            // VAD settings
-            ui.horizontal(|ui| {
-                if ui
-                    .checkbox(&mut self.stt_config.vad_enabled, "Voice Activity Detection")
-                    .changed()
-                {
-                    config_changed = true;
-                }
-            });
-
-            if self.stt_config.vad_enabled {
-                ui.horizontal(|ui| {
-                    ui.label("Silence timeout:");
-                    let mut seconds = self.stt_config.vad_silence_duration_ms as f32 / 1000.0;
-                    if ui.add(egui::Slider::new(&mut seconds, 0.5..=5.0).suffix("s")).changed() {
-                        self.stt_config.vad_silence_duration_ms = (seconds * 1000.0) as u32;
-                        config_changed = true;
-                    }
-                });
-            }
         });
 
         // Save config if changed
@@ -477,11 +956,77 @@ impl ControllerFeature for SttFeature {
                                     .clicked()
                             {
                                 self.stt_config.model_id = model.id.clone();
+                                // Unload engine when switching models
+                                self.stt_whisper_engine = None;
+                                self.stt_initialized = false;
                                 let _ = self.stt_config.save();
                             }
                         }
                     });
             });
+
+            ui.add_space(4.0);
+
+            // Device selection
+            ui.horizontal(|ui| {
+                ui.label("Device:");
+
+                // CPU option (always available)
+                let cpu_selected = self.selected_device == SttDevice::Cpu;
+                if ui.selectable_label(cpu_selected, "CPU").clicked()
+                    && self.selected_device != SttDevice::Cpu
+                {
+                    self.selected_device = SttDevice::Cpu;
+                    // Unload engine when switching device
+                    self.stt_whisper_engine = None;
+                    self.stt_initialized = false;
+                    self.stt_status = "Device changed - reload model".to_string();
+                }
+
+                // GPU option (only if available)
+                let gpu_text = if cfg!(target_os = "macos") { "Metal" } else { "CUDA" };
+
+                ui.add_enabled_ui(self.gpu_available, |ui| {
+                    let gpu_selected = self.selected_device == SttDevice::Gpu;
+                    if ui.selectable_label(gpu_selected, gpu_text).clicked()
+                        && self.selected_device != SttDevice::Gpu
+                    {
+                        self.selected_device = SttDevice::Gpu;
+                        // Unload engine when switching device
+                        self.stt_whisper_engine = None;
+                        self.stt_initialized = false;
+                        self.stt_status = "Device changed - reload model".to_string();
+                    }
+                });
+
+                if !self.gpu_available {
+                    ui.label(
+                        egui::RichText::new("(GPU not available)")
+                            .small()
+                            .color(egui::Color32::GRAY),
+                    );
+                }
+            });
+
+            ui.add_space(4.0);
+
+            // Load Model button
+            let has_downloaded_model = self
+                .stt_available_models
+                .iter()
+                .any(|m| m.is_downloaded && m.id == self.stt_config.model_id);
+
+            if self.stt_whisper_engine.is_none()
+                && has_downloaded_model
+                && !is_loading_model
+                && ui.button("Load Model").clicked()
+            {
+                if let Some(ref manager) = self.stt_model_manager {
+                    let model_path =
+                        manager.model_dir(ModelType::Whisper, &self.stt_config.model_id);
+                    self.start_model_load(model_path);
+                }
+            }
 
             ui.add_space(8.0);
 
@@ -491,7 +1036,7 @@ impl ControllerFeature for SttFeature {
                     ui.horizontal(|ui| {
                         ui.label(format!("Downloading {}:", progress.model_id));
                         ui.add(
-                            egui::ProgressBar::new(progress.progress())
+                            egui::ProgressBar::new(progress.overall_progress())
                                 .text(progress.progress_percent()),
                         );
                     });
@@ -530,6 +1075,12 @@ impl ControllerFeature for SttFeature {
                                 match &progress.status {
                                     DownloadStatus::Downloading => {
                                         ui.label(egui::RichText::new(progress.progress_percent()));
+                                    }
+                                    DownloadStatus::Completed => {
+                                        ui.label(
+                                            egui::RichText::new("Completed")
+                                                .color(egui::Color32::GREEN),
+                                        );
                                     }
                                     DownloadStatus::Failed(err) => {
                                         ui.label(
@@ -576,29 +1127,6 @@ impl ControllerFeature for SttFeature {
                         self.delete_stt_model(&model_id);
                     }
                 });
-
-            // VAD model section
-            ui.add_space(8.0);
-            ui.separator();
-            ui.add_space(4.0);
-
-            if let Some(ref manager) = self.stt_model_manager {
-                let vad_info = manager.get_vad_model_info();
-                ui.horizontal(|ui| {
-                    ui.label("VAD Model:");
-                    if vad_info.is_downloaded {
-                        ui.label(egui::RichText::new("Downloaded").color(egui::Color32::GREEN));
-                    } else {
-                        ui.label(format!("Not downloaded ({})", vad_info.size_display()));
-                        let is_downloading = download_progress
-                            .as_ref()
-                            .is_some_and(|p| p.status == DownloadStatus::Downloading);
-                        if !is_downloading && ui.small_button("Download").clicked() {
-                            self.start_stt_model_download("silero-vad");
-                        }
-                    }
-                });
-            }
         });
 
         ui.add_space(16.0);
@@ -625,10 +1153,26 @@ impl ControllerFeature for SttFeature {
             }
 
             ui.add_space(4.0);
+            drop(log); // Release the lock before UI interactions
+
             ui.horizontal(|ui| {
                 if ui.small_button("Clear Log").clicked() {
-                    drop(log); // Release the lock before modifying
                     self.stt_debug_log.lock().unwrap().clear();
+                }
+
+                // Play button for debug playback
+                let has_audio = self.stt_last_audio.lock().unwrap().is_some();
+                let is_playing = self.stt_is_playing.load(Ordering::Relaxed);
+
+                ui.add_enabled_ui(has_audio && !is_playing, |ui| {
+                    if ui.small_button("Play Last Recording").clicked() {
+                        self.play_last_audio();
+                    }
+                });
+
+                if is_playing {
+                    ui.spinner();
+                    ui.label("Playing...");
                 }
             });
         });

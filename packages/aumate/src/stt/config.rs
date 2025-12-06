@@ -15,12 +15,14 @@ pub enum OutputMode {
     Clipboard,
     /// Copy to clipboard and paste
     Both,
+    /// Only log to output (no typing or clipboard)
+    Logger,
 }
 
 impl OutputMode {
     /// Get all available output modes
     pub fn all() -> &'static [OutputMode] {
-        &[OutputMode::Keystrokes, OutputMode::Clipboard, OutputMode::Both]
+        &[OutputMode::Keystrokes, OutputMode::Clipboard, OutputMode::Both, OutputMode::Logger]
     }
 
     /// Get display name for the output mode
@@ -29,6 +31,7 @@ impl OutputMode {
             OutputMode::Keystrokes => "Keystrokes",
             OutputMode::Clipboard => "Clipboard",
             OutputMode::Both => "Both",
+            OutputMode::Logger => "Logger",
         }
     }
 }
@@ -136,10 +139,6 @@ pub struct SttConfig {
     pub model_id: String,
     /// Language for transcription (None = auto-detect)
     pub language: Option<String>,
-    /// Enable Voice Activity Detection
-    pub vad_enabled: bool,
-    /// Silence duration in ms to auto-stop recording
-    pub vad_silence_duration_ms: u32,
     /// Input device name (None = default)
     pub input_device: Option<String>,
 }
@@ -152,8 +151,6 @@ impl Default for SttConfig {
             output_mode: OutputMode::default(),
             model_id: "whisper-base".to_string(),
             language: None,
-            vad_enabled: true,
-            vad_silence_duration_ms: 1500,
             input_device: None,
         }
     }
@@ -303,8 +300,7 @@ mod tests {
     fn test_default_config() {
         let config = SttConfig::default();
         assert_eq!(config.model_id, "whisper-base");
-        assert!(config.vad_enabled);
-        assert_eq!(config.vad_silence_duration_ms, 1500);
+        assert!(config.hotkey_enabled);
     }
 
     #[test]
