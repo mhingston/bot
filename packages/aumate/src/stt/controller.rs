@@ -2,6 +2,7 @@
 //!
 //! Provides speech-to-text functionality with model management and hotkey support.
 
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::thread;
 
@@ -26,14 +27,16 @@ pub struct SttFeature {
     stt_download_progress: Arc<Mutex<Option<DownloadProgress>>>,
     /// Whether STT is initialized with a valid model
     stt_initialized: bool,
-    /// Whether currently recording
-    stt_is_recording: bool,
+    /// Whether currently recording (shared with hotkey callback)
+    stt_is_recording: Arc<AtomicBool>,
     /// Last transcription result
     stt_last_transcription: Option<String>,
     /// Status message
     stt_status: String,
     /// Hotkey manager for global hotkeys
     stt_hotkey_manager: Option<SttHotkeyManager>,
+    /// Debug output log (last N messages, shared with hotkey callback)
+    stt_debug_log: Arc<Mutex<Vec<String>>>,
 }
 
 impl SttFeature {
@@ -45,36 +48,85 @@ impl SttFeature {
             stt_models_need_refresh: true,
             stt_download_progress: Arc::new(Mutex::new(None)),
             stt_initialized: false,
-            stt_is_recording: false,
+            stt_is_recording: Arc::new(AtomicBool::new(false)),
             stt_last_transcription: None,
             stt_status: "Not initialized".to_string(),
             stt_hotkey_manager: None,
+            stt_debug_log: Arc::new(Mutex::new(Vec::new())),
+        }
+    }
+
+    /// Add a debug message to the log
+    fn add_debug_message(&self, message: &str) {
+        use std::time::{SystemTime, UNIX_EPOCH};
+        let secs =
+            SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs() % 86400).unwrap_or(0);
+        let hours = (secs / 3600) % 24;
+        let mins = (secs % 3600) / 60;
+        let secs = secs % 60;
+        let timestamp = format!("{:02}:{:02}:{:02}", hours, mins, secs);
+        let mut log = self.stt_debug_log.lock().unwrap();
+        log.push(format!("[{}] {}", timestamp, message));
+        // Keep only last 20 messages
+        if log.len() > 20 {
+            log.remove(0);
+        }
+    }
+
+    /// Add a debug message to a shared log
+    fn add_debug_message_to_log(log: &Arc<Mutex<Vec<String>>>, message: &str) {
+        use std::time::{SystemTime, UNIX_EPOCH};
+        let secs =
+            SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs() % 86400).unwrap_or(0);
+        let hours = (secs / 3600) % 24;
+        let mins = (secs % 3600) / 60;
+        let secs = secs % 60;
+        let timestamp = format!("{:02}:{:02}:{:02}", hours, mins, secs);
+        let mut log_guard = log.lock().unwrap();
+        log_guard.push(format!("[{}] {}", timestamp, message));
+        if log_guard.len() > 20 {
+            log_guard.remove(0);
         }
     }
 
     /// Initialize STT hotkey manager
     fn init_stt_hotkey(&mut self) {
         let config = self.stt_config.hotkey.clone();
-        let is_recording = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
-        let is_recording_for_callback = is_recording.clone();
+        let is_recording = self.stt_is_recording.clone();
+        let debug_log = self.stt_debug_log.clone();
+
+        self.add_debug_message(&format!(
+            "Initializing hotkey: {} (mode: {:?})",
+            config.display_string(),
+            config.mode
+        ));
 
         let mut manager = SttHotkeyManager::new();
-        manager.set_config(config);
+        manager.set_config(config.clone());
         manager.set_callback(move |event| match event {
             SttHotkeyEvent::RecordStart => {
-                is_recording_for_callback.store(true, std::sync::atomic::Ordering::Relaxed);
-                log::info!("STT recording started via hotkey");
+                is_recording.store(true, Ordering::Relaxed);
+                let msg = format!("Recording STARTED (hotkey: {})", config.display_string());
+                log::info!("STT: {}", msg);
+                Self::add_debug_message_to_log(&debug_log, &msg);
             }
             SttHotkeyEvent::RecordStop => {
-                is_recording_for_callback.store(false, std::sync::atomic::Ordering::Relaxed);
-                log::info!("STT recording stopped via hotkey");
+                is_recording.store(false, Ordering::Relaxed);
+                let msg = format!("Recording STOPPED (hotkey: {})", config.display_string());
+                log::info!("STT: {}", msg);
+                Self::add_debug_message_to_log(&debug_log, &msg);
             }
         });
 
         if let Err(e) = manager.start() {
-            log::error!("Failed to start STT hotkey manager: {}", e);
+            let msg = format!("Failed to start hotkey manager: {}", e);
+            log::error!("STT: {}", msg);
+            self.add_debug_message(&msg);
         } else {
-            log::info!("STT hotkey manager started");
+            let msg =
+                format!("Hotkey manager started: {}", self.stt_config.hotkey.display_string());
+            log::info!("STT: {}", msg);
+            self.add_debug_message(&msg);
             self.stt_hotkey_manager = Some(manager);
         }
     }
@@ -243,11 +295,14 @@ impl ControllerFeature for SttFeature {
         ui.heading("Speech to Text");
         ui.add_space(8.0);
 
+        // Get current recording state
+        let is_recording = self.stt_is_recording.load(Ordering::Relaxed);
+
         // Status section
         ui.group(|ui| {
             ui.horizontal(|ui| {
                 ui.label("Status:");
-                let status_color = if self.stt_is_recording {
+                let status_color = if is_recording {
                     egui::Color32::RED
                 } else if self.stt_initialized {
                     egui::Color32::GREEN
@@ -267,7 +322,7 @@ impl ControllerFeature for SttFeature {
             }
 
             // Recording indicator
-            if self.stt_is_recording {
+            if is_recording {
                 ui.add_space(4.0);
                 ui.horizontal(|ui| {
                     ui.spinner();
@@ -544,6 +599,38 @@ impl ControllerFeature for SttFeature {
                     }
                 });
             }
+        });
+
+        ui.add_space(16.0);
+        ui.separator();
+        ui.add_space(8.0);
+
+        // Output section
+        ui.heading("Output Log");
+        ui.add_space(8.0);
+
+        ui.group(|ui| {
+            let log = self.stt_debug_log.lock().unwrap();
+            if log.is_empty() {
+                ui.label(egui::RichText::new("No events yet. Press the hotkey to test.").weak());
+            } else {
+                egui::ScrollArea::vertical().max_height(150.0).stick_to_bottom(true).show(
+                    ui,
+                    |ui| {
+                        for msg in log.iter() {
+                            ui.label(egui::RichText::new(msg).monospace().size(11.0));
+                        }
+                    },
+                );
+            }
+
+            ui.add_space(4.0);
+            ui.horizontal(|ui| {
+                if ui.small_button("Clear Log").clicked() {
+                    drop(log); // Release the lock before modifying
+                    self.stt_debug_log.lock().unwrap().clear();
+                }
+            });
         });
     }
 

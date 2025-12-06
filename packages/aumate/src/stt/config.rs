@@ -99,7 +99,7 @@ pub struct HotkeyConfig {
 impl Default for HotkeyConfig {
     fn default() -> Self {
         Self {
-            key: "Space".to_string(),
+            key: "6".to_string(),
             modifiers: vec![Modifier::Ctrl, Modifier::Shift],
             mode: HotkeyMode::PushToTalk,
         }
@@ -310,7 +310,7 @@ mod tests {
     #[test]
     fn test_hotkey_display() {
         let hotkey = HotkeyConfig::default();
-        assert_eq!(hotkey.display_string(), "Ctrl+Shift+Space");
+        assert_eq!(hotkey.display_string(), "Ctrl+Shift+6");
     }
 
     #[test]

@@ -142,6 +142,8 @@ fn run_grab_loop(
     let pressed_modifiers_clone = pressed_modifiers.clone();
     let main_key_pressed_clone = main_key_pressed.clone();
 
+    log::debug!("STT hotkey grab loop started, waiting for hotkey: {}", config.lock().unwrap().key);
+
     let grab_callback = move |event: Event| -> Option<Event> {
         // Check if we should stop
         if !is_running.load(Ordering::Relaxed) {
@@ -155,15 +157,24 @@ fn run_grab_loop(
                 // Track modifier key presses
                 if let Some(modifier) = key_to_modifier(&key) {
                     pressed_modifiers_clone.lock().unwrap().insert(modifier);
+                    log::debug!("STT: Modifier pressed: {:?}", modifier);
                 }
 
                 // Check if this is our target key
                 if let Some(target_key) = parse_key_string(&config.key) {
                     if key == target_key {
+                        log::debug!("STT: Target key '{}' pressed", config.key);
                         // Check if all required modifiers are pressed
                         let pressed = pressed_modifiers_clone.lock().unwrap();
                         let all_modifiers_match =
                             config.modifiers.iter().all(|m| pressed.contains(m));
+
+                        log::debug!(
+                            "STT: Modifiers check - required: {:?}, pressed: {:?}, match: {}",
+                            config.modifiers,
+                            pressed.iter().collect::<Vec<_>>(),
+                            all_modifiers_match
+                        );
 
                         if all_modifiers_match && !main_key_pressed_clone.load(Ordering::Relaxed) {
                             main_key_pressed_clone.store(true, Ordering::Relaxed);
@@ -171,7 +182,9 @@ fn run_grab_loop(
                             match config.mode {
                                 HotkeyMode::PushToTalk => {
                                     // Start recording on key press
-                                    log::info!("STT hotkey pressed - start recording");
+                                    log::info!(
+                                        "STT: Hotkey activated (PushToTalk) - START recording"
+                                    );
                                     (callback)(HotkeyEvent::RecordStart);
                                 }
                                 HotkeyMode::Toggle => {
@@ -179,10 +192,14 @@ fn run_grab_loop(
                                     let was_recording =
                                         is_recording.fetch_xor(true, Ordering::Relaxed);
                                     if was_recording {
-                                        log::info!("STT hotkey pressed - stop recording (toggle)");
+                                        log::info!(
+                                            "STT: Hotkey activated (Toggle) - STOP recording"
+                                        );
                                         (callback)(HotkeyEvent::RecordStop);
                                     } else {
-                                        log::info!("STT hotkey pressed - start recording (toggle)");
+                                        log::info!(
+                                            "STT: Hotkey activated (Toggle) - START recording"
+                                        );
                                         (callback)(HotkeyEvent::RecordStart);
                                     }
                                 }
@@ -197,16 +214,18 @@ fn run_grab_loop(
                 // Track modifier key releases
                 if let Some(modifier) = key_to_modifier(&key) {
                     pressed_modifiers_clone.lock().unwrap().remove(&modifier);
+                    log::debug!("STT: Modifier released: {:?}", modifier);
                 }
 
                 // Handle key release for push-to-talk mode
                 if let Some(target_key) = parse_key_string(&config.key) {
                     if key == target_key && main_key_pressed_clone.load(Ordering::Relaxed) {
                         main_key_pressed_clone.store(false, Ordering::Relaxed);
+                        log::debug!("STT: Target key '{}' released", config.key);
 
                         if config.mode == HotkeyMode::PushToTalk {
                             // Stop recording on key release
-                            log::info!("STT hotkey released - stop recording");
+                            log::info!("STT: Hotkey released (PushToTalk) - STOP recording");
                             (callback)(HotkeyEvent::RecordStop);
                         }
                     }
