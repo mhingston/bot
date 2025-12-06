@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Aumate
+Comment=Cross-platform desktop automation application
+Exec=Aumate
+Icon=Aumate
+Terminal=false
+Type=Application
+Categories=Development;Utility;
+Keywords=automation;desktop;mouse;keyboard;screen;
+StartupNotify=true
+StartupWMClass=Aumate
