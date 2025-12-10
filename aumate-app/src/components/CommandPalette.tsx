@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { getCurrentWindow } from "@tauri-apps/api/window";
+import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
 import { listen } from "@tauri-apps/api/event";
 import {
   Search,
@@ -118,6 +118,10 @@ export function CommandPalette() {
   const { settings, loadSettings, setSettings } = useSettingsStore();
   const windowMode = settings.general.window_mode;
 
+  // Window height constants
+  const COMPACT_HEIGHT = 56; // Just the input bar
+  const EXPANDED_HEIGHT = 400; // Full window with content
+
   // Load settings on mount
   useEffect(() => {
     loadSettings();
@@ -135,7 +139,7 @@ export function CommandPalette() {
   }, [setSettings]);
 
   // Determine if content area should be shown based on window mode
-  const shouldShowContent = () => {
+  const showContent = (() => {
     if (windowMode === "expanded") {
       return true;
     }
@@ -145,7 +149,29 @@ export function CommandPalette() {
     } else {
       return query.trim().length > 0 || polishResult || polishError || isPolishing;
     }
-  };
+  })();
+
+  // Resize window based on content visibility (compact mode only)
+  useEffect(() => {
+    if (windowMode !== "compact") return;
+
+    const resizeWindow = async () => {
+      const win = getCurrentWindow();
+      const currentSize = await win.innerSize();
+      const scaleFactor = await win.scaleFactor();
+      const targetHeight = showContent ? EXPANDED_HEIGHT : COMPACT_HEIGHT;
+      // Convert physical size to logical
+      const currentLogicalHeight = Math.round(currentSize.height / scaleFactor);
+
+      if (currentLogicalHeight !== targetHeight) {
+        await win.setSize(new LogicalSize(680, targetHeight));
+        // Re-center after resize
+        await win.center();
+      }
+    };
+
+    resizeWindow();
+  }, [showContent, windowMode, COMPACT_HEIGHT, EXPANDED_HEIGHT]);
 
   // Filter commands based on search query
   const filteredCommands = mockCommands.filter(
@@ -262,6 +288,26 @@ export function CommandPalette() {
         return;
       }
 
+      // Ctrl+P for arrow up (like Emacs/Spotlight)
+      if (e.ctrlKey && e.key === "p") {
+        if (mode === "search") {
+          e.preventDefault();
+          setSelectedIndex((prev) => (prev > 0 ? prev - 1 : prev));
+        }
+        return;
+      }
+
+      // Ctrl+N for arrow down (like Emacs/Spotlight)
+      if (e.ctrlKey && e.key === "n") {
+        if (mode === "search") {
+          e.preventDefault();
+          setSelectedIndex((prev) =>
+            prev < filteredCommands.length - 1 ? prev + 1 : prev
+          );
+        }
+        return;
+      }
+
       // Tab to switch modes
       if (e.key === "Tab") {
         e.preventDefault();
@@ -360,7 +406,10 @@ export function CommandPalette() {
   return (
     <div className="w-full h-full flex flex-col overflow-hidden">
       {/* Search Input */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-white/10">
+      <div className={cn(
+        "flex items-center gap-3 px-4 py-3",
+        showContent && "border-b border-white/10"
+      )}>
         {mode === "search" ? (
           <Search className="w-5 h-5 text-muted-foreground shrink-0" />
         ) : (
@@ -404,7 +453,7 @@ export function CommandPalette() {
       </div>
 
       {/* Content Area - shown based on window mode */}
-      {shouldShowContent() && (
+      {showContent && (
         <>
           {mode === "search" ? (
             /* Command List */
