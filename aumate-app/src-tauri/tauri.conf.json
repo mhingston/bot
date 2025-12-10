@@ -15,7 +15,7 @@
         "label": "main",
         "title": "Aumate",
         "width": 680,
-        "height": 56,
+        "height": 400,
         "minWidth": 500,
         "minHeight": 56,
         "resizable": false,

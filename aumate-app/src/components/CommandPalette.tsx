@@ -115,7 +115,7 @@ export function CommandPalette() {
   const listRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  const { settings, loadSettings, setSettings, isLoading } = useSettingsStore();
+  const { settings, loadSettings, setSettings } = useSettingsStore();
   const windowMode = settings.general.window_mode;
 
   // Window height constants
@@ -153,9 +153,6 @@ export function CommandPalette() {
 
   // Resize window based on content visibility (compact mode only)
   useEffect(() => {
-    // Wait for settings to load before resizing
-    if (isLoading) return;
-
     const resizeWindow = async () => {
       const win = getCurrentWindow();
 
@@ -171,7 +168,7 @@ export function CommandPalette() {
     };
 
     resizeWindow();
-  }, [showContent, windowMode, isLoading, COMPACT_HEIGHT, EXPANDED_HEIGHT]);
+  }, [showContent, windowMode, COMPACT_HEIGHT, EXPANDED_HEIGHT]);
 
   // Filter commands based on search query
   const filteredCommands = mockCommands.filter(
