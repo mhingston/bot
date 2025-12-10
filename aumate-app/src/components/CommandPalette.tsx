@@ -115,7 +115,7 @@ export function CommandPalette() {
   const listRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
-  const { settings, loadSettings, setSettings } = useSettingsStore();
+  const { settings, loadSettings, setSettings, isLoading } = useSettingsStore();
   const windowMode = settings.general.window_mode;
 
   // Window height constants
@@ -153,25 +153,25 @@ export function CommandPalette() {
 
   // Resize window based on content visibility (compact mode only)
   useEffect(() => {
-    if (windowMode !== "compact") return;
+    // Wait for settings to load before resizing
+    if (isLoading) return;
 
     const resizeWindow = async () => {
       const win = getCurrentWindow();
-      const currentSize = await win.innerSize();
-      const scaleFactor = await win.scaleFactor();
-      const targetHeight = showContent ? EXPANDED_HEIGHT : COMPACT_HEIGHT;
-      // Convert physical size to logical
-      const currentLogicalHeight = Math.round(currentSize.height / scaleFactor);
 
-      if (currentLogicalHeight !== targetHeight) {
+      if (windowMode === "compact") {
+        const targetHeight = showContent ? EXPANDED_HEIGHT : COMPACT_HEIGHT;
         await win.setSize(new LogicalSize(680, targetHeight));
-        // Re-center after resize
+        await win.center();
+      } else {
+        // Expanded mode - ensure full height
+        await win.setSize(new LogicalSize(680, EXPANDED_HEIGHT));
         await win.center();
       }
     };
 
     resizeWindow();
-  }, [showContent, windowMode, COMPACT_HEIGHT, EXPANDED_HEIGHT]);
+  }, [showContent, windowMode, isLoading, COMPACT_HEIGHT, EXPANDED_HEIGHT]);
 
   // Filter commands based on search query
   const filteredCommands = mockCommands.filter(
