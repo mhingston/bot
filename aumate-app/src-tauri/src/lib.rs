@@ -4,17 +4,17 @@ use std::sync::Mutex;
 
 use serde::{Deserialize, Serialize};
 use tauri::{
+    Emitter, Manager,
     image::Image,
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    Emitter, Manager,
 };
 
 #[cfg(target_os = "windows")]
 use window_vibrancy::apply_acrylic;
 
 #[cfg(target_os = "macos")]
-use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial};
+use window_vibrancy::{NSVisualEffectMaterial, apply_vibrancy};
 
 // Screenshot and UI automation modules
 pub mod screenshot;
@@ -92,12 +92,7 @@ fn default_true() -> bool {
 
 impl Default for EnabledModes {
     fn default() -> Self {
-        Self {
-            search: true,
-            polish: true,
-            dialogue: true,
-            switcher: true,
-        }
+        Self { search: true, polish: true, dialogue: true, switcher: true }
     }
 }
 
@@ -272,10 +267,7 @@ async fn capture_all_monitors(format: Option<ImageFormat>) -> Result<String, Str
     let format = format.unwrap_or(ImageFormat::Png);
     let (image, _bounds) = screenshot::capture::capture_all_monitors()?;
     let bytes = screenshot::encode::encode_image(&image, format)?;
-    Ok(base64::Engine::encode(
-        &base64::engine::general_purpose::STANDARD,
-        &bytes,
-    ))
+    Ok(base64::Engine::encode(&base64::engine::general_purpose::STANDARD, &bytes))
 }
 
 /// Capture the monitor at the given mouse position
@@ -288,22 +280,19 @@ async fn capture_current_monitor(
     let format = format.unwrap_or(ImageFormat::Png);
     let image = screenshot::capture::capture_current_monitor(mouse_x, mouse_y)?;
     let bytes = screenshot::encode::encode_image(&image, format)?;
-    Ok(base64::Engine::encode(
-        &base64::engine::general_purpose::STANDARD,
-        &bytes,
-    ))
+    Ok(base64::Engine::encode(&base64::engine::general_purpose::STANDARD, &bytes))
 }
 
 /// Capture a specific region
 #[tauri::command]
-async fn capture_region(region: ElementRect, format: Option<ImageFormat>) -> Result<String, String> {
+async fn capture_region(
+    region: ElementRect,
+    format: Option<ImageFormat>,
+) -> Result<String, String> {
     let format = format.unwrap_or(ImageFormat::Png);
     let image = screenshot::capture::capture_region(&region)?;
     let bytes = screenshot::encode::encode_image(&image, format)?;
-    Ok(base64::Engine::encode(
-        &base64::engine::general_purpose::STANDARD,
-        &bytes,
-    ))
+    Ok(base64::Engine::encode(&base64::engine::general_purpose::STANDARD, &bytes))
 }
 
 /// Get all visible windows
@@ -373,15 +362,14 @@ async fn close_window(window_id: u32) -> Result<(), String> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .manage(AppState {
-            ui_elements: Mutex::new(ui_automation::UIElements::new()),
-        })
+        .manage(AppState { ui_elements: Mutex::new(ui_automation::UIElements::new()) })
         .setup(|app| {
             // Apply vibrancy to main window
             let main_window = app.get_webview_window("main").unwrap();
             #[cfg(target_os = "windows")]
             {
-                apply_acrylic(&main_window, Some((0, 0, 0, 50))).expect("Failed to apply mica effect to main");
+                apply_acrylic(&main_window, Some((0, 0, 0, 50)))
+                    .expect("Failed to apply mica effect to main");
             }
             #[cfg(target_os = "macos")]
             {
@@ -393,7 +381,8 @@ pub fn run() {
             let settings_window = app.get_webview_window("settings").unwrap();
             #[cfg(target_os = "windows")]
             {
-                apply_acrylic(&settings_window, Some((0, 0, 0, 50))).expect("Failed to apply mica effect to settings");
+                apply_acrylic(&settings_window, Some((0, 0, 0, 50)))
+                    .expect("Failed to apply mica effect to settings");
             }
             #[cfg(target_os = "macos")]
             {
@@ -462,10 +451,11 @@ pub fn run() {
                 app.handle().plugin(
                     tauri_plugin_global_shortcut::Builder::new()
                         .with_handler(move |app_handle, hotkey, event| {
-                            if event.state == ShortcutState::Pressed && hotkey == &shortcut {
-                                if let Some(window) = app_handle.get_webview_window("main") {
-                                    toggle_window(&window);
-                                }
+                            if event.state == ShortcutState::Pressed
+                                && hotkey == &shortcut
+                                && let Some(window) = app_handle.get_webview_window("main")
+                            {
+                                toggle_window(&window);
                             }
                         })
                         .build(),

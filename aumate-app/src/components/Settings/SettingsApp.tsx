@@ -1,15 +1,15 @@
-import { useEffect } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { TitleBar } from "./TitleBar";
-import { Sidebar } from "./Sidebar";
-import { GeneralSettings } from "./sections/GeneralSettings";
-import { ShortcutsSettings } from "./sections/ShortcutsSettings";
-import { ScreenshotSettings } from "./sections/ScreenshotSettings";
-import { ExpressionPolishingSettings } from "./sections/ExpressionPolishingSettings";
-import { AIDialogueSettings } from "./sections/AIDialogueSettings";
-import { AdvancedSettings } from "./sections/AdvancedSettings";
-import { AboutSettings } from "./sections/AboutSettings";
+import { useEffect } from "react";
 import { useSettingsStore } from "@/stores/settingsStore";
+import { Sidebar } from "./Sidebar";
+import { AboutSettings } from "./sections/AboutSettings";
+import { AdvancedSettings } from "./sections/AdvancedSettings";
+import { AIDialogueSettings } from "./sections/AIDialogueSettings";
+import { ExpressionPolishingSettings } from "./sections/ExpressionPolishingSettings";
+import { GeneralSettings } from "./sections/GeneralSettings";
+import { ScreenshotSettings } from "./sections/ScreenshotSettings";
+import { ShortcutsSettings } from "./sections/ShortcutsSettings";
+import { TitleBar } from "./TitleBar";
 
 export function SettingsApp() {
   const { activeSection, setActiveSection, loadSettings, isLoading } =

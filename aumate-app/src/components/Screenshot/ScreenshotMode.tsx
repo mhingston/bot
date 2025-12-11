@@ -38,7 +38,7 @@ export function ScreenshotMode() {
     endY: 0,
   });
   const [hoveredWindow, setHoveredWindow] = useState<WindowElement | null>(
-    null
+    null,
   );
   const [windows, setWindows] = useState<WindowElement[]>([]);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
@@ -111,7 +111,7 @@ export function ScreenshotMode() {
           rect.min_x,
           rect.min_y,
           rect.max_x - rect.min_x,
-          rect.max_y - rect.min_y
+          rect.max_y - rect.min_y,
         );
         ctx.drawImage(
           img,
@@ -122,7 +122,7 @@ export function ScreenshotMode() {
           rect.min_x,
           rect.min_y,
           rect.max_x - rect.min_x,
-          rect.max_y - rect.min_y
+          rect.max_y - rect.min_y,
         );
         // Draw border around the window
         ctx.strokeStyle = "#0ea5e9";
@@ -131,7 +131,7 @@ export function ScreenshotMode() {
           rect.min_x,
           rect.min_y,
           rect.max_x - rect.min_x,
-          rect.max_y - rect.min_y
+          rect.max_y - rect.min_y,
         );
       }
 
@@ -186,13 +186,7 @@ export function ScreenshotMode() {
       }
     };
     img.src = screenshotData;
-  }, [
-    screenshotData,
-    selection,
-    hoveredWindow,
-    mousePos,
-    phase,
-  ]);
+  }, [screenshotData, selection, hoveredWindow, mousePos, phase]);
 
   // Find window at mouse position
   const findWindowAtPoint = useCallback(
@@ -209,7 +203,7 @@ export function ScreenshotMode() {
       }
       return null;
     },
-    [windows]
+    [windows],
   );
 
   const handleMouseDown = useCallback(
@@ -225,7 +219,7 @@ export function ScreenshotMode() {
       });
       setHoveredWindow(null);
     },
-    [phase]
+    [phase],
   );
 
   const handleMouseMove = useCallback(
@@ -244,7 +238,7 @@ export function ScreenshotMode() {
         setHoveredWindow(win);
       }
     },
-    [selection.isSelecting, phase, findWindowAtPoint]
+    [selection.isSelecting, phase, findWindowAtPoint],
   );
 
   const handleMouseUp = useCallback(
@@ -286,39 +280,10 @@ export function ScreenshotMode() {
         });
       }
     },
-    [selection, hoveredWindow]
+    [selection, hoveredWindow],
   );
 
-  const handleKeyDown = useCallback(
-    async (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        if (phase === "captured") {
-          // Go back to selecting
-          setPhase("selecting");
-          setSelection({
-            isSelecting: false,
-            startX: 0,
-            startY: 0,
-            endX: 0,
-            endY: 0,
-          });
-        } else {
-          // Close the screenshot window
-          await getCurrentWindow().close();
-        }
-      } else if (e.key === "Enter" && phase === "captured") {
-        await handleSave();
-      }
-    },
-    [phase]
-  );
-
-  useEffect(() => {
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleKeyDown]);
-
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     try {
       const x = Math.min(selection.startX, selection.endX);
       const y = Math.min(selection.startY, selection.endY);
@@ -353,7 +318,36 @@ export function ScreenshotMode() {
     } catch (error) {
       console.error("Failed to save screenshot:", error);
     }
-  };
+  }, [selection]);
+
+  const handleKeyDown = useCallback(
+    async (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (phase === "captured") {
+          // Go back to selecting
+          setPhase("selecting");
+          setSelection({
+            isSelecting: false,
+            startX: 0,
+            startY: 0,
+            endX: 0,
+            endY: 0,
+          });
+        } else {
+          // Close the screenshot window
+          await getCurrentWindow().close();
+        }
+      } else if (e.key === "Enter" && phase === "captured") {
+        await handleSave();
+      }
+    },
+    [phase, handleSave],
+  );
+
+  useEffect(() => {
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleKeyDown]);
 
   const handleCopy = async () => {
     try {
@@ -397,6 +391,7 @@ export function ScreenshotMode() {
 
   return (
     <div
+      role="application"
       className="fixed inset-0 cursor-crosshair"
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}

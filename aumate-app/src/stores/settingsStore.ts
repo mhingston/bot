@@ -1,5 +1,5 @@
-import { create } from "zustand";
 import { invoke } from "@tauri-apps/api/core";
+import { create } from "zustand";
 
 export interface GeneralSettings {
   follow_system_appearance: boolean;
@@ -68,7 +68,9 @@ interface SettingsState {
   updateGeneral: (updates: Partial<GeneralSettings>) => void;
   updateShortcuts: (updates: Partial<ShortcutSettings>) => void;
   updateAdvanced: (updates: Partial<AdvancedSettings>) => void;
-  updateExpressionPolishing: (updates: Partial<ExpressionPolishingSettings>) => void;
+  updateExpressionPolishing: (
+    updates: Partial<ExpressionPolishingSettings>,
+  ) => void;
   updateScreenshot: (updates: Partial<ScreenshotSettings>) => void;
   updateAIDialogue: (updates: Partial<AIDialogueSettings>) => void;
   updateEnabledModes: (updates: Partial<EnabledModes>) => void;
@@ -145,10 +147,16 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         general: { ...defaultSettings.general, ...loaded.general },
         shortcuts: { ...defaultSettings.shortcuts, ...loaded.shortcuts },
         advanced: { ...defaultSettings.advanced, ...loaded.advanced },
-        expression_polishing: { ...defaultSettings.expression_polishing, ...loaded.expression_polishing },
+        expression_polishing: {
+          ...defaultSettings.expression_polishing,
+          ...loaded.expression_polishing,
+        },
         screenshot: { ...defaultSettings.screenshot, ...loaded.screenshot },
         ai_dialogue: { ...defaultSettings.ai_dialogue, ...loaded.ai_dialogue },
-        enabled_modes: { ...defaultSettings.enabled_modes, ...loaded.enabled_modes },
+        enabled_modes: {
+          ...defaultSettings.enabled_modes,
+          ...loaded.enabled_modes,
+        },
       };
       set({ settings, isLoading: false });
     } catch (error) {
@@ -201,7 +209,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     set((state) => ({
       settings: {
         ...state.settings,
-        expression_polishing: { ...state.settings.expression_polishing, ...updates },
+        expression_polishing: {
+          ...state.settings.expression_polishing,
+          ...updates,
+        },
       },
     }));
     get().saveSettings();

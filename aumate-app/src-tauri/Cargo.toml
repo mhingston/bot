@@ -2,8 +2,8 @@
 name = "aumate-app"
 version = "0.1.0"
 description = "A Tauri App"
-authors = ["you"]
-edition = "2021"
+authors = ["Zhang Lin sealday@gmail.com"]
+edition = "2024"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -15,32 +15,32 @@ name = "aumate_app_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
-tauri-build = { version = "2", features = [] }
+tauri-build = { workspace = true, features = [] }
 
 [dependencies]
-tauri = { version = "2", features = ["macos-private-api", "tray-icon", "image-png"] }
-tauri-plugin-opener = "2"
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-window-vibrancy = "0.7.1"
-dirs = "5"
-log = "0.4"
-tokio = { version = "1", features = ["sync", "fs"] }
+tauri = { workspace = true, features = ["macos-private-api", "tray-icon", "image-png"] }
+tauri-plugin-opener = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+window-vibrancy = { workspace = true }
+dirs = { workspace = true }
+log = { workspace = true }
+tokio = { workspace = true, features = ["sync", "fs"] }
 
 # Screenshot dependencies
-xcap = "0.0.14"
-image = { version = "0.25", features = ["png", "webp", "jpeg"] }
-imageproc = "0.25"
-rayon = "1.10"
-base64 = "0.22"
+xcap = { workspace = true }
+image = {  workspace = true,  features = ["png", "webp", "jpeg"] }
+imageproc = { workspace = true }
+rayon =  { workspace = true }
+base64 = { workspace = true }
 
 [target.'cfg(any(target_os = "macos", windows, target_os = "linux"))'.dependencies]
-tauri-plugin-global-shortcut = "2"
+tauri-plugin-global-shortcut = { workspace = true }
 
 # Windows-specific dependencies
 [target.'cfg(windows)'.dependencies]
-uiautomation = "0.24"
-windows = { version = "0.61", features = [
+uiautomation = { workspace = true }
+windows = { workspace = true, features = [
     "Win32_UI_WindowsAndMessaging",
     "Win32_Foundation",
     "Win32_Graphics_Dwm",
@@ -49,5 +49,5 @@ windows = { version = "0.61", features = [
 
 # macOS-specific dependencies
 [target.'cfg(target_os = "macos")'.dependencies]
-macos-accessibility-client = "0.0.1"
+macos-accessibility-client = { workspace = true } 
 

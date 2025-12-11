@@ -11,12 +11,7 @@ pub struct ElementRect {
 
 impl ElementRect {
     pub fn new(min_x: i32, min_y: i32, max_x: i32, max_y: i32) -> Self {
-        Self {
-            min_x,
-            min_y,
-            max_x,
-            max_y,
-        }
+        Self { min_x, min_y, max_x, max_y }
     }
 
     pub fn width(&self) -> i32 {
@@ -42,18 +37,13 @@ pub struct WindowElement {
 }
 
 /// Image format for saving screenshots
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum ImageFormat {
+    #[default]
     Png,
     Webp,
     Jpeg,
-}
-
-impl Default for ImageFormat {
-    fn default() -> Self {
-        Self::Png
-    }
 }
 
 /// Screenshot capture region

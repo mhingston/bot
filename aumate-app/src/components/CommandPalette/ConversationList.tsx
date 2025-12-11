@@ -11,10 +11,16 @@ interface ConversationListProps {
 }
 
 // Group conversations by date
-function groupByDate(conversations: Conversation[]): Map<string, Conversation[]> {
+function groupByDate(
+  conversations: Conversation[],
+): Map<string, Conversation[]> {
   const groups = new Map<string, Conversation[]>();
   const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const today = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate(),
+  ).getTime();
   const yesterday = today - 86400000;
   const lastWeek = today - 7 * 86400000;
 
@@ -23,7 +29,7 @@ function groupByDate(conversations: Conversation[]): Map<string, Conversation[]>
     const convDay = new Date(
       convDate.getFullYear(),
       convDate.getMonth(),
-      convDate.getDate()
+      convDate.getDate(),
     ).getTime();
 
     let label: string;
@@ -91,7 +97,7 @@ export function ConversationList({
                     "group relative mx-2 rounded-lg transition-colors",
                     activeConversationId === conv.id
                       ? "bg-accent"
-                      : "hover:bg-white/5"
+                      : "hover:bg-white/5",
                   )}
                 >
                   <button
@@ -104,7 +110,7 @@ export function ConversationList({
                         "text-sm truncate",
                         activeConversationId === conv.id
                           ? "text-accent-foreground"
-                          : "text-foreground"
+                          : "text-foreground",
                       )}
                     >
                       {conv.title}

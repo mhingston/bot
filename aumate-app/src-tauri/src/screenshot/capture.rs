@@ -15,9 +15,7 @@ pub fn get_all_monitors() -> Result<Vec<Monitor>, String> {
 
 /// Capture the entire screen of a specific monitor
 pub fn capture_monitor(monitor: &Monitor) -> Result<DynamicImage, String> {
-    let image = monitor
-        .capture_image()
-        .map_err(|e| format!("Failed to capture monitor: {}", e))?;
+    let image = monitor.capture_image().map_err(|e| format!("Failed to capture monitor: {}", e))?;
     Ok(DynamicImage::ImageRgba8(image))
 }
 
@@ -26,9 +24,7 @@ pub fn capture_monitor_region(
     monitor: &Monitor,
     region: &CaptureRegion,
 ) -> Result<DynamicImage, String> {
-    let image = monitor
-        .capture_image()
-        .map_err(|e| format!("Failed to capture monitor: {}", e))?;
+    let image = monitor.capture_image().map_err(|e| format!("Failed to capture monitor: {}", e))?;
 
     let dynamic_image = DynamicImage::ImageRgba8(image);
 
@@ -53,10 +49,12 @@ pub fn capture_all_monitors() -> Result<(DynamicImage, ElementRect), String> {
     let mut max_y = i32::MIN;
 
     for monitor in &monitors {
-        let x = monitor.x();
-        let y = monitor.y();
-        let width = monitor.width() as i32;
-        let height = monitor.height() as i32;
+        let x = monitor.x().map_err(|e| format!("Failed to get monitor x: {}", e))?;
+        let y = monitor.y().map_err(|e| format!("Failed to get monitor y: {}", e))?;
+        let width =
+            monitor.width().map_err(|e| format!("Failed to get monitor width: {}", e))? as i32;
+        let height =
+            monitor.height().map_err(|e| format!("Failed to get monitor height: {}", e))? as i32;
 
         min_x = min_x.min(x);
         min_y = min_y.min(y);
@@ -72,12 +70,11 @@ pub fn capture_all_monitors() -> Result<(DynamicImage, ElementRect), String> {
 
     // Capture each monitor and place it in the combined image
     for monitor in &monitors {
-        let monitor_image = monitor
-            .capture_image()
-            .map_err(|e| format!("Failed to capture monitor: {}", e))?;
+        let monitor_image =
+            monitor.capture_image().map_err(|e| format!("Failed to capture monitor: {}", e))?;
 
-        let x = monitor.x();
-        let y = monitor.y();
+        let x = monitor.x().map_err(|e| format!("Failed to get monitor x: {}", e))?;
+        let y = monitor.y().map_err(|e| format!("Failed to get monitor y: {}", e))?;
 
         // Calculate offset in the combined image
         let offset_x = (x - min_x) as u32;
@@ -124,12 +121,14 @@ pub fn get_monitor_info(x: i32, y: i32) -> Result<MonitorInfo, String> {
     let monitor = get_monitor_at_point(x, y)?;
 
     Ok(MonitorInfo {
-        x: monitor.x(),
-        y: monitor.y(),
-        width: monitor.width(),
-        height: monitor.height(),
-        name: monitor.name().to_string(),
-        scale_factor: monitor.scale_factor(),
+        x: monitor.x().map_err(|e| format!("Failed to get monitor x: {}", e))?,
+        y: monitor.y().map_err(|e| format!("Failed to get monitor y: {}", e))?,
+        width: monitor.width().map_err(|e| format!("Failed to get monitor width: {}", e))?,
+        height: monitor.height().map_err(|e| format!("Failed to get monitor height: {}", e))?,
+        name: monitor.name().map_err(|e| format!("Failed to get monitor name: {}", e))?,
+        scale_factor: monitor
+            .scale_factor()
+            .map_err(|e| format!("Failed to get scale factor: {}", e))?,
     })
 }
 

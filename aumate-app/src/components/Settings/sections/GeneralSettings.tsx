@@ -1,7 +1,7 @@
+import { AppWindow, MessageSquare, Search, Sparkles } from "lucide-react";
 import { Toggle } from "@/components/ui/Toggle";
-import { useSettingsStore } from "@/stores/settingsStore";
 import { cn } from "@/lib/utils";
-import { Search, Sparkles, MessageSquare, AppWindow } from "lucide-react";
+import { useSettingsStore } from "@/stores/settingsStore";
 
 export function GeneralSettings() {
   const { settings, updateGeneral, updateEnabledModes } = useSettingsStore();
@@ -42,7 +42,9 @@ export function GeneralSettings() {
       >
         <Toggle
           checked={general.show_in_system_tray}
-          onChange={(checked) => updateGeneral({ show_in_system_tray: checked })}
+          onChange={(checked) =>
+            updateGeneral({ show_in_system_tray: checked })
+          }
         />
       </SettingRow>
 
@@ -55,12 +57,17 @@ export function GeneralSettings() {
           <kbd className="px-3 py-1.5 text-sm font-medium bg-gray-700 text-white rounded border border-gray-600">
             {general.hotkey}
           </kbd>
-          <button className="p-1.5 text-gray-400 hover:text-white rounded hover:bg-white/10">
+          <button
+            type="button"
+            className="p-1.5 text-gray-400 hover:text-white rounded hover:bg-white/10"
+            aria-label="Reset hotkey"
+          >
             <svg
               className="w-4 h-4"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
+              aria-hidden="true"
             >
               <path
                 strokeLinecap="round"
@@ -177,12 +184,13 @@ function WindowModeOption({
 }: WindowModeOptionProps) {
   return (
     <button
+      type="button"
       onClick={onClick}
       className={cn(
         "flex flex-col items-center gap-2 p-3 rounded-lg border-2 transition-all",
         selected
           ? "border-blue-500 bg-blue-500/10"
-          : "border-gray-700 hover:border-gray-600"
+          : "border-gray-700 hover:border-gray-600",
       )}
     >
       <div
@@ -190,7 +198,7 @@ function WindowModeOption({
           "w-32 h-20 rounded-md flex items-center justify-center",
           highlighted
             ? "bg-gradient-to-br from-purple-500 to-pink-500"
-            : "bg-gray-700"
+            : "bg-gray-700",
         )}
       >
         <div className="w-20 h-2 bg-white/30 rounded" />
@@ -249,11 +257,17 @@ function ModeToggle({
         "flex items-center justify-between p-3 rounded-lg border transition-all",
         checked
           ? `${colors.bg} ${colors.border}`
-          : "bg-gray-800/50 border-gray-700"
+          : "bg-gray-800/50 border-gray-700",
       )}
     >
       <div className="flex items-center gap-3">
-        <div className={cn("p-2 rounded-md", checked ? colors.bg : "bg-gray-700", colors.icon)}>
+        <div
+          className={cn(
+            "p-2 rounded-md",
+            checked ? colors.bg : "bg-gray-700",
+            colors.icon,
+          )}
+        >
           {icon}
         </div>
         <div>

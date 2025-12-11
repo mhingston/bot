@@ -1,5 +1,5 @@
-import { X, Minus } from "lucide-react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { Minus, X } from "lucide-react";
 
 export function TitleBar() {
   const appWindow = getCurrentWindow();
@@ -14,13 +14,17 @@ export function TitleBar() {
 
   const handleDrag = async (e: React.MouseEvent) => {
     // Only start drag on left mouse button and not on buttons
-    if (e.button === 0 && (e.target as HTMLElement).closest('button') === null) {
+    if (
+      e.button === 0 &&
+      (e.target as HTMLElement).closest("button") === null
+    ) {
       await appWindow.startDragging();
     }
   };
 
   return (
     <div
+      role="toolbar"
       onMouseDown={handleDrag}
       className="flex items-center justify-between h-10 px-4 border-b border-white/10 select-none cursor-default"
     >
@@ -33,6 +37,7 @@ export function TitleBar() {
       {/* Window controls */}
       <div className="flex items-center gap-1">
         <button
+          type="button"
           onClick={handleMinimize}
           className="p-1.5 text-gray-400 hover:text-white hover:bg-white/10 rounded transition-colors"
           title="Minimize"
@@ -40,6 +45,7 @@ export function TitleBar() {
           <Minus className="w-4 h-4" />
         </button>
         <button
+          type="button"
           onClick={handleClose}
           className="p-1.5 text-gray-400 hover:text-white hover:bg-red-500/80 rounded transition-colors"
           title="Close"

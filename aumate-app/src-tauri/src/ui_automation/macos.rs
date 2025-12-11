@@ -1,18 +1,15 @@
-#![cfg(target_os = "macos")]
-
 use crate::screenshot::types::{ElementRect, WindowElement};
 
 /// UI Elements manager for macOS
 /// TODO: Implement using macos-accessibility-client
+#[derive(Default)]
 pub struct UIElements {
     _initialized: bool,
 }
 
 impl UIElements {
     pub fn new() -> Self {
-        Self {
-            _initialized: false,
-        }
+        Self::default()
     }
 
     /// Initialize the accessibility client
@@ -39,4 +36,16 @@ pub fn get_all_windows() -> Result<Vec<WindowElement>, String> {
 pub fn get_window_at_point(_x: i32, _y: i32) -> Result<Option<WindowElement>, String> {
     // TODO: Implement using macOS APIs
     Ok(None)
+}
+
+/// Switch to a window by its ID
+pub fn switch_to_window(_window_id: u32) -> Result<(), String> {
+    // TODO: Implement using macOS APIs (NSRunningApplication, etc.)
+    Err("Window switching not yet implemented on macOS".to_string())
+}
+
+/// Close a window by its ID
+pub fn close_window(_window_id: u32) -> Result<(), String> {
+    // TODO: Implement using macOS APIs
+    Err("Window closing not yet implemented on macOS".to_string())
 }

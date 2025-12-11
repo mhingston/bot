@@ -1,25 +1,35 @@
-import { useState, useEffect, useRef, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { getCurrentWindow } from "@tauri-apps/api/window";
 import { listen } from "@tauri-apps/api/event";
-import { Search, Sparkles, MessageSquare, Square, AppWindow } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import {
+  AppWindow,
+  MessageSquare,
+  Search,
+  Sparkles,
+  Square,
+} from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { polishExpression } from "@/lib/openai";
-import { useSettingsStore, type Settings } from "@/stores/settingsStore";
-import { SearchMode, getFilteredCommands, type CommandItem } from "./SearchMode";
-import { PolishMode, extractPolishedExpression } from "./PolishMode";
-import { DialogueMode } from "./DialogueMode";
-import { SwitcherMode, type WindowItemData } from "./SwitcherMode";
+import { cn } from "@/lib/utils";
 import { animateResizeAndCenter } from "@/lib/window";
+import { type Settings, useSettingsStore } from "@/stores/settingsStore";
+import { DialogueMode } from "./DialogueMode";
+import { extractPolishedExpression, PolishMode } from "./PolishMode";
+import {
+  type CommandItem,
+  getFilteredCommands,
+  SearchMode,
+} from "./SearchMode";
+import { SwitcherMode, type WindowItemData } from "./SwitcherMode";
 
 type Mode = "search" | "polish" | "dialogue" | "switcher";
 
 // Window dimensions per mode
 const DIMENSIONS = {
-  search: { width: 800, height: 600},
+  search: { width: 800, height: 600 },
   polish: { width: 800, height: 600 },
   dialogue: { width: 1200, height: 900 },
-  switcher: { width: 800, height: 600},
+  switcher: { width: 800, height: 600 },
 };
 
 const COMPACT_HEIGHT = 56; // Just the input bar
@@ -79,7 +89,9 @@ export function CommandPalette() {
     if (mode === "search") {
       return query.trim().length > 0;
     }
-    return query.trim().length > 0 || polishResult || polishError || isPolishing;
+    return (
+      query.trim().length > 0 || polishResult || polishError || isPolishing
+    );
   })();
 
   // Resize window based on mode and content visibility
@@ -121,7 +133,7 @@ export function CommandPalette() {
       setSelectedIndex(0);
       hideWindow();
     },
-    [hideWindow]
+    [hideWindow],
   );
 
   // Cancel polishing request
@@ -224,21 +236,26 @@ export function CommandPalette() {
   const [switcherWindows, setSwitcherWindows] = useState<WindowItemData[]>([]);
 
   // Switch to a window
-  const handleSwitchToWindow = useCallback(async (windowId: number) => {
-    try {
-      await invoke("switch_to_window", { windowId });
-      hideWindow();
-    } catch (err) {
-      console.error("Failed to switch window:", err);
-    }
-  }, [hideWindow]);
+  const handleSwitchToWindow = useCallback(
+    async (windowId: number) => {
+      try {
+        await invoke("switch_to_window", { windowId });
+        hideWindow();
+      } catch (err) {
+        console.error("Failed to switch window:", err);
+      }
+    },
+    [hideWindow],
+  );
 
   // Close a window
   const handleCloseWindow = useCallback(async (windowId: number) => {
     try {
       await invoke("close_window", { windowId });
       // Remove from local list
-      setSwitcherWindows((prev) => prev.filter((w) => w.window_id !== windowId));
+      setSwitcherWindows((prev) =>
+        prev.filter((w) => w.window_id !== windowId),
+      );
     } catch (err) {
       console.error("Failed to close window:", err);
     }
@@ -272,11 +289,11 @@ export function CommandPalette() {
         e.preventDefault();
         if (mode === "search") {
           setSelectedIndex((prev) =>
-            prev < filteredCommands.length - 1 ? prev + 1 : prev
+            prev < filteredCommands.length - 1 ? prev + 1 : prev,
           );
         } else if (mode === "switcher") {
           setSelectedIndex((prev) =>
-            prev < switcherWindows.length - 1 ? prev + 1 : prev
+            prev < switcherWindows.length - 1 ? prev + 1 : prev,
           );
         } else if (mode === "polish" && polishScrollRef.current) {
           polishScrollRef.current.scrollBy({ top: 100, behavior: "smooth" });
@@ -326,12 +343,12 @@ export function CommandPalette() {
           if (mode === "search") {
             e.preventDefault();
             setSelectedIndex((prev) =>
-              prev < filteredCommands.length - 1 ? prev + 1 : prev
+              prev < filteredCommands.length - 1 ? prev + 1 : prev,
             );
           } else if (mode === "switcher") {
             e.preventDefault();
             setSelectedIndex((prev) =>
-              prev < switcherWindows.length - 1 ? prev + 1 : prev
+              prev < switcherWindows.length - 1 ? prev + 1 : prev,
             );
           }
           break;
@@ -384,7 +401,7 @@ export function CommandPalette() {
   // Reset selection when query changes
   useEffect(() => {
     setSelectedIndex(0);
-  }, [query]);
+  }, []);
 
   // Focus input on mount and window focus
   useEffect(() => {
@@ -432,7 +449,7 @@ export function CommandPalette() {
         <Sparkles
           className={cn(
             "w-5 h-5 shrink-0",
-            isPolishing ? "text-blue-400 animate-pulse" : "text-purple-400"
+            isPolishing ? "text-blue-400 animate-pulse" : "text-purple-400",
           )}
         />
       );
@@ -449,7 +466,7 @@ export function CommandPalette() {
       <div
         className={cn(
           "flex items-center gap-3 px-4 py-3",
-          showContent && "border-b border-white/10"
+          showContent && "border-b border-white/10",
         )}
       >
         {getModeIcon()}
@@ -480,21 +497,23 @@ export function CommandPalette() {
         )}
         <div className="flex items-center gap-2">
           {getNextModeLabel() && (
-            <kbd
+            <button
+              type="button"
               className={cn(
-                "inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded cursor-pointer transition-colors",
-                mode === "search" && "text-muted-foreground bg-muted hover:bg-accent",
+                "inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded cursor-pointer transition-colors font-mono",
+                mode === "search" &&
+                  "text-muted-foreground bg-muted hover:bg-accent",
                 mode === "polish" &&
                   "text-purple-300 bg-purple-500/20 hover:bg-purple-500/30",
                 mode === "dialogue" &&
                   "text-emerald-300 bg-emerald-500/20 hover:bg-emerald-500/30",
                 mode === "switcher" &&
-                  "text-sky-300 bg-sky-500/20 hover:bg-sky-500/30"
+                  "text-sky-300 bg-sky-500/20 hover:bg-sky-500/30",
               )}
               onClick={cycleMode}
             >
               Tab: {getNextModeLabel()}
-            </kbd>
+            </button>
           )}
         </div>
       </div>
@@ -546,7 +565,9 @@ export function CommandPalette() {
                       <span>Navigate</span>
                     </span>
                     <span className="flex items-center gap-1">
-                      <kbd className="px-1.5 py-0.5 bg-muted rounded">Enter</kbd>
+                      <kbd className="px-1.5 py-0.5 bg-muted rounded">
+                        Enter
+                      </kbd>
                       <span>Execute</span>
                     </span>
                   </div>
@@ -556,17 +577,23 @@ export function CommandPalette() {
                 <>
                   <div className="flex items-center gap-4">
                     <span className="flex items-center gap-1">
-                      <kbd className="px-1.5 py-0.5 bg-muted rounded">Enter</kbd>
+                      <kbd className="px-1.5 py-0.5 bg-muted rounded">
+                        Enter
+                      </kbd>
                       <span>Polish</span>
                     </span>
                     {polishResult && (
                       <>
                         <span className="flex items-center gap-1">
-                          <kbd className="px-1.5 py-0.5 bg-muted rounded">Ctrl+P/N</kbd>
+                          <kbd className="px-1.5 py-0.5 bg-muted rounded">
+                            Ctrl+P/N
+                          </kbd>
                           <span>Scroll</span>
                         </span>
                         <span className="flex items-center gap-1">
-                          <kbd className="px-1.5 py-0.5 bg-muted rounded">Ctrl+C</kbd>
+                          <kbd className="px-1.5 py-0.5 bg-muted rounded">
+                            Ctrl+C
+                          </kbd>
                           <span>Copy</span>
                         </span>
                       </>
@@ -582,7 +609,9 @@ export function CommandPalette() {
                       </button>
                     )}
                   </div>
-                  <span className="text-purple-400/60">Expression Polishing</span>
+                  <span className="text-purple-400/60">
+                    Expression Polishing
+                  </span>
                 </>
               )}
             </div>

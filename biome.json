@@ -11,6 +11,7 @@
       "packages/**",
       "examples/**",
       "bench/**",
+      "aumate-app/**",
       "*.mjs",
       "*.js",
       "*.json"
@@ -23,7 +24,16 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true
+      "recommended": true,
+      "suspicious": {
+        "noUnknownAtRules": "off"
+      },
+      "correctness": {
+        "useUniqueElementIds": "off"
+      },
+      "a11y": {
+        "noLabelWithoutControl": "off"
+      }
     }
   },
   "javascript": {

@@ -1,8 +1,8 @@
-import { useRef, useEffect, useState, useCallback } from "react";
-import { Send, Square, MessageSquare } from "lucide-react";
+import { MessageSquare, Send, Square } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
-import { ChatMessage } from "./ChatMessage";
 import type { DialogueMessage } from "@/types/dialogue";
+import { ChatMessage } from "./ChatMessage";
 
 interface ChatPanelProps {
   messages: DialogueMessage[];
@@ -27,7 +27,7 @@ export function ChatPanel({
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, streamingContent]);
+  }, []);
 
   // Focus input on mount
   useEffect(() => {
@@ -120,7 +120,11 @@ export function ChatPanel({
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={isStreaming ? "Type next message (will send when done)..." : "Type your message..."}
+            placeholder={
+              isStreaming
+                ? "Type next message (will send when done)..."
+                : "Type your message..."
+            }
             rows={1}
             className="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground resize-none focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-transparent"
           />
@@ -140,7 +144,7 @@ export function ChatPanel({
               disabled={!input.trim()}
               className={cn(
                 "shrink-0 px-3 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 rounded-lg transition-colors",
-                !input.trim() && "opacity-50 cursor-not-allowed"
+                !input.trim() && "opacity-50 cursor-not-allowed",
               )}
               title="Send message"
             >

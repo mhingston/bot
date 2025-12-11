@@ -13,11 +13,18 @@ export interface PolishOptions {
   signal?: AbortSignal;
 }
 
-export async function polishExpression(options: PolishOptions): Promise<PolishResult> {
-  const { apiUrl, apiKey, model, systemPrompt, userInput, onChunk, signal } = options;
+export async function polishExpression(
+  options: PolishOptions,
+): Promise<PolishResult> {
+  const { apiUrl, apiKey, model, systemPrompt, userInput, onChunk, signal } =
+    options;
 
   if (!apiKey) {
-    return { content: "", error: "API key not configured. Please set your API key in Settings > Expression Polishing." };
+    return {
+      content: "",
+      error:
+        "API key not configured. Please set your API key in Settings > Expression Polishing.",
+    };
   }
 
   if (!userInput.trim()) {
@@ -29,7 +36,7 @@ export async function polishExpression(options: PolishOptions): Promise<PolishRe
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`,
+        Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
         model,

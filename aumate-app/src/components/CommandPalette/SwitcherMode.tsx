@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Loader2 } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { WindowItem, type WindowItemData } from "./WindowItem";
 
 interface SwitcherModeProps {
@@ -23,20 +23,18 @@ export function SwitcherMode({
   const [error, setError] = useState<string | null>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-  // Load windows on mount
-  useEffect(() => {
-    loadWindows();
-  }, []);
-
-  const loadWindows = async () => {
+  const loadWindows = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const windowElements = await invoke<WindowItemData[]>("get_window_elements");
+      const windowElements = await invoke<WindowItemData[]>(
+        "get_window_elements",
+      );
       // Filter out the aumate app itself
       const filtered = windowElements.filter(
-        (w) => !w.title.toLowerCase().includes("aumate") &&
-               !w.app_name.toLowerCase().includes("aumate")
+        (w) =>
+          !w.title.toLowerCase().includes("aumate") &&
+          !w.app_name.toLowerCase().includes("aumate"),
       );
       setWindows(filtered);
     } catch (err) {
@@ -44,7 +42,12 @@ export function SwitcherMode({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  // Load windows on mount
+  useEffect(() => {
+    loadWindows();
+  }, [loadWindows]);
 
   // Filter windows by query
   const filteredWindows = useMemo(() => {
@@ -66,9 +69,14 @@ export function SwitcherMode({
   // Auto-scroll to keep selected item visible
   useEffect(() => {
     if (listRef.current && filteredWindows.length > 0) {
-      const selectedElement = listRef.current.children[selectedIndex] as HTMLElement;
+      const selectedElement = listRef.current.children[
+        selectedIndex
+      ] as HTMLElement;
       if (selectedElement) {
-        selectedElement.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        selectedElement.scrollIntoView({
+          block: "nearest",
+          behavior: "smooth",
+        });
       }
     }
   }, [selectedIndex, filteredWindows.length]);
@@ -122,5 +130,5 @@ export function SwitcherMode({
   );
 }
 
-export { type WindowItemData };
+export type { WindowItemData };
 export default SwitcherMode;

@@ -6,12 +6,11 @@ use uiautomation::UIAutomation;
 use uiautomation::UITreeWalker;
 use uiautomation::core::UICacheRequest;
 use uiautomation::types::{Point, TreeScope, UIProperty};
-use xcap::Window;
 use windows::Win32::Foundation::HWND;
 use windows::Win32::UI::WindowsAndMessaging::{
-    SetForegroundWindow, ShowWindow, PostMessageW, IsIconic,
-    SW_RESTORE, WM_CLOSE,
+    IsIconic, PostMessageW, SW_RESTORE, SetForegroundWindow, ShowWindow, WM_CLOSE,
 };
+use xcap::Window;
 
 use crate::screenshot::types::{ElementRect, WindowElement};
 
@@ -36,11 +35,7 @@ unsafe impl Sync for UIElements {}
 
 impl UIElements {
     pub fn new() -> Self {
-        Self {
-            automation: None,
-            automation_walker: None,
-            cache_request: None,
-        }
+        Self { automation: None, automation_walker: None, cache_request: None }
     }
 
     /// Initialize the UI automation
@@ -89,15 +84,9 @@ impl UIElements {
         };
 
         let element = if let Some(cache) = &self.cache_request {
-            automation
-                .automation
-                .element_from_point_build_cache(Point::new(x, y), cache)
-                .ok()
+            automation.automation.element_from_point_build_cache(Point::new(x, y), cache).ok()
         } else {
-            automation
-                .automation
-                .element_from_point(Point::new(x, y))
-                .ok()
+            automation.automation.element_from_point(Point::new(x, y)).ok()
         };
 
         if let Some(element) = element {
@@ -128,12 +117,12 @@ pub fn get_all_windows() -> Result<Vec<WindowElement>, String> {
     let mut result = Vec::new();
 
     for window in windows {
-        // Skip minimized windows
-        if window.is_minimized() {
+        // Skip minimized windows (handle Result)
+        if window.is_minimized().unwrap_or(false) {
             continue;
         }
 
-        let title = window.title().to_string();
+        let title = window.title().unwrap_or_default();
 
         // Skip certain system windows
         if title.is_empty()
@@ -144,10 +133,16 @@ pub fn get_all_windows() -> Result<Vec<WindowElement>, String> {
             continue;
         }
 
-        let x = window.x();
-        let y = window.y();
-        let width = window.width() as i32;
-        let height = window.height() as i32;
+        // Get window properties, skip if any fail
+        let Ok(x) = window.x() else { continue };
+        let Ok(y) = window.y() else { continue };
+        let Ok(width) = window.width() else { continue };
+        let Ok(height) = window.height() else { continue };
+        let Ok(window_id) = window.id() else { continue };
+        let app_name = window.app_name().unwrap_or_default();
+
+        let width = width as i32;
+        let height = height as i32;
 
         let rect = ElementRect::new(x, y, x + width, y + height);
 
@@ -158,9 +153,9 @@ pub fn get_all_windows() -> Result<Vec<WindowElement>, String> {
 
         result.push(WindowElement {
             rect,
-            window_id: window.id(),
+            window_id,
             title,
-            app_name: window.app_name().to_string(),
+            app_name,
         });
     }
 
@@ -202,7 +197,7 @@ pub fn switch_to_window(window_id: u32) -> Result<(), String> {
 
 /// Close a window by its ID (HWND)
 pub fn close_window(window_id: u32) -> Result<(), String> {
-    use windows::Win32::Foundation::{WPARAM, LPARAM};
+    use windows::Win32::Foundation::{LPARAM, WPARAM};
 
     unsafe {
         let hwnd = HWND(window_id as isize as *mut std::ffi::c_void);

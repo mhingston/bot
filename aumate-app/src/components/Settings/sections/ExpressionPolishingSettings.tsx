@@ -23,7 +23,9 @@ export function ExpressionPolishingSettings() {
           <input
             type="text"
             value={expression_polishing.api_url}
-            onChange={(e) => updateExpressionPolishing({ api_url: e.target.value })}
+            onChange={(e) =>
+              updateExpressionPolishing({ api_url: e.target.value })
+            }
             placeholder="https://api.openai.com/v1"
             className="w-64 px-3 py-1.5 text-sm bg-gray-800 border border-gray-600 rounded text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
           />
@@ -38,11 +40,14 @@ export function ExpressionPolishingSettings() {
             <input
               type={showApiKey ? "text" : "password"}
               value={expression_polishing.api_key}
-              onChange={(e) => updateExpressionPolishing({ api_key: e.target.value })}
+              onChange={(e) =>
+                updateExpressionPolishing({ api_key: e.target.value })
+              }
               placeholder="sk-..."
               className="w-48 px-3 py-1.5 text-sm bg-gray-800 border border-gray-600 rounded text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
             />
             <button
+              type="button"
               onClick={() => setShowApiKey(!showApiKey)}
               className="px-2 py-1.5 text-xs text-gray-400 hover:text-white border border-gray-600 rounded hover:bg-white/5"
             >
@@ -52,14 +57,13 @@ export function ExpressionPolishingSettings() {
         </SettingRow>
 
         {/* Model */}
-        <SettingRow
-          label="Model"
-          description="AI model to use for polishing"
-        >
+        <SettingRow label="Model" description="AI model to use for polishing">
           <input
             type="text"
             value={expression_polishing.model}
-            onChange={(e) => updateExpressionPolishing({ model: e.target.value })}
+            onChange={(e) =>
+              updateExpressionPolishing({ model: e.target.value })
+            }
             placeholder="gpt-4"
             className="w-48 px-3 py-1.5 text-sm bg-gray-800 border border-gray-600 rounded text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
           />
@@ -74,7 +78,9 @@ export function ExpressionPolishingSettings() {
         </p>
         <textarea
           value={expression_polishing.system_prompt}
-          onChange={(e) => updateExpressionPolishing({ system_prompt: e.target.value })}
+          onChange={(e) =>
+            updateExpressionPolishing({ system_prompt: e.target.value })
+          }
           rows={8}
           className="w-full px-3 py-2 text-sm bg-gray-800 border border-gray-600 rounded text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-y"
         />

@@ -9,7 +9,10 @@ interface DialogueStore {
   // Actions
   createConversation: () => string;
   setActiveConversation: (id: string | null) => void;
-  addMessage: (conversationId: string, message: Omit<DialogueMessage, "id">) => void;
+  addMessage: (
+    conversationId: string,
+    message: Omit<DialogueMessage, "id">,
+  ) => void;
   updateLastMessage: (conversationId: string, content: string) => void;
   deleteConversation: (id: string) => void;
   clearAllConversations: () => void;
@@ -94,7 +97,9 @@ export const useDialogueStore = create<DialogueStore>((set, get) => ({
       const otherConvs = conversations.filter((c) => c.id !== conversationId);
 
       return {
-        conversations: updatedConv ? [updatedConv, ...otherConvs] : conversations,
+        conversations: updatedConv
+          ? [updatedConv, ...otherConvs]
+          : conversations,
       };
     });
 
@@ -128,7 +133,7 @@ export const useDialogueStore = create<DialogueStore>((set, get) => ({
       const conversations = state.conversations.filter((c) => c.id !== id);
       const activeConversationId =
         state.activeConversationId === id
-          ? conversations[0]?.id ?? null
+          ? (conversations[0]?.id ?? null)
           : state.activeConversationId;
 
       return { conversations, activeConversationId };

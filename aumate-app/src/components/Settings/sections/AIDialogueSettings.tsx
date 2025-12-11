@@ -1,7 +1,7 @@
-import { useState } from "react";
-import { useSettingsStore } from "@/stores/settingsStore";
-import { useDialogueStore } from "@/stores/dialogueStore";
 import { Eye, EyeOff, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { useDialogueStore } from "@/stores/dialogueStore";
+import { useSettingsStore } from "@/stores/settingsStore";
 
 const defaultAIDialogue = {
   api_url: "https://api.openai.com/v1",
@@ -20,7 +20,7 @@ export function AIDialogueSettings() {
   const handleClearConversations = () => {
     if (
       window.confirm(
-        `Are you sure you want to delete all ${conversations.length} conversations? This cannot be undone.`
+        `Are you sure you want to delete all ${conversations.length} conversations? This cannot be undone.`,
       )
     ) {
       clearAllConversations();
@@ -118,7 +118,8 @@ export function AIDialogueSettings() {
             className="w-full accent-emerald-500"
           />
           <p className="text-xs text-gray-500 mt-1">
-            Number of recent messages to include as context (affects token usage)
+            Number of recent messages to include as context (affects token
+            usage)
           </p>
         </div>
 
@@ -129,7 +130,9 @@ export function AIDialogueSettings() {
           </label>
           <textarea
             value={ai_dialogue.system_prompt}
-            onChange={(e) => updateAIDialogue({ system_prompt: e.target.value })}
+            onChange={(e) =>
+              updateAIDialogue({ system_prompt: e.target.value })
+            }
             rows={4}
             placeholder="You are a helpful assistant."
             className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent resize-none"

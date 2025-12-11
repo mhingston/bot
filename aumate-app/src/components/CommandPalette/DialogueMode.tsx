@@ -1,9 +1,9 @@
-import { useEffect, useCallback, useRef, useState } from "react";
-import { ConversationList } from "./ConversationList";
-import { ChatPanel } from "./ChatPanel";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { type ChatMessage, sendDialogueMessage } from "@/lib/dialogue";
 import { useDialogueStore } from "@/stores/dialogueStore";
 import { useSettingsStore } from "@/stores/settingsStore";
-import { sendDialogueMessage, type ChatMessage } from "@/lib/dialogue";
+import { ChatPanel } from "./ChatPanel";
+import { ConversationList } from "./ConversationList";
 
 export function DialogueMode() {
   const {
@@ -115,7 +115,7 @@ export function DialogueMode() {
       addMessage,
       updateLastMessage,
       ai_dialogue,
-    ]
+    ],
   );
 
   // Handle stopping the stream

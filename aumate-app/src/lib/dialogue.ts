@@ -18,13 +18,17 @@ export interface DialogueOptions {
   signal?: AbortSignal;
 }
 
-export async function sendDialogueMessage(options: DialogueOptions): Promise<DialogueResult> {
-  const { apiUrl, apiKey, model, systemPrompt, messages, onChunk, signal } = options;
+export async function sendDialogueMessage(
+  options: DialogueOptions,
+): Promise<DialogueResult> {
+  const { apiUrl, apiKey, model, systemPrompt, messages, onChunk, signal } =
+    options;
 
   if (!apiKey) {
     return {
       content: "",
-      error: "API key not configured. Please set your API key in Settings > AI Dialogue.",
+      error:
+        "API key not configured. Please set your API key in Settings > AI Dialogue.",
     };
   }
 

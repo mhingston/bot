@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import {
   Camera,
   Command,
@@ -7,7 +7,7 @@ import {
   Settings as SettingsIcon,
   Terminal,
 } from "lucide-react";
-import { invoke } from "@tauri-apps/api/core";
+import { useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 
 // Command item interface
@@ -111,12 +111,14 @@ export function SearchMode({
   const filteredCommands = commands.filter(
     (cmd) =>
       cmd.title.toLowerCase().includes(query.toLowerCase()) ||
-      cmd.description?.toLowerCase().includes(query.toLowerCase())
+      cmd.description?.toLowerCase().includes(query.toLowerCase()),
   );
 
   // Scroll selected item into view
   useEffect(() => {
-    const selectedElement = listRef.current?.children[selectedIndex] as HTMLElement;
+    const selectedElement = listRef.current?.children[
+      selectedIndex
+    ] as HTMLElement;
     if (selectedElement) {
       selectedElement.scrollIntoView({ block: "nearest" });
     }
@@ -139,10 +141,12 @@ export function SearchMode({
               "w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors",
               index === selectedIndex
                 ? "bg-accent text-accent-foreground"
-                : "text-foreground hover:bg-accent/50"
+                : "text-foreground hover:bg-accent/50",
             )}
           >
-            <span className="shrink-0 text-muted-foreground">{command.icon}</span>
+            <span className="shrink-0 text-muted-foreground">
+              {command.icon}
+            </span>
             <div className="flex-1 min-w-0">
               <div className="font-medium truncate">{command.title}</div>
               {command.description && (
@@ -168,6 +172,6 @@ export function getFilteredCommands(query: string): CommandItem[] {
   return commands.filter(
     (cmd) =>
       cmd.title.toLowerCase().includes(query.toLowerCase()) ||
-      cmd.description?.toLowerCase().includes(query.toLowerCase())
+      cmd.description?.toLowerCase().includes(query.toLowerCase()),
   );
 }

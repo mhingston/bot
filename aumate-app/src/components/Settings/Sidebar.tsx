@@ -1,12 +1,12 @@
 import {
-  Settings,
-  Keyboard,
-  Wrench,
-  Info,
-  User,
-  Sparkles,
   Camera,
+  Info,
+  Keyboard,
   MessageSquare,
+  Settings,
+  Sparkles,
+  User,
+  Wrench,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSettingsStore } from "@/stores/settingsStore";
@@ -19,10 +19,26 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { id: "general", label: "General", icon: <Settings className="w-5 h-5" /> },
-  { id: "shortcuts", label: "Shortcuts", icon: <Keyboard className="w-5 h-5" /> },
-  { id: "screenshot", label: "Screenshot", icon: <Camera className="w-5 h-5" /> },
-  { id: "polishing", label: "Expression Polishing", icon: <Sparkles className="w-5 h-5" /> },
-  { id: "dialogue", label: "AI Dialogue", icon: <MessageSquare className="w-5 h-5" /> },
+  {
+    id: "shortcuts",
+    label: "Shortcuts",
+    icon: <Keyboard className="w-5 h-5" />,
+  },
+  {
+    id: "screenshot",
+    label: "Screenshot",
+    icon: <Camera className="w-5 h-5" />,
+  },
+  {
+    id: "polishing",
+    label: "Expression Polishing",
+    icon: <Sparkles className="w-5 h-5" />,
+  },
+  {
+    id: "dialogue",
+    label: "AI Dialogue",
+    icon: <MessageSquare className="w-5 h-5" />,
+  },
   { id: "advanced", label: "Advanced", icon: <Wrench className="w-5 h-5" /> },
   { id: "about", label: "About", icon: <Info className="w-5 h-5" /> },
 ];
@@ -49,13 +65,14 @@ export function Sidebar() {
       <nav className="flex-1 p-2">
         {navItems.map((item) => (
           <button
+            type="button"
             key={item.id}
             onClick={() => setActiveSection(item.id)}
             className={cn(
               "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors",
               activeSection === item.id
                 ? "bg-blue-600 text-white"
-                : "text-gray-300 hover:bg-white/5 hover:text-white"
+                : "text-gray-300 hover:bg-white/5 hover:text-white",
             )}
           >
             {item.icon}

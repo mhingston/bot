@@ -1,6 +1,6 @@
-import { useSettingsStore } from "@/stores/settingsStore";
-import { Toggle } from "@/components/ui/Toggle";
 import { FolderOpen } from "lucide-react";
+import { Toggle } from "@/components/ui/Toggle";
+import { useSettingsStore } from "@/stores/settingsStore";
 
 export function ScreenshotSettings() {
   const { settings, updateScreenshot } = useSettingsStore();
@@ -16,20 +16,28 @@ export function ScreenshotSettings() {
     <div className="space-y-8">
       <div>
         <h2 className="text-lg font-semibold text-white mb-1">Screenshot</h2>
-        <p className="text-sm text-gray-400">Configure screenshot capture and save settings.</p>
+        <p className="text-sm text-gray-400">
+          Configure screenshot capture and save settings.
+        </p>
       </div>
 
       <div className="space-y-6">
         {/* Save Folder */}
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
+          <label
+            htmlFor="save-folder"
+            className="block text-sm font-medium text-gray-300 mb-2"
+          >
             Save Folder
           </label>
           <div className="flex gap-2">
             <input
+              id="save-folder"
               type="text"
               value={screenshot.save_folder}
-              onChange={(e) => updateScreenshot({ save_folder: e.target.value })}
+              onChange={(e) =>
+                updateScreenshot({ save_folder: e.target.value })
+              }
               placeholder="Default: Pictures folder"
               className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
@@ -48,30 +56,43 @@ export function ScreenshotSettings() {
 
         {/* Filename Pattern */}
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
+          <label
+            htmlFor="filename-pattern"
+            className="block text-sm font-medium text-gray-300 mb-2"
+          >
             Filename Pattern
           </label>
           <input
+            id="filename-pattern"
             type="text"
             value={screenshot.filename_pattern}
-            onChange={(e) => updateScreenshot({ filename_pattern: e.target.value })}
+            onChange={(e) =>
+              updateScreenshot({ filename_pattern: e.target.value })
+            }
             placeholder="screenshot_%Y%m%d_%H%M%S"
             className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
           <p className="text-xs text-gray-500 mt-1">
-            Use %Y (year), %m (month), %d (day), %H (hour), %M (minute), %S (second)
+            Use %Y (year), %m (month), %d (day), %H (hour), %M (minute), %S
+            (second)
           </p>
         </div>
 
         {/* Image Format */}
         <div>
-          <label className="block text-sm font-medium text-gray-300 mb-2">
+          <label
+            htmlFor="image-format"
+            className="block text-sm font-medium text-gray-300 mb-2"
+          >
             Image Format
           </label>
           <select
+            id="image-format"
             value={screenshot.image_format}
             onChange={(e) =>
-              updateScreenshot({ image_format: e.target.value as "png" | "webp" | "jpeg" })
+              updateScreenshot({
+                image_format: e.target.value as "png" | "webp" | "jpeg",
+              })
             }
             className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
@@ -93,7 +114,9 @@ export function ScreenshotSettings() {
           </div>
           <Toggle
             checked={screenshot.auto_copy_clipboard}
-            onChange={(checked) => updateScreenshot({ auto_copy_clipboard: checked })}
+            onChange={(checked) =>
+              updateScreenshot({ auto_copy_clipboard: checked })
+            }
           />
         </div>
       </div>

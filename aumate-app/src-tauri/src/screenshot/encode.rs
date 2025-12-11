@@ -1,7 +1,7 @@
+use image::DynamicImage;
 use image::codecs::jpeg::JpegEncoder;
 use image::codecs::png::{CompressionType, FilterType, PngEncoder};
 use image::codecs::webp::WebPEncoder;
-use image::DynamicImage;
 use std::io::Cursor;
 use std::path::Path;
 use tokio::fs;
@@ -46,19 +46,17 @@ pub async fn save_image_to_file(
     format: ImageFormat,
 ) -> Result<(), String> {
     // Ensure parent directory exists
-    if let Some(parent) = file_path.parent() {
-        if !parent.exists() {
-            fs::create_dir_all(parent)
-                .await
-                .map_err(|e| format!("Failed to create directory: {}", e))?;
-        }
+    if let Some(parent) = file_path.parent()
+        && !parent.exists()
+    {
+        fs::create_dir_all(parent)
+            .await
+            .map_err(|e| format!("Failed to create directory: {}", e))?;
     }
 
     let encoded = encode_image(image, format)?;
 
-    fs::write(file_path, encoded)
-        .await
-        .map_err(|e| format!("Failed to save image: {}", e))?;
+    fs::write(file_path, encoded).await.map_err(|e| format!("Failed to save image: {}", e))?;
 
     Ok(())
 }

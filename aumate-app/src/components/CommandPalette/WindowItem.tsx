@@ -26,10 +26,11 @@ export function WindowItem({ window, selected, onClick }: WindowItemProps) {
     : window.app_name;
 
   return (
-    <div
+    <button
+      type="button"
       className={cn(
-        "flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors",
-        selected ? "bg-sky-500/20" : "hover:bg-white/5"
+        "w-full flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors text-left",
+        selected ? "bg-sky-500/20" : "hover:bg-white/5",
       )}
       onClick={onClick}
     >
@@ -47,7 +48,7 @@ export function WindowItem({ window, selected, onClick }: WindowItemProps) {
           Running: {processName}
         </div>
       </div>
-    </div>
+    </button>
   );
 }
 

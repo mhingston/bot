@@ -34,18 +34,6 @@
         "transparent": true,
         "visible": false,
         "center": true
-      },
-      {
-        "label": "screenshot",
-        "title": "Screenshot",
-        "url": "screenshot.html",
-        "fullscreen": true,
-        "transparent": true,
-        "decorations": false,
-        "alwaysOnTop": true,
-        "skipTaskbar": true,
-        "visible": false,
-        "resizable": false
       }
     ],
     "security": {

@@ -27,13 +27,22 @@ export function AdvancedSettings() {
       <div className="pt-6 border-t border-white/10">
         <h3 className="text-sm font-medium text-white mb-4">Data</h3>
         <div className="space-y-3">
-          <button className="w-full text-left px-4 py-3 text-sm bg-gray-800 hover:bg-gray-700 rounded-lg text-gray-300 transition-colors">
+          <button
+            type="button"
+            className="w-full text-left px-4 py-3 text-sm bg-gray-800 hover:bg-gray-700 rounded-lg text-gray-300 transition-colors"
+          >
             Export Settings
           </button>
-          <button className="w-full text-left px-4 py-3 text-sm bg-gray-800 hover:bg-gray-700 rounded-lg text-gray-300 transition-colors">
+          <button
+            type="button"
+            className="w-full text-left px-4 py-3 text-sm bg-gray-800 hover:bg-gray-700 rounded-lg text-gray-300 transition-colors"
+          >
             Import Settings
           </button>
-          <button className="w-full text-left px-4 py-3 text-sm bg-red-900/30 hover:bg-red-900/50 rounded-lg text-red-400 transition-colors">
+          <button
+            type="button"
+            className="w-full text-left px-4 py-3 text-sm bg-red-900/30 hover:bg-red-900/50 rounded-lg text-red-400 transition-colors"
+          >
             Reset All Settings
           </button>
         </div>
