@@ -4,6 +4,7 @@ import {
   Keyboard,
   MessageSquare,
   Settings,
+  Shield,
   Sparkles,
   User,
   Wrench,
@@ -28,6 +29,11 @@ const navItems: NavItem[] = [
     id: "screenshot",
     label: "Screenshot",
     icon: <Camera className="w-5 h-5" />,
+  },
+  {
+    id: "permissions",
+    label: "Permissions",
+    icon: <Shield className="w-5 h-5" />,
   },
   {
     id: "polishing",

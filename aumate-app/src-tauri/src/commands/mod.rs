@@ -6,6 +6,7 @@ pub mod clipboard;
 pub mod hotkey;
 pub mod monitor;
 pub mod page;
+pub mod permissions;
 pub mod screenshot;
 pub mod scroll;
 pub mod settings;

@@ -229,6 +229,11 @@ pub fn run() {
             get_window_elements,
             resize_and_center,
             animate_resize_and_center,
+            // Permissions commands
+            commands::permissions::check_permissions,
+            commands::permissions::request_screen_recording_permission,
+            commands::permissions::request_accessibility_permission,
+            commands::permissions::request_microphone_permission,
             // UI automation commands
             get_element_from_position,
             init_ui_elements,

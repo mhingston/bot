@@ -7,6 +7,7 @@ import { AdvancedSettings } from "./sections/AdvancedSettings";
 import { AIDialogueSettings } from "./sections/AIDialogueSettings";
 import { ExpressionPolishingSettings } from "./sections/ExpressionPolishingSettings";
 import { GeneralSettings } from "./sections/GeneralSettings";
+import { PermissionsSettings } from "./sections/PermissionsSettings";
 import { ScreenshotSettings } from "./sections/ScreenshotSettings";
 import { ShortcutsSettings } from "./sections/ShortcutsSettings";
 import { TitleBar } from "./TitleBar";
@@ -39,6 +40,8 @@ export function SettingsApp() {
         return <ShortcutsSettings />;
       case "screenshot":
         return <ScreenshotSettings />;
+      case "permissions":
+        return <PermissionsSettings />;
       case "polishing":
         return <ExpressionPolishingSettings />;
       case "dialogue":
