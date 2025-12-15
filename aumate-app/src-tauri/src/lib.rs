@@ -70,21 +70,26 @@ fn show_settings_window(app: &tauri::AppHandle) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // 初始化日志，默认显示 info 级别
+    env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_fs::init())
         .manage(setup_application()) // Use DDD architecture AppState
         .setup(|app| {
-            // Apply vibrancy to main window
-            let main_window = app.get_webview_window("main").unwrap();
+            // Apply vibrancy to commandpalette window
+            let commandpalette_window = app.get_webview_window("commandpalette").unwrap();
             #[cfg(target_os = "windows")]
             {
-                apply_acrylic(&main_window, Some((0, 0, 0, 50)))
-                    .expect("Failed to apply mica effect to main");
+                apply_acrylic(&commandpalette_window, Some((0, 0, 0, 50)))
+                    .expect("Failed to apply mica effect to commandpalette");
             }
             #[cfg(target_os = "macos")]
             {
-                apply_vibrancy(&main_window, NSVisualEffectMaterial::HudWindow, None, None)
-                    .expect("Failed to apply vibrancy to main");
+                apply_vibrancy(&commandpalette_window, NSVisualEffectMaterial::HudWindow, None, None)
+                    .expect("Failed to apply vibrancy to commandpalette");
             }
 
             // Apply vibrancy to settings window
@@ -147,7 +152,7 @@ pub fn run() {
                     } = event
                     {
                         let app = tray.app_handle();
-                        if let Some(window) = app.get_webview_window("main") {
+                        if let Some(window) = app.get_webview_window("commandpalette") {
                             toggle_window(&window);
                         }
                     }
@@ -169,29 +174,42 @@ pub fn run() {
                 })
                 .build(app)?;
 
-            // Register global shortcut
+            // Register global shortcuts
             #[cfg(desktop)]
             {
                 use tauri_plugin_global_shortcut::{
                     Code, GlobalShortcutExt, Shortcut, ShortcutState,
                 };
 
-                let shortcut = Shortcut::new(None, Code::F3);
+                // F3 for main command palette
+                let f3_shortcut = Shortcut::new(None, Code::F3);
+                // F2 for screenshot/draw window
+                let f2_shortcut = Shortcut::new(None, Code::F2);
 
                 app.handle().plugin(
                     tauri_plugin_global_shortcut::Builder::new()
                         .with_handler(move |app_handle, hotkey, event| {
-                            if event.state == ShortcutState::Pressed
-                                && hotkey == &shortcut
-                                && let Some(window) = app_handle.get_webview_window("main")
-                            {
-                                toggle_window(&window);
+                            if event.state == ShortcutState::Pressed {
+                                if hotkey == &f3_shortcut {
+                                    if let Some(window) = app_handle.get_webview_window("commandpalette") {
+                                        toggle_window(&window);
+                                    }
+                                } else if hotkey == &f2_shortcut {
+                                    // 调用命令创建或显示截图窗口
+                                    let app_handle_clone = app_handle.clone();
+                                    tauri::async_runtime::spawn(async move {
+                                        if let Err(e) = commands::create_draw_window(app_handle_clone).await {
+                                            log::error!("Failed to create draw window: {}", e);
+                                        }
+                                    });
+                                }
                             }
                         })
                         .build(),
                 )?;
 
-                app.global_shortcut().register(shortcut)?;
+                app.global_shortcut().register(f3_shortcut)?;
+                app.global_shortcut().register(f2_shortcut)?;
             }
 
             Ok(())
@@ -209,6 +227,11 @@ pub fn run() {
             capture_current_monitor,
             capture_monitor,
             capture_region,
+            capture_all_monitors,
+            get_screenshot_window_elements,
+            // Draw window commands
+            create_draw_window,
+            close_draw_window,
             // Monitor commands
             get_monitors,
             get_current_monitor,
@@ -219,6 +242,7 @@ pub fn run() {
             get_clipboard_types,
             read_clipboard_image,
             write_clipboard_image,
+            write_clipboard_image_png,
             // Window management commands
             create_window,
             drag_window,
@@ -247,6 +271,8 @@ pub fn run() {
             remove_page,
             // Scroll screenshot commands
             start_scroll_capture,
+            // Log commands
+            frontend_log,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

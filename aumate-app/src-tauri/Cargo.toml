@@ -20,11 +20,14 @@ tauri-build = { workspace = true, features = [] }
 [dependencies]
 tauri = { workspace = true, features = ["macos-private-api", "tray-icon", "image-png"] }
 tauri-plugin-opener = { workspace = true }
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 window-vibrancy = { workspace = true }
 dirs = { workspace = true }
 log = { workspace = true }
+env_logger = "0.11"
 tokio = { workspace = true, features = ["sync", "fs"] }
 
 # Screenshot dependencies
@@ -53,6 +56,7 @@ macos-accessibility-client = { workspace = true }
 active-win-pos-rs = { workspace = true }
 core-graphics = { workspace = true }
 core-foundation = "0.9"
+cocoa = "0.25"
 
 # Aumate crates dependencies
 [dependencies.aumate-application]
@@ -69,4 +73,3 @@ workspace = true
 
 [dependencies.aumate-core-traits]
 workspace = true 
-
