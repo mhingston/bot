@@ -7,7 +7,7 @@ import {
   Settings as SettingsIcon,
   Terminal,
 } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 
 // Command item interface
@@ -94,17 +94,12 @@ export const commands: CommandItem[] = [
 
 interface SearchModeProps {
   query: string;
-  selectedIndex: number;
-  onSelectIndex: (index: number) => void;
-  onExecuteCommand: (command: CommandItem) => void;
+  onHide: () => void;
+  isActive: boolean;
 }
 
-export function SearchMode({
-  query,
-  selectedIndex,
-  onSelectIndex,
-  onExecuteCommand,
-}: SearchModeProps) {
+export function SearchMode({ query, onHide, isActive }: SearchModeProps) {
+  const [selectedIndex, setSelectedIndex] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
 
   // Filter commands based on search query
@@ -112,6 +107,15 @@ export function SearchMode({
     (cmd) =>
       cmd.title.toLowerCase().includes(query.toLowerCase()) ||
       cmd.description?.toLowerCase().includes(query.toLowerCase()),
+  );
+
+  // Execute command
+  const executeCommand = useCallback(
+    (command: CommandItem) => {
+      command.action();
+      onHide();
+    },
+    [onHide],
   );
 
   // Scroll selected item into view
@@ -124,50 +128,119 @@ export function SearchMode({
     }
   }, [selectedIndex]);
 
+  // Reset selection when filtered list changes
+  // biome-ignore lint/correctness/useExhaustiveDependencies: query is a prop we want to react to
+  useEffect(() => {
+    setSelectedIndex(0);
+  }, [query]);
+
+  // Keyboard navigation
+  useEffect(() => {
+    if (!isActive) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+P for up
+      if (e.ctrlKey && e.key === "p") {
+        e.preventDefault();
+        setSelectedIndex((prev) => (prev > 0 ? prev - 1 : prev));
+        return;
+      }
+
+      // Ctrl+N for down
+      if (e.ctrlKey && e.key === "n") {
+        e.preventDefault();
+        setSelectedIndex((prev) =>
+          prev < filteredCommands.length - 1 ? prev + 1 : prev,
+        );
+        return;
+      }
+
+      switch (e.key) {
+        case "ArrowDown":
+          e.preventDefault();
+          setSelectedIndex((prev) =>
+            prev < filteredCommands.length - 1 ? prev + 1 : prev,
+          );
+          break;
+        case "ArrowUp":
+          e.preventDefault();
+          setSelectedIndex((prev) => (prev > 0 ? prev - 1 : prev));
+          break;
+        case "Enter":
+          e.preventDefault();
+          if (filteredCommands[selectedIndex]) {
+            executeCommand(filteredCommands[selectedIndex]);
+          }
+          break;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isActive, filteredCommands, selectedIndex, executeCommand]);
+
   return (
-    <div ref={listRef} className="flex-1 overflow-y-auto command-list py-2">
-      {filteredCommands.length === 0 ? (
-        <div className="px-4 py-8 text-center text-muted-foreground">
-          No commands found
-        </div>
-      ) : (
-        filteredCommands.map((command, index) => (
-          <button
-            key={command.id}
-            type="button"
-            onClick={() => onExecuteCommand(command)}
-            onMouseEnter={() => onSelectIndex(index)}
-            className={cn(
-              "w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors",
-              index === selectedIndex
-                ? "bg-accent text-accent-foreground"
-                : "text-foreground hover:bg-accent/50",
-            )}
-          >
-            <span className="shrink-0 text-muted-foreground">
-              {command.icon}
-            </span>
-            <div className="flex-1 min-w-0">
-              <div className="font-medium truncate">{command.title}</div>
-              {command.description && (
-                <div className="text-sm text-muted-foreground truncate">
-                  {command.description}
-                </div>
+    <>
+      <div ref={listRef} className="flex-1 overflow-y-auto command-list py-2">
+        {filteredCommands.length === 0 ? (
+          <div className="px-4 py-8 text-center text-muted-foreground">
+            No commands found
+          </div>
+        ) : (
+          filteredCommands.map((command, index) => (
+            <button
+              key={command.id}
+              type="button"
+              onClick={() => executeCommand(command)}
+              onMouseEnter={() => setSelectedIndex(index)}
+              className={cn(
+                "w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors",
+                index === selectedIndex
+                  ? "bg-accent text-accent-foreground"
+                  : "text-foreground hover:bg-accent/50",
               )}
-            </div>
-            {command.shortcut && (
-              <kbd className="shrink-0 px-2 py-1 text-xs font-medium text-muted-foreground bg-muted rounded">
-                {command.shortcut}
-              </kbd>
-            )}
-          </button>
-        ))
-      )}
-    </div>
+            >
+              <span className="shrink-0 text-muted-foreground">
+                {command.icon}
+              </span>
+              <div className="flex-1 min-w-0">
+                <div className="font-medium truncate">{command.title}</div>
+                {command.description && (
+                  <div className="text-sm text-muted-foreground truncate">
+                    {command.description}
+                  </div>
+                )}
+              </div>
+              {command.shortcut && (
+                <kbd className="shrink-0 px-2 py-1 text-xs font-medium text-muted-foreground bg-muted rounded">
+                  {command.shortcut}
+                </kbd>
+              )}
+            </button>
+          ))
+        )}
+      </div>
+
+      {/* Footer */}
+      <div className="flex items-center justify-between px-4 py-2 border-t border-white/10 text-xs text-muted-foreground">
+        <div className="flex items-center gap-4">
+          <span className="flex items-center gap-1">
+            <kbd className="px-1.5 py-0.5 bg-muted rounded">↑</kbd>
+            <kbd className="px-1.5 py-0.5 bg-muted rounded">↓</kbd>
+            <span>Navigate</span>
+          </span>
+          <span className="flex items-center gap-1">
+            <kbd className="px-1.5 py-0.5 bg-muted rounded">Enter</kbd>
+            <span>Execute</span>
+          </span>
+        </div>
+        <span>{filteredCommands.length} commands</span>
+      </div>
+    </>
   );
 }
 
-// Export filtered commands helper
+// Export filtered commands helper for backward compatibility
 export function getFilteredCommands(query: string): CommandItem[] {
   return commands.filter(
     (cmd) =>

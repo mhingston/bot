@@ -1,43 +1,26 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import {
-  AppWindow,
-  MessageSquare,
-  Search,
-  Sparkles,
-  Square,
-} from "lucide-react";
+import { AppWindow, MessageSquare, Search, Sparkles } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   COMMAND_PALETTE_DIMENSIONS,
   COMPACT_HEIGHT,
 } from "@/constants/dimensions";
-import { polishExpression } from "@/lib/openai";
 import { cn } from "@/lib/utils";
 import { animateResizeAndCenter } from "@/lib/window";
 import { type Settings, useSettingsStore } from "@/stores/settingsStore";
 import { DialogueMode } from "./DialogueMode";
-import { extractPolishedExpression, PolishMode } from "./PolishMode";
-import {
-  type CommandItem,
-  getFilteredCommands,
-  SearchMode,
-} from "./SearchMode";
-import { SwitcherMode, type WindowItemData } from "./SwitcherMode";
+import { PolishMode } from "./PolishMode";
+import { SearchMode } from "./SearchMode";
+import { SwitcherMode } from "./SwitcherMode";
 
 type Mode = "search" | "polish" | "dialogue" | "switcher";
 
 export function CommandPalette() {
   const [mode, setMode] = useState<Mode>("search");
   const [query, setQuery] = useState("");
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const [polishResult, setPolishResult] = useState("");
-  const [polishError, setPolishError] = useState("");
-  const [isPolishing, setIsPolishing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const abortControllerRef = useRef<AbortController | null>(null);
-  const polishScrollRef = useRef<HTMLDivElement>(null);
 
   const { settings, loadSettings, setSettings } = useSettingsStore();
   const windowMode = settings.general.window_mode;
@@ -79,13 +62,8 @@ export function CommandPalette() {
     if (mode === "dialogue" || mode === "switcher") return true;
     if (windowMode === "expanded") return true;
 
-    // Compact mode: show only when there's input or polish results
-    if (mode === "search") {
-      return query.trim().length > 0;
-    }
-    return (
-      query.trim().length > 0 || polishResult || polishError || isPolishing
-    );
+    // Compact mode: show only when there's input
+    return query.trim().length > 0;
   })();
 
   // Resize window based on mode and content visibility
@@ -119,74 +97,6 @@ export function CommandPalette() {
     }
   }, []);
 
-  // Execute selected command
-  const executeCommand = useCallback(
-    (command: CommandItem) => {
-      command.action();
-      setQuery("");
-      setSelectedIndex(0);
-      hideWindow();
-    },
-    [hideWindow],
-  );
-
-  // Cancel polishing request
-  const cancelPolishing = useCallback(() => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-      abortControllerRef.current = null;
-    }
-    setIsPolishing(false);
-  }, []);
-
-  // Polish expression
-  const doPolish = useCallback(async () => {
-    if (!query.trim() || isPolishing) return;
-
-    const { expression_polishing } = settings;
-
-    setIsPolishing(true);
-    setPolishResult("");
-    setPolishError("");
-
-    abortControllerRef.current = new AbortController();
-
-    const result = await polishExpression({
-      apiUrl: expression_polishing.api_url,
-      apiKey: expression_polishing.api_key,
-      model: expression_polishing.model,
-      systemPrompt: expression_polishing.system_prompt,
-      userInput: query,
-      signal: abortControllerRef.current.signal,
-      onChunk: (chunk) => {
-        setPolishResult((prev) => prev + chunk);
-      },
-    });
-
-    setIsPolishing(false);
-    abortControllerRef.current = null;
-
-    if (result.error) {
-      setPolishError(result.error);
-    }
-  }, [query, settings, isPolishing]);
-
-  // Clear polish results
-  const clearPolishResults = useCallback(() => {
-    setPolishResult("");
-    setPolishError("");
-    setQuery("");
-    inputRef.current?.focus();
-  }, []);
-
-  // Copy polished expression to clipboard (only the polished text, not adjustments)
-  const copyToClipboard = useCallback(async () => {
-    if (polishResult) {
-      const polishedOnly = extractPolishedExpression(polishResult);
-      await navigator.clipboard.writeText(polishedOnly);
-    }
-  }, [polishResult]);
-
   // Get list of enabled modes
   const getEnabledModesList = useCallback((): Mode[] => {
     const modes: Mode[] = [];
@@ -209,10 +119,7 @@ export function CommandPalette() {
       const nextIndex = (currentIndex + 1) % modes.length;
       return modes[nextIndex];
     });
-    setPolishResult("");
-    setPolishError("");
     setQuery("");
-    setSelectedIndex(0);
   }, [getEnabledModesList]);
 
   // Open settings window
@@ -226,94 +133,13 @@ export function CommandPalette() {
     }
   }, []);
 
-  // Switcher mode state
-  const [switcherWindows, setSwitcherWindows] = useState<WindowItemData[]>([]);
-
-  // Switch to a window
-  const handleSwitchToWindow = useCallback(
-    async (windowId: number) => {
-      try {
-        await invoke("switch_to_window", { windowId });
-        hideWindow();
-      } catch (err) {
-        console.error("Failed to switch window:", err);
-      }
-    },
-    [hideWindow],
-  );
-
-  // Close a window
-  const handleCloseWindow = useCallback(async (windowId: number) => {
-    try {
-      await invoke("close_window", { windowId });
-      // Remove from local list
-      setSwitcherWindows((prev) =>
-        prev.filter((w) => w.window_id !== windowId),
-      );
-    } catch (err) {
-      console.error("Failed to close window:", err);
-    }
-  }, []);
-
-  // Keyboard navigation
+  // Global keyboard shortcuts (Tab, Escape, Ctrl+,)
   useEffect(() => {
-    const filteredCommands = getFilteredCommands(query);
-
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Ctrl+, to open settings (local shortcut)
+      // Ctrl+, to open settings
       if (e.ctrlKey && e.key === ",") {
         e.preventDefault();
         openSettings();
-        return;
-      }
-
-      // Ctrl+P for arrow up (search/switcher mode) or scroll up (polish mode)
-      if (e.ctrlKey && e.key === "p") {
-        e.preventDefault();
-        if (mode === "search" || mode === "switcher") {
-          setSelectedIndex((prev) => (prev > 0 ? prev - 1 : prev));
-        } else if (mode === "polish" && polishScrollRef.current) {
-          polishScrollRef.current.scrollBy({ top: -100, behavior: "smooth" });
-        }
-        return;
-      }
-
-      // Ctrl+N for arrow down (search/switcher mode) or scroll down (polish mode)
-      if (e.ctrlKey && e.key === "n") {
-        e.preventDefault();
-        if (mode === "search") {
-          setSelectedIndex((prev) =>
-            prev < filteredCommands.length - 1 ? prev + 1 : prev,
-          );
-        } else if (mode === "switcher") {
-          setSelectedIndex((prev) =>
-            prev < switcherWindows.length - 1 ? prev + 1 : prev,
-          );
-        } else if (mode === "polish" && polishScrollRef.current) {
-          polishScrollRef.current.scrollBy({ top: 100, behavior: "smooth" });
-        }
-        return;
-      }
-
-      // Ctrl+W to close window in switcher mode
-      if (e.ctrlKey && e.key === "w") {
-        if (mode === "switcher" && switcherWindows[selectedIndex]) {
-          e.preventDefault();
-          handleCloseWindow(switcherWindows[selectedIndex].window_id);
-        }
-        return;
-      }
-
-      // Ctrl+C in polish mode: copy polished expression if no text selected
-      if (e.ctrlKey && e.key === "c") {
-        if (mode === "polish" && polishResult) {
-          const selection = window.getSelection();
-          const hasSelection = selection && selection.toString().length > 0;
-          if (!hasSelection) {
-            e.preventDefault();
-            copyToClipboard();
-          }
-        }
         return;
       }
 
@@ -324,82 +150,20 @@ export function CommandPalette() {
         return;
       }
 
-      switch (e.key) {
-        case "Escape":
-          e.preventDefault();
-          if (isPolishing) {
-            cancelPolishing();
-          } else {
-            hideWindow();
-          }
-          break;
-        case "ArrowDown":
-          if (mode === "search") {
-            e.preventDefault();
-            setSelectedIndex((prev) =>
-              prev < filteredCommands.length - 1 ? prev + 1 : prev,
-            );
-          } else if (mode === "switcher") {
-            e.preventDefault();
-            setSelectedIndex((prev) =>
-              prev < switcherWindows.length - 1 ? prev + 1 : prev,
-            );
-          }
-          break;
-        case "ArrowUp":
-          if (mode === "search" || mode === "switcher") {
-            e.preventDefault();
-            setSelectedIndex((prev) => (prev > 0 ? prev - 1 : prev));
-          }
-          break;
-        case "Enter":
-          if (mode === "search") {
-            e.preventDefault();
-            if (filteredCommands[selectedIndex]) {
-              executeCommand(filteredCommands[selectedIndex]);
-            }
-          } else if (mode === "polish") {
-            e.preventDefault();
-            doPolish();
-          } else if (mode === "switcher") {
-            e.preventDefault();
-            if (switcherWindows[selectedIndex]) {
-              handleSwitchToWindow(switcherWindows[selectedIndex].window_id);
-            }
-          }
-          // Dialogue mode handles Enter in ChatPanel
-          break;
+      // Escape to hide window
+      if (e.key === "Escape") {
+        e.preventDefault();
+        hideWindow();
+        return;
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [
-    mode,
-    query,
-    selectedIndex,
-    executeCommand,
-    hideWindow,
-    cycleMode,
-    doPolish,
-    isPolishing,
-    cancelPolishing,
-    openSettings,
-    copyToClipboard,
-    polishResult,
-    switcherWindows,
-    handleSwitchToWindow,
-    handleCloseWindow,
-  ]);
+  }, [cycleMode, hideWindow, openSettings]);
 
-  // Reset selection when query changes
+  // Focus input on mount and window focus (except for dialogue mode)
   useEffect(() => {
-    setSelectedIndex(0);
-  }, []);
-
-  // Focus input on mount and window focus
-  useEffect(() => {
-    // All modes except dialogue should focus the input
     if (mode !== "dialogue") {
       inputRef.current?.focus();
     }
@@ -439,14 +203,7 @@ export function CommandPalette() {
       return <Search className="w-5 h-5 text-muted-foreground shrink-0" />;
     }
     if (mode === "polish") {
-      return (
-        <Sparkles
-          className={cn(
-            "w-5 h-5 shrink-0",
-            isPolishing ? "text-blue-400 animate-pulse" : "text-purple-400",
-          )}
-        />
-      );
+      return <Sparkles className="w-5 h-5 text-purple-400 shrink-0" />;
     }
     if (mode === "switcher") {
       return <AppWindow className="w-5 h-5 text-sky-400 shrink-0" />;
@@ -486,7 +243,6 @@ export function CommandPalette() {
             autoCorrect="off"
             autoCapitalize="off"
             spellCheck={false}
-            disabled={isPolishing}
           />
         )}
         <div className="flex items-center gap-2">
@@ -516,121 +272,15 @@ export function CommandPalette() {
       {showContent && (
         <>
           {mode === "search" && (
-            <SearchMode
-              query={query}
-              selectedIndex={selectedIndex}
-              onSelectIndex={setSelectedIndex}
-              onExecuteCommand={executeCommand}
-            />
+            <SearchMode query={query} onHide={hideWindow} isActive={true} />
           )}
 
-          {mode === "polish" && (
-            <PolishMode
-              ref={polishScrollRef}
-              polishResult={polishResult}
-              polishError={polishError}
-              isPolishing={isPolishing}
-              onCopy={copyToClipboard}
-              onClear={clearPolishResults}
-            />
-          )}
+          {mode === "polish" && <PolishMode query={query} isActive={true} />}
 
           {mode === "dialogue" && <DialogueMode />}
 
           {mode === "switcher" && (
-            <SwitcherMode
-              query={query}
-              selectedIndex={selectedIndex}
-              onSelectIndex={setSelectedIndex}
-              onSwitchToWindow={handleSwitchToWindow}
-              onWindowsChange={setSwitcherWindows}
-            />
-          )}
-
-          {/* Footer - only for search/polish modes */}
-          {(mode === "search" || mode === "polish") && (
-            <div className="flex items-center justify-between px-4 py-2 border-t border-white/10 text-xs text-muted-foreground">
-              {mode === "search" ? (
-                <>
-                  <div className="flex items-center gap-4">
-                    <span className="flex items-center gap-1">
-                      <kbd className="px-1.5 py-0.5 bg-muted rounded">↑</kbd>
-                      <kbd className="px-1.5 py-0.5 bg-muted rounded">↓</kbd>
-                      <span>Navigate</span>
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <kbd className="px-1.5 py-0.5 bg-muted rounded">
-                        Enter
-                      </kbd>
-                      <span>Execute</span>
-                    </span>
-                  </div>
-                  <span>{getFilteredCommands(query).length} commands</span>
-                </>
-              ) : (
-                <>
-                  <div className="flex items-center gap-4">
-                    <span className="flex items-center gap-1">
-                      <kbd className="px-1.5 py-0.5 bg-muted rounded">
-                        Enter
-                      </kbd>
-                      <span>Polish</span>
-                    </span>
-                    {polishResult && (
-                      <>
-                        <span className="flex items-center gap-1">
-                          <kbd className="px-1.5 py-0.5 bg-muted rounded">
-                            Ctrl+P/N
-                          </kbd>
-                          <span>Scroll</span>
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <kbd className="px-1.5 py-0.5 bg-muted rounded">
-                            Ctrl+C
-                          </kbd>
-                          <span>Copy</span>
-                        </span>
-                      </>
-                    )}
-                    {isPolishing && (
-                      <button
-                        type="button"
-                        onClick={cancelPolishing}
-                        className="flex items-center gap-1 text-red-400 hover:text-red-300"
-                      >
-                        <Square className="w-3 h-3" />
-                        <span>Stop</span>
-                      </button>
-                    )}
-                  </div>
-                  <span className="text-purple-400/60">
-                    Expression Polishing
-                  </span>
-                </>
-              )}
-            </div>
-          )}
-
-          {/* Footer - switcher mode */}
-          {mode === "switcher" && (
-            <div className="flex items-center justify-between px-4 py-2 border-t border-white/10 text-xs text-muted-foreground">
-              <div className="flex items-center gap-4">
-                <span className="flex items-center gap-1">
-                  <kbd className="px-1.5 py-0.5 bg-muted rounded">↑</kbd>
-                  <kbd className="px-1.5 py-0.5 bg-muted rounded">↓</kbd>
-                  <span>Navigate</span>
-                </span>
-                <span className="flex items-center gap-1">
-                  <kbd className="px-1.5 py-0.5 bg-muted rounded">Enter</kbd>
-                  <span>Switch</span>
-                </span>
-                <span className="flex items-center gap-1">
-                  <kbd className="px-1.5 py-0.5 bg-muted rounded">Ctrl+W</kbd>
-                  <span>Close</span>
-                </span>
-              </div>
-              <span className="text-sky-400/60">Window Switcher</span>
-            </div>
+            <SwitcherMode query={query} onHide={hideWindow} isActive={true} />
           )}
         </>
       )}

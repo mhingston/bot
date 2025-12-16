@@ -44,8 +44,8 @@ fn default_element_scan_hotkey() -> String {
 
 impl Default for ShortcutSettings {
     fn default() -> Self {
-        Self { 
-            toggle_palette: "F3".to_string(), 
+        Self {
+            toggle_palette: "F3".to_string(),
             open_settings: "Ctrl+,".to_string(),
             screenshot: default_screenshot_hotkey(),
             element_scan: default_element_scan_hotkey(),
@@ -174,4 +174,3 @@ impl Default for Settings {
         }
     }
 }
-

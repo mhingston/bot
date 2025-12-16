@@ -31,7 +31,9 @@ export function ShortcutsSettings() {
           label="Take Screenshot"
           description="Capture screen and open drawing tools"
           shortcut={shortcuts.screenshot}
-          onUpdate={(newShortcut) => updateShortcuts({ screenshot: newShortcut })}
+          onUpdate={(newShortcut) =>
+            updateShortcuts({ screenshot: newShortcut })
+          }
         />
         <ShortcutRow
           label="Element Scanner"
@@ -107,9 +109,7 @@ function ShortcutRow({
       }
 
       // 忽略单独的修饰键
-      if (
-        ["Control", "Alt", "Shift", "Meta"].includes(e.key)
-      ) {
+      if (["Control", "Alt", "Shift", "Meta"].includes(e.key)) {
         return;
       }
 
@@ -217,7 +217,7 @@ function ShortcutRow({
       </div>
       <div className="flex items-center gap-2">
         <kbd className="px-3 py-1.5 text-sm font-medium bg-gray-700 text-white rounded border border-gray-600">
-          {isEditing ? (tempShortcut || "Press keys...") : shortcut}
+          {isEditing ? tempShortcut || "Press keys..." : shortcut}
         </kbd>
         {!isEditing ? (
           <button

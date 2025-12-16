@@ -119,9 +119,8 @@ pub async fn capture_all_monitors(
     log::info!("API: capture_all_monitors called");
 
     // 检查是否有显示器（Monitor 不是 Send，所以不能跨越 await）
-    let monitor_count = xcap::Monitor::all()
-        .map_err(|e| format!("Failed to get monitors: {}", e))?
-        .len();
+    let monitor_count =
+        xcap::Monitor::all().map_err(|e| format!("Failed to get monitors: {}", e))?.len();
 
     if monitor_count == 0 {
         return Err("No monitors found".to_string());
@@ -134,17 +133,18 @@ pub async fn capture_all_monitors(
     tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
 
     // 在 await 之后获取 monitors（避免跨越 await 点）
-    let monitors = xcap::Monitor::all().map_err(|e| format!("Failed to get monitors after await: {}", e))?;
+    let monitors =
+        xcap::Monitor::all().map_err(|e| format!("Failed to get monitors after await: {}", e))?;
 
     // 先截取所有显示器，获取实际的物理像素尺寸
     let mut captures: Vec<(i32, i32, image::RgbaImage)> = Vec::new();
     let mut first_reported_width = 0u32;
-    
+
     for monitor in &monitors {
         let x = monitor.x().unwrap_or(0);
         let y = monitor.y().unwrap_or(0);
         let width = monitor.width().unwrap_or(0);
-        
+
         if first_reported_width == 0 {
             first_reported_width = width;
         }
@@ -200,18 +200,20 @@ pub async fn capture_all_monitors(
 
         log::info!(
             "Monitor {}: CSS pos ({}, {}), scaled pos ({}, {}), size {}x{}",
-            i, x, y, scaled_x, scaled_y, img.width(), img.height()
+            i,
+            x,
+            y,
+            scaled_x,
+            scaled_y,
+            img.width(),
+            img.height()
         );
     }
 
     let total_width = (max_x - min_x) as u32;
     let total_height = (max_y - min_y) as u32;
 
-    log::info!(
-        "Creating combined image: {}x{} (physical pixels)",
-        total_width,
-        total_height
-    );
+    log::info!("Creating combined image: {}x{} (physical pixels)", total_width, total_height);
 
     // 创建物理像素大小的画布
     let mut combined_image = image::RgbaImage::new(total_width, total_height);
@@ -223,21 +225,13 @@ pub async fn capture_all_monitors(
         let offset_x = (scaled_x - min_x) as i64;
         let offset_y = (scaled_y - min_y) as i64;
 
-        image::imageops::overlay(
-            &mut combined_image,
-            &monitor_image,
-            offset_x,
-            offset_y,
-        );
+        image::imageops::overlay(&mut combined_image, &monitor_image, offset_x, offset_y);
     }
 
     // 编码为 PNG
     let mut buffer = Vec::new();
     DynamicImage::ImageRgba8(combined_image)
-        .write_to(
-            &mut std::io::Cursor::new(&mut buffer),
-            image::ImageFormat::Png,
-        )
+        .write_to(&mut std::io::Cursor::new(&mut buffer), image::ImageFormat::Png)
         .map_err(|e| format!("Failed to encode image: {}", e))?;
 
     log::info!("Screenshot captured: {} bytes", buffer.len());
@@ -282,7 +276,7 @@ pub async fn get_screenshot_window_elements() -> Result<Vec<WindowElement>, Stri
 
         let window_id = window.id().unwrap_or(0);
         let title = window.title().unwrap_or_default();
-        
+
         // 获取窗口位置和尺寸（用于过滤不可见窗口）
         let x = window.x().unwrap_or(0);
         let y = window.y().unwrap_or(0);
@@ -299,13 +293,13 @@ pub async fn get_screenshot_window_elements() -> Result<Vec<WindowElement>, Stri
             {
                 continue;
             }
-            
+
             // 过滤特殊系统窗口（如 Menubar）
             let app_name = window.app_name().unwrap_or_default();
             if title == "Menubar" && app_name == "Window Server" {
                 continue;
             }
-            
+
             // 过滤 Cursor（Window Server 的窗口）
             if title == "Cursor" && app_name == "Window Server" {
                 continue;
@@ -328,19 +322,14 @@ pub async fn get_screenshot_window_elements() -> Result<Vec<WindowElement>, Stri
         if width <= 0 || height <= 0 {
             continue;
         }
-        
+
         // 过滤位置异常的窗口（远离屏幕的窗口通常是不可见的）
         // 假设屏幕最大 10000x10000，超出范围的窗口可能是隐藏的
         if x.abs() > 10000 || y.abs() > 10000 {
             continue;
         }
 
-        let rect = ElementRect {
-            min_x: x,
-            min_y: y,
-            max_x: x + width,
-            max_y: y + height,
-        };
+        let rect = ElementRect { min_x: x, min_y: y, max_x: x + width, max_y: y + height };
 
         let scaled_rect = rect.scale(scale_factor);
         log::debug!(
@@ -358,10 +347,7 @@ pub async fn get_screenshot_window_elements() -> Result<Vec<WindowElement>, Stri
         );
 
         // 返回原始坐标（CSS像素/逻辑像素），前端会根据需要处理 devicePixelRatio
-        window_elements.push(WindowElement {
-            element_rect: rect,
-            window_id,
-        });
+        window_elements.push(WindowElement { element_rect: rect, window_id });
     }
 
     log::info!("Found {} screenshot window elements", window_elements.len());

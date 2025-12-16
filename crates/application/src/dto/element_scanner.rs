@@ -44,4 +44,3 @@ impl From<ScannableElement> for ScannableElementDto {
         }
     }
 }
-

@@ -4,4 +4,3 @@ pub mod element_scanner;
 pub mod ui_automation;
 
 pub use ui_automation::*;
-

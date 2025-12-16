@@ -1,9 +1,9 @@
 // Application State 管理
 use aumate_application::use_cases::{
-    CaptureRegionUseCase, CaptureScreenUseCase, ScrollScreenshotUseCase, WindowManagementUseCase,
-    GetWindowElementsUseCase,
-    CheckGlobalShortcutAvailabilityUseCase, RegisterGlobalShortcutUseCase, UnregisterGlobalShortcutUseCase,
-    ClickElementUseCase, FocusElementUseCase, ScanElementsUseCase,
+    CaptureRegionUseCase, CaptureScreenUseCase, CheckGlobalShortcutAvailabilityUseCase,
+    ClickElementUseCase, CloseDesktopWindowUseCase, FocusElementUseCase, GetWindowElementsUseCase,
+    RegisterGlobalShortcutUseCase, ScanElementsUseCase, ScrollScreenshotUseCase,
+    SwitchToWindowUseCase, UnregisterGlobalShortcutUseCase, WindowManagementUseCase,
     clipboard::{
         ReadClipboardImageUseCase, ReadClipboardUseCase, WriteClipboardImageUseCase,
         WriteClipboardUseCase,
@@ -12,8 +12,8 @@ use aumate_application::use_cases::{
     settings::{GetSettingsUseCase, SaveSettingsUseCase},
 };
 use aumate_infrastructure::adapters::{
-    ClipboardAdapter, ElementScannerAdapter, FileSystemSettingsAdapter, GlobalShortcutAdapter, 
-    HotkeyListenerAdapter, PageManagementAdapter, ScreenCaptureAdapter, UIAutomationAdapter, 
+    ClipboardAdapter, ElementScannerAdapter, FileSystemSettingsAdapter, GlobalShortcutAdapter,
+    HotkeyListenerAdapter, PageManagementAdapter, ScreenCaptureAdapter, UIAutomationAdapter,
     WindowListAdapter,
 };
 use std::sync::Arc;
@@ -38,10 +38,12 @@ pub struct AppState {
 
     // Window Management Use Case
     pub window_management: Arc<WindowManagementUseCase>,
-    
+
     // Window List
     pub window_list: Arc<WindowListAdapter>,
     pub get_window_elements: Arc<GetWindowElementsUseCase>,
+    pub switch_to_window: Arc<SwitchToWindowUseCase>,
+    pub close_desktop_window: Arc<CloseDesktopWindowUseCase>,
 
     // Window Layout
     pub window_layout: Arc<aumate_infrastructure::WindowLayoutAdapter>,

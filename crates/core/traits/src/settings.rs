@@ -14,4 +14,3 @@ pub trait SettingsStoragePort: Send + Sync {
     /// Save settings to storage
     async fn save(&self, settings: Settings) -> Result<(), InfrastructureError>;
 }
-

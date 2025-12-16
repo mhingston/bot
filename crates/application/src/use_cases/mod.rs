@@ -10,8 +10,8 @@ pub mod screenshot;
 pub mod scroll;
 pub mod settings;
 pub mod window;
-pub mod window_list;
 pub mod window_layout;
+pub mod window_list;
 
 pub use clipboard::*;
 pub use element_scanner::*;
@@ -20,5 +20,5 @@ pub use screenshot::*;
 pub use scroll::*;
 pub use settings::*;
 pub use window::*;
-pub use window_list::*;
 pub use window_layout::*;
+pub use window_list::*;

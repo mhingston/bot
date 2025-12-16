@@ -10,14 +10,10 @@ pub async fn scan_screen_elements(
 ) -> Result<Vec<ScannableElementDto>, String> {
     log::info!("API: scan_screen_elements called");
 
-    state
-        .scan_elements_use_case
-        .execute()
-        .await
-        .map_err(|e| {
-            let api_error: ApiError = e.into();
-            api_error.to_string()
-        })
+    state.scan_elements_use_case.execute().await.map_err(|e| {
+        let api_error: ApiError = e.into();
+        api_error.to_string()
+    })
 }
 
 /// 触发元素操作（点击或聚焦）
@@ -34,20 +30,15 @@ pub async fn trigger_element_action(
     );
 
     // 解析操作类型（参数验证）
-    let action = aumate_application::use_cases::ElementActionType::from_str(&action_type)
-        .map_err(|e| {
+    let action =
+        aumate_application::use_cases::ElementActionType::from_str(&action_type).map_err(|e| {
             let api_error: ApiError = e.into();
             api_error.to_string()
         })?;
 
     // 调用统一的业务逻辑用例
-    state
-        .trigger_element_action_use_case
-        .execute(&element_id, action)
-        .await
-        .map_err(|e| {
-            let api_error: ApiError = e.into();
-            api_error.to_string()
-        })
+    state.trigger_element_action_use_case.execute(&element_id, action).await.map_err(|e| {
+        let api_error: ApiError = e.into();
+        api_error.to_string()
+    })
 }
-

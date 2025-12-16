@@ -1,10 +1,10 @@
 // Application Setup - 依赖注入和初始化
 use crate::state::AppState;
 use aumate_application::use_cases::{
-    CaptureRegionUseCase, CaptureScreenUseCase, ScrollScreenshotUseCase, WindowManagementUseCase,
-    GetWindowElementsUseCase,
-    CheckGlobalShortcutAvailabilityUseCase, RegisterGlobalShortcutUseCase, UnregisterGlobalShortcutUseCase,
-    ClickElementUseCase, FocusElementUseCase, ScanElementsUseCase,
+    CaptureRegionUseCase, CaptureScreenUseCase, CheckGlobalShortcutAvailabilityUseCase,
+    ClickElementUseCase, CloseDesktopWindowUseCase, FocusElementUseCase, GetWindowElementsUseCase,
+    RegisterGlobalShortcutUseCase, ScanElementsUseCase, ScrollScreenshotUseCase,
+    SwitchToWindowUseCase, UnregisterGlobalShortcutUseCase, WindowManagementUseCase,
     clipboard::{
         ReadClipboardImageUseCase, ReadClipboardUseCase, WriteClipboardImageUseCase,
         WriteClipboardUseCase,
@@ -13,9 +13,9 @@ use aumate_application::use_cases::{
     settings::{GetSettingsUseCase, SaveSettingsUseCase},
 };
 use aumate_infrastructure::adapters::{
-    ClipboardAdapter, ElementScannerAdapter, FileSystemSettingsAdapter, GlobalShortcutAdapter, 
-    HotkeyListenerAdapter, ImageProcessingAdapter, PageManagementAdapter, ScreenCaptureAdapter, 
-    ScrollCaptureAdapter, UIAutomationAdapter, WindowManagementAdapter, WindowListAdapter,
+    ClipboardAdapter, ElementScannerAdapter, FileSystemSettingsAdapter, GlobalShortcutAdapter,
+    HotkeyListenerAdapter, ImageProcessingAdapter, PageManagementAdapter, ScreenCaptureAdapter,
+    ScrollCaptureAdapter, UIAutomationAdapter, WindowListAdapter, WindowManagementAdapter,
 };
 use std::sync::Arc;
 
@@ -57,14 +57,18 @@ pub fn setup_application(app_handle: tauri::AppHandle) -> AppState {
     let scroll_screenshot = Arc::new(ScrollScreenshotUseCase::new(scroll_capture));
 
     let window_management_use_case = Arc::new(WindowManagementUseCase::new(window_management));
-    
+
     // Window List Use Cases
     let get_window_elements = Arc::new(GetWindowElementsUseCase::new(window_list.clone()));
+    let switch_to_window = Arc::new(SwitchToWindowUseCase::new(window_list.clone()));
+    let close_desktop_window = Arc::new(CloseDesktopWindowUseCase::new(window_list.clone()));
 
     // Window Layout Use Cases
     let window_layout = Arc::new(aumate_infrastructure::WindowLayoutAdapter::new());
-    let resize_and_center = Arc::new(aumate_application::ResizeAndCenterUseCase::new(window_layout.clone()));
-    let animate_resize_and_center = Arc::new(aumate_application::AnimateResizeAndCenterUseCase::new(window_layout.clone()));
+    let resize_and_center =
+        Arc::new(aumate_application::ResizeAndCenterUseCase::new(window_layout.clone()));
+    let animate_resize_and_center =
+        Arc::new(aumate_application::AnimateResizeAndCenterUseCase::new(window_layout.clone()));
 
     let get_monitors = Arc::new(GetMonitorsUseCase::new(screen_capture.clone()));
     let get_current_monitor = Arc::new(GetCurrentMonitorUseCase::new(screen_capture.clone()));
@@ -75,16 +79,20 @@ pub fn setup_application(app_handle: tauri::AppHandle) -> AppState {
 
     // Global Shortcut Adapter and Use Cases
     let global_shortcut = Arc::new(GlobalShortcutAdapter::new(app_handle));
-    let register_global_shortcut = Arc::new(RegisterGlobalShortcutUseCase::new(global_shortcut.clone()));
-    let unregister_global_shortcut = Arc::new(UnregisterGlobalShortcutUseCase::new(global_shortcut.clone()));
-    let check_global_shortcut_availability = Arc::new(CheckGlobalShortcutAvailabilityUseCase::new(global_shortcut.clone()));
+    let register_global_shortcut =
+        Arc::new(RegisterGlobalShortcutUseCase::new(global_shortcut.clone()));
+    let unregister_global_shortcut =
+        Arc::new(UnregisterGlobalShortcutUseCase::new(global_shortcut.clone()));
+    let check_global_shortcut_availability =
+        Arc::new(CheckGlobalShortcutAvailabilityUseCase::new(global_shortcut.clone()));
 
     // Element Scanner Adapter and Use Cases
     let element_scanner = Arc::new(ElementScannerAdapter::new());
     let scan_elements_use_case = Arc::new(ScanElementsUseCase::new(element_scanner.clone()));
     let click_element_use_case = Arc::new(ClickElementUseCase::new(element_scanner.clone()));
     let focus_element_use_case = Arc::new(FocusElementUseCase::new(element_scanner.clone()));
-    let trigger_element_action_use_case = Arc::new(aumate_application::TriggerElementActionUseCase::new(element_scanner.clone()));
+    let trigger_element_action_use_case =
+        Arc::new(aumate_application::TriggerElementActionUseCase::new(element_scanner.clone()));
 
     // 3. 创建 AppState
     log::info!("Application setup complete!");
@@ -101,6 +109,8 @@ pub fn setup_application(app_handle: tauri::AppHandle) -> AppState {
         window_management: window_management_use_case,
         window_list,
         get_window_elements,
+        switch_to_window,
+        close_desktop_window,
         window_layout,
         resize_and_center,
         animate_resize_and_center,

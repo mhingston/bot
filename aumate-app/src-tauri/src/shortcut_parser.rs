@@ -4,7 +4,7 @@
 use tauri_plugin_global_shortcut::{Code, Modifiers, Shortcut};
 
 /// 解析快捷键字符串为 Shortcut 对象
-/// 
+///
 /// 支持的格式：
 /// - "F3" - 单个功能键
 /// - "Ctrl+4" - Ctrl 修饰键 + 数字键
@@ -12,7 +12,7 @@ use tauri_plugin_global_shortcut::{Code, Modifiers, Shortcut};
 /// - "Ctrl+," - Ctrl + 逗号
 pub fn parse_shortcut(shortcut_str: &str) -> Result<Shortcut, String> {
     let parts: Vec<&str> = shortcut_str.split('+').collect();
-    
+
     if parts.is_empty() {
         return Err("Empty shortcut string".to_string());
     }
@@ -22,7 +22,7 @@ pub fn parse_shortcut(shortcut_str: &str) -> Result<Shortcut, String> {
 
     for (i, part) in parts.iter().enumerate() {
         let part_lower = part.trim().to_lowercase();
-        
+
         // 判断是修饰键还是主键
         match part_lower.as_str() {
             "ctrl" | "control" => modifiers_flags |= Modifiers::CONTROL,
@@ -38,13 +38,9 @@ pub fn parse_shortcut(shortcut_str: &str) -> Result<Shortcut, String> {
     }
 
     let code = key_code.ok_or_else(|| "No key code found".to_string())?;
-    
+
     // 如果没有修饰键，传 None；否则传 Some(modifiers)
-    let modifiers = if modifiers_flags.is_empty() {
-        None
-    } else {
-        Some(modifiers_flags)
-    };
+    let modifiers = if modifiers_flags.is_empty() { None } else { Some(modifiers_flags) };
 
     Ok(Shortcut::new(modifiers, code))
 }
@@ -52,7 +48,7 @@ pub fn parse_shortcut(shortcut_str: &str) -> Result<Shortcut, String> {
 /// 解析单个按键字符串为 Code
 fn parse_key_code(key: &str) -> Result<Code, String> {
     let key_lower = key.to_lowercase();
-    
+
     match key_lower.as_str() {
         // 功能键
         "f1" => Ok(Code::F1),
@@ -67,7 +63,7 @@ fn parse_key_code(key: &str) -> Result<Code, String> {
         "f10" => Ok(Code::F10),
         "f11" => Ok(Code::F11),
         "f12" => Ok(Code::F12),
-        
+
         // 数字键
         "0" => Ok(Code::Digit0),
         "1" => Ok(Code::Digit1),
@@ -79,7 +75,7 @@ fn parse_key_code(key: &str) -> Result<Code, String> {
         "7" => Ok(Code::Digit7),
         "8" => Ok(Code::Digit8),
         "9" => Ok(Code::Digit9),
-        
+
         // 字母键
         "a" => Ok(Code::KeyA),
         "b" => Ok(Code::KeyB),
@@ -107,7 +103,7 @@ fn parse_key_code(key: &str) -> Result<Code, String> {
         "x" => Ok(Code::KeyX),
         "y" => Ok(Code::KeyY),
         "z" => Ok(Code::KeyZ),
-        
+
         // 特殊键
         "space" => Ok(Code::Space),
         "enter" | "return" => Ok(Code::Enter),
@@ -120,13 +116,13 @@ fn parse_key_code(key: &str) -> Result<Code, String> {
         "end" => Ok(Code::End),
         "pageup" | "pgup" => Ok(Code::PageUp),
         "pagedown" | "pgdn" => Ok(Code::PageDown),
-        
+
         // 箭头键
         "arrowup" | "up" => Ok(Code::ArrowUp),
         "arrowdown" | "down" => Ok(Code::ArrowDown),
         "arrowleft" | "left" => Ok(Code::ArrowLeft),
         "arrowright" | "right" => Ok(Code::ArrowRight),
-        
+
         // 标点符号
         "," | "comma" => Ok(Code::Comma),
         "." | "period" => Ok(Code::Period),
@@ -139,7 +135,7 @@ fn parse_key_code(key: &str) -> Result<Code, String> {
         "-" | "minus" => Ok(Code::Minus),
         "=" | "equal" => Ok(Code::Equal),
         "`" | "backquote" => Ok(Code::Backquote),
-        
+
         _ => Err(format!("Unknown key code: {}", key)),
     }
 }
@@ -169,4 +165,3 @@ mod tests {
         );
     }
 }
-

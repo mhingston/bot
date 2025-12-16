@@ -25,39 +25,83 @@ impl Default for WindowListAdapter {
 impl WindowListPort for WindowListAdapter {
     async fn get_window_list(&self) -> Result<Vec<WindowInfo>, InfrastructureError> {
         log::info!("WindowListAdapter: getting window list");
-        
+
         #[cfg(target_os = "macos")]
         {
             get_windows_macos().await
         }
-        
+
         #[cfg(target_os = "windows")]
         {
             get_windows_windows().await
         }
-        
+
         #[cfg(target_os = "linux")]
         {
             get_windows_linux().await
         }
     }
-    
+
     async fn get_active_window(&self) -> Result<Option<WindowInfo>, InfrastructureError> {
         log::info!("WindowListAdapter: getting active window");
-        
+
         #[cfg(target_os = "macos")]
         {
             get_active_window_macos().await
         }
-        
+
         #[cfg(target_os = "windows")]
         {
             get_active_window_windows().await
         }
-        
+
         #[cfg(target_os = "linux")]
         {
             get_active_window_linux().await
+        }
+    }
+
+    async fn switch_to_window(&self, window_id: u32) -> Result<(), InfrastructureError> {
+        log::info!("WindowListAdapter: switch_to_window {}", window_id);
+
+        #[cfg(target_os = "macos")]
+        {
+            crate::platform::macos::ui_automation::switch_to_window(window_id)
+                .map_err(|e| InfrastructureError::PlatformOperationFailed(e))
+        }
+
+        #[cfg(target_os = "windows")]
+        {
+            crate::platform::windows::ui_automation::switch_to_window(window_id)
+                .map_err(|e| InfrastructureError::PlatformOperationFailed(e))
+        }
+
+        #[cfg(target_os = "linux")]
+        {
+            crate::platform::linux::ui_automation::switch_to_window(window_id)
+                .map_err(|e| InfrastructureError::PlatformOperationFailed(e))
+        }
+    }
+
+    async fn close_desktop_window(&self, window_id: u32) -> Result<(), InfrastructureError> {
+        log::info!("WindowListAdapter: close_desktop_window {}", window_id);
+
+        #[cfg(target_os = "macos")]
+        {
+            crate::platform::macos::ui_automation::close_window(window_id)
+                .map_err(|e| InfrastructureError::PlatformOperationFailed(e))
+        }
+
+        #[cfg(target_os = "windows")]
+        {
+            crate::platform::windows::ui_automation::close_window(window_id)
+                .map_err(|e| InfrastructureError::PlatformOperationFailed(e))
+        }
+
+        #[cfg(target_os = "linux")]
+        {
+            crate::platform::linux::ui_automation::close_window(window_id)
+                .map_err(|e| InfrastructureError::PlatformOperationFailed(e))
         }
     }
 }
@@ -66,16 +110,15 @@ impl WindowListPort for WindowListAdapter {
 #[cfg(target_os = "macos")]
 async fn get_windows_macos() -> Result<Vec<WindowInfo>, InfrastructureError> {
     use crate::platform::macos::window_list::get_all_windows;
-    
-    get_all_windows()
-        .map_err(|e| InfrastructureError::PlatformOperationFailed(e))
+
+    get_all_windows().map_err(|e| InfrastructureError::PlatformOperationFailed(e))
 }
 
 #[cfg(target_os = "macos")]
 async fn get_active_window_macos() -> Result<Option<WindowInfo>, InfrastructureError> {
     use active_win_pos_rs::get_active_window;
     use aumate_core_shared::Rectangle;
-    
+
     match get_active_window() {
         Ok(window) => {
             let bounds = Rectangle::from_xywh(
@@ -85,10 +128,10 @@ async fn get_active_window_macos() -> Result<Option<WindowInfo>, InfrastructureE
                 window.position.height as u32,
             )
             .map_err(|e| InfrastructureError::PlatformOperationFailed(e.to_string()))?;
-            
+
             // Parse window_id from String to u32
             let window_id_num = window.window_id.parse::<u32>().unwrap_or(0);
-            
+
             let window_info = WindowInfo {
                 id: window.window_id.clone(),
                 window_id: window_id_num,
@@ -111,16 +154,34 @@ async fn get_active_window_macos() -> Result<Option<WindowInfo>, InfrastructureE
 // ===== Windows 实现 =====
 #[cfg(target_os = "windows")]
 async fn get_windows_windows() -> Result<Vec<WindowInfo>, InfrastructureError> {
-    // TODO: 实现 Windows 窗口列表获取
-    log::warn!("Windows window list not yet implemented");
-    Ok(vec![])
+    use crate::platform::windows::ui_automation::get_all_windows;
+
+    let windows = get_all_windows().map_err(|e| InfrastructureError::PlatformOperationFailed(e))?;
+
+    let window_infos = windows
+        .into_iter()
+        .map(|w| {
+            WindowInfo {
+                id: w.window_id.to_string(),
+                window_id: w.window_id,
+                title: w.title,
+                app_name: w.app_name.clone(),
+                process_name: w.app_name.clone(), // Use app_name as process_name for now
+                process_path: String::new(),      // xcap doesn't provide process path on Windows
+                icon: None,
+                bounds: w.rect,
+            }
+        })
+        .collect();
+
+    Ok(window_infos)
 }
 
 #[cfg(target_os = "windows")]
 async fn get_active_window_windows() -> Result<Option<WindowInfo>, InfrastructureError> {
     use active_win_pos_rs::get_active_window;
     use aumate_core_shared::Rectangle;
-    
+
     match get_active_window() {
         Ok(window) => {
             let bounds = Rectangle::from_xywh(
@@ -130,10 +191,10 @@ async fn get_active_window_windows() -> Result<Option<WindowInfo>, Infrastructur
                 window.position.height as u32,
             )
             .map_err(|e| InfrastructureError::PlatformOperationFailed(e.to_string()))?;
-            
+
             // Parse window_id from String to u32
             let window_id_num = window.window_id.parse::<u32>().unwrap_or(0);
-            
+
             let window_info = WindowInfo {
                 id: window.window_id.clone(),
                 window_id: window_id_num,

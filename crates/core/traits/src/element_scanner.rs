@@ -38,19 +38,16 @@ pub trait ElementScannerPort: Send + Sync {
     /// 返回最多 26 个元素，按照从上到下、从左到右排序，
     /// 并分配字母标签 A-Z
     async fn scan_elements(&self) -> Result<Vec<ScannableElement>, InfrastructureError>;
-    
+
     /// 点击指定元素
     ///
     /// # 参数
     /// - `element_id`: 元素的唯一标识符
     async fn click_element(&self, element_id: &str) -> Result<(), InfrastructureError>;
-    
+
     /// 聚焦到指定元素（主要用于输入框）
     ///
     /// # 参数
     /// - `element_id`: 元素的唯一标识符
     async fn focus_element(&self, element_id: &str) -> Result<(), InfrastructureError>;
 }
-
-
-

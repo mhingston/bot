@@ -96,4 +96,3 @@ impl ElementScannerPort for ElementScannerAdapter {
         }
     }
 }
-

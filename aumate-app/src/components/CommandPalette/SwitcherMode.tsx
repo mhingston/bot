@@ -5,22 +5,15 @@ import { WindowItem, type WindowItemData } from "./WindowItem";
 
 interface SwitcherModeProps {
   query: string;
-  selectedIndex: number;
-  onSelectIndex: (index: number) => void;
-  onSwitchToWindow: (windowId: number) => void;
-  onWindowsChange?: (windows: WindowItemData[]) => void;
+  onHide: () => void;
+  isActive: boolean;
 }
 
-export function SwitcherMode({
-  query,
-  selectedIndex,
-  onSelectIndex,
-  onSwitchToWindow,
-  onWindowsChange,
-}: SwitcherModeProps) {
+export function SwitcherMode({ query, onHide, isActive }: SwitcherModeProps) {
   const [windows, setWindows] = useState<WindowItemData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedIndex, setSelectedIndex] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
 
   const loadWindows = useCallback(async () => {
@@ -61,11 +54,6 @@ export function SwitcherMode({
     });
   }, [windows, query]);
 
-  // Report filtered windows to parent
-  useEffect(() => {
-    onWindowsChange?.(filteredWindows);
-  }, [filteredWindows, onWindowsChange]);
-
   // Auto-scroll to keep selected item visible
   useEffect(() => {
     if (listRef.current && filteredWindows.length > 0) {
@@ -84,9 +72,93 @@ export function SwitcherMode({
   // Reset selection when filtered list changes
   useEffect(() => {
     if (selectedIndex >= filteredWindows.length) {
-      onSelectIndex(Math.max(0, filteredWindows.length - 1));
+      setSelectedIndex(Math.max(0, filteredWindows.length - 1));
     }
-  }, [filteredWindows.length, selectedIndex, onSelectIndex]);
+  }, [filteredWindows.length, selectedIndex]);
+
+  // Switch to window
+  const handleSwitchToWindow = useCallback(
+    async (windowId: number) => {
+      try {
+        await invoke("switch_to_window", { windowId });
+        onHide();
+      } catch (err) {
+        console.error("Failed to switch window:", err);
+      }
+    },
+    [onHide],
+  );
+
+  // Close window
+  const handleCloseWindow = useCallback(async (windowId: number) => {
+    try {
+      await invoke("close_desktop_window", { windowId });
+      // Remove from local list
+      setWindows((prev) => prev.filter((w) => w.window_id !== windowId));
+    } catch (err) {
+      console.error("Failed to close window:", err);
+    }
+  }, []);
+
+  // Keyboard navigation
+  useEffect(() => {
+    if (!isActive) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+P for up
+      if (e.ctrlKey && e.key === "p") {
+        e.preventDefault();
+        setSelectedIndex((prev) => (prev > 0 ? prev - 1 : prev));
+        return;
+      }
+
+      // Ctrl+N for down
+      if (e.ctrlKey && e.key === "n") {
+        e.preventDefault();
+        setSelectedIndex((prev) =>
+          prev < filteredWindows.length - 1 ? prev + 1 : prev,
+        );
+        return;
+      }
+
+      // Ctrl+W to close window
+      if (e.ctrlKey && e.key === "w") {
+        e.preventDefault();
+        if (filteredWindows[selectedIndex]) {
+          handleCloseWindow(filteredWindows[selectedIndex].window_id);
+        }
+        return;
+      }
+
+      switch (e.key) {
+        case "ArrowDown":
+          e.preventDefault();
+          setSelectedIndex((prev) =>
+            prev < filteredWindows.length - 1 ? prev + 1 : prev,
+          );
+          break;
+        case "ArrowUp":
+          e.preventDefault();
+          setSelectedIndex((prev) => (prev > 0 ? prev - 1 : prev));
+          break;
+        case "Enter":
+          e.preventDefault();
+          if (filteredWindows[selectedIndex]) {
+            handleSwitchToWindow(filteredWindows[selectedIndex].window_id);
+          }
+          break;
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [
+    isActive,
+    filteredWindows,
+    selectedIndex,
+    handleSwitchToWindow,
+    handleCloseWindow,
+  ]);
 
   if (isLoading) {
     return (
@@ -117,16 +189,38 @@ export function SwitcherMode({
   }
 
   return (
-    <div ref={listRef} className="flex-1 overflow-y-auto">
-      {filteredWindows.map((window, index) => (
-        <WindowItem
-          key={window.window_id}
-          window={window}
-          selected={index === selectedIndex}
-          onClick={() => onSwitchToWindow(window.window_id)}
-        />
-      ))}
-    </div>
+    <>
+      <div ref={listRef} className="flex-1 overflow-y-auto">
+        {filteredWindows.map((window, index) => (
+          <WindowItem
+            key={window.window_id}
+            window={window}
+            selected={index === selectedIndex}
+            onClick={() => handleSwitchToWindow(window.window_id)}
+          />
+        ))}
+      </div>
+
+      {/* Footer */}
+      <div className="flex items-center justify-between px-4 py-2 border-t border-white/10 text-xs text-muted-foreground">
+        <div className="flex items-center gap-4">
+          <span className="flex items-center gap-1">
+            <kbd className="px-1.5 py-0.5 bg-muted rounded">↑</kbd>
+            <kbd className="px-1.5 py-0.5 bg-muted rounded">↓</kbd>
+            <span>Navigate</span>
+          </span>
+          <span className="flex items-center gap-1">
+            <kbd className="px-1.5 py-0.5 bg-muted rounded">Enter</kbd>
+            <span>Switch</span>
+          </span>
+          <span className="flex items-center gap-1">
+            <kbd className="px-1.5 py-0.5 bg-muted rounded">Ctrl+W</kbd>
+            <span>Close</span>
+          </span>
+        </div>
+        <span className="text-sky-400/60">Window Switcher</span>
+      </div>
+    </>
   );
 }
 

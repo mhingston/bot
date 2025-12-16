@@ -1,23 +1,22 @@
 #![cfg(target_os = "windows")]
 
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
 use aumate_core_shared::Rectangle;
 use aumate_core_traits::{ElementType, ScannableElement};
+use once_cell::sync::Lazy;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 use uiautomation::UIAutomation;
-use uiautomation::types::{TreeScope, UIProperty};
 use uiautomation::controls::ControlType;
+use uiautomation::types::{TreeScope, UIProperty};
 use windows::Win32::Foundation::{HWND, LPARAM, RECT};
 use windows::Win32::UI::WindowsAndMessaging::{
-    FindWindowA, FindWindowExA, EnumChildWindows, GetWindowRect, 
-    GetWindowTextW, IsWindowVisible, GetSystemMetrics, 
-    SYSTEM_METRICS_INDEX,
+    EnumChildWindows, FindWindowA, FindWindowExA, GetSystemMetrics, GetWindowRect, GetWindowTextW,
+    IsWindowVisible, SYSTEM_METRICS_INDEX,
 };
 use windows::core::s;
-use once_cell::sync::Lazy;
 
 /// 元素缓存，存储已扫描的元素供后续操作使用
-static ELEMENT_CACHE: Lazy<Arc<Mutex<HashMap<String, CachedElement>>>> = 
+static ELEMENT_CACHE: Lazy<Arc<Mutex<HashMap<String, CachedElement>>>> =
     Lazy::new(|| Arc::new(Mutex::new(HashMap::new())));
 
 /// 缓存的元素信息
@@ -64,11 +63,11 @@ pub async fn scan_elements() -> Result<Vec<ScannableElement>, String> {
     // 1. 扫描输入框（同步执行，不跨越 await 边界）
     log::info!("[ElementScanner] Scanning input fields...");
     let input_result = {
-        let automation = UIAutomation::new()
-            .map_err(|e| format!("Failed to create UIAutomation: {}", e))?;
+        let automation =
+            UIAutomation::new().map_err(|e| format!("Failed to create UIAutomation: {}", e))?;
         scan_input_fields_sync(&automation)
     };
-    
+
     match input_result {
         Ok(mut input_elements) => {
             log::info!("[ElementScanner] Found {} input fields", input_elements.len());
@@ -92,11 +91,11 @@ pub async fn scan_elements() -> Result<Vec<ScannableElement>, String> {
     // 2. 扫描任务栏图标（同步执行）
     log::info!("[ElementScanner] Scanning taskbar icons...");
     let taskbar_result = {
-        let automation = UIAutomation::new()
-            .map_err(|e| format!("Failed to create UIAutomation: {}", e))?;
+        let automation =
+            UIAutomation::new().map_err(|e| format!("Failed to create UIAutomation: {}", e))?;
         scan_taskbar_icons_sync(&automation)
     };
-    
+
     match taskbar_result {
         Ok(mut taskbar_elements) => {
             log::info!("[ElementScanner] Found {} taskbar icons", taskbar_elements.len());
@@ -125,11 +124,7 @@ pub async fn scan_elements() -> Result<Vec<ScannableElement>, String> {
         let b_left = b.bounds.min_x();
 
         // 先按 Y 坐标排序，如果 Y 坐标相近（差距小于 50 像素），则按 X 坐标排序
-        if (a_top - b_top).abs() < 50 {
-            a_left.cmp(&b_left)
-        } else {
-            a_top.cmp(&b_top)
-        }
+        if (a_top - b_top).abs() < 50 { a_left.cmp(&b_left) } else { a_top.cmp(&b_top) }
     });
 
     // 4. 限制为最多 26 个元素，并分配字母标签
@@ -153,9 +148,8 @@ fn scan_input_fields_sync(automation: &UIAutomation) -> Result<Vec<ScannableElem
     log::info!("[ElementScanner] Screen bounds: {:?}", screen_bounds);
 
     // 获取桌面根元素
-    let root = automation
-        .get_root_element()
-        .map_err(|e| format!("Failed to get root element: {}", e))?;
+    let root =
+        automation.get_root_element().map_err(|e| format!("Failed to get root element: {}", e))?;
 
     // 创建条件：查找所有 Edit 控件（输入框）
     // UIAutomation 使用 i32 作为 ControlType 的值
@@ -181,13 +175,21 @@ fn scan_input_fields_sync(automation: &UIAutomation) -> Result<Vec<ScannableElem
 
                 // 过滤太小的元素（可能是隐藏的或无效的）
                 if width < 10 || height < 10 {
-                    log::debug!("[ElementScanner] Skipping too small element: {}x{}", width, height);
+                    log::debug!(
+                        "[ElementScanner] Skipping too small element: {}x{}",
+                        width,
+                        height
+                    );
                     continue;
                 }
 
                 // 过滤异常大的元素（可能是整个屏幕或容器）
                 if width > screen_bounds.width() || height > screen_bounds.height() {
-                    log::debug!("[ElementScanner] Skipping too large element: {}x{}", width, height);
+                    log::debug!(
+                        "[ElementScanner] Skipping too large element: {}x{}",
+                        width,
+                        height
+                    );
                     continue;
                 }
 
@@ -236,38 +238,32 @@ fn scan_taskbar_icons_sync(_automation: &UIAutomation) -> Result<Vec<ScannableEl
     // TODO: 任务栏检测需要更复杂的实现，暂时返回空列表
     // Windows API 回调函数类型在 windows crate 中有兼容性问题
     // 未来可以使用其他方法实现任务栏图标检测
-    log::warn!("[ElementScanner] Taskbar icon scanning temporarily disabled due to API compatibility issues");
+    log::warn!(
+        "[ElementScanner] Taskbar icon scanning temporarily disabled due to API compatibility issues"
+    );
     Ok(Vec::new())
 }
 
 /// 点击指定元素
 pub async fn click_element(element_id: &str) -> Result<(), String> {
     let cache = ELEMENT_CACHE.lock().unwrap();
-    
-    let cached_elem = cache
-        .get(element_id)
-        .ok_or_else(|| format!("Element not found: {}", element_id))?;
+
+    let cached_elem =
+        cache.get(element_id).ok_or_else(|| format!("Element not found: {}", element_id))?;
 
     // 计算元素中心点
     let center_x = cached_elem.bounds.min_x() + (cached_elem.bounds.width() / 2) as i32;
     let center_y = cached_elem.bounds.min_y() + (cached_elem.bounds.height() / 2) as i32;
 
-    log::info!(
-        "[ElementScanner] Clicking element {} at ({}, {})",
-        element_id,
-        center_x,
-        center_y
-    );
+    log::info!("[ElementScanner] Clicking element {} at ({}, {})", element_id, center_x, center_y);
 
     // 使用 Windows API 模拟鼠标点击
     unsafe {
         use windows::Win32::UI::Input::KeyboardAndMouse::{
-            SendInput, INPUT, INPUT_0, INPUT_MOUSE, MOUSEEVENTF_ABSOLUTE,
-            MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP, MOUSEEVENTF_MOVE, MOUSEINPUT,
+            INPUT, INPUT_0, INPUT_MOUSE, MOUSEEVENTF_ABSOLUTE, MOUSEEVENTF_LEFTDOWN,
+            MOUSEEVENTF_LEFTUP, MOUSEEVENTF_MOVE, MOUSEINPUT, SendInput,
         };
-        use windows::Win32::UI::WindowsAndMessaging::{
-            GetSystemMetrics, SM_CXSCREEN, SM_CYSCREEN,
-        };
+        use windows::Win32::UI::WindowsAndMessaging::{GetSystemMetrics, SM_CXSCREEN, SM_CYSCREEN};
 
         let screen_width = GetSystemMetrics(SM_CXSCREEN);
         let screen_height = GetSystemMetrics(SM_CYSCREEN);
@@ -335,9 +331,8 @@ pub async fn focus_element(element_id: &str) -> Result<(), String> {
     // 从缓存中获取元素信息（立即释放锁）
     let (element_type, bounds) = {
         let cache = ELEMENT_CACHE.lock().unwrap();
-        let cached_elem = cache
-            .get(element_id)
-            .ok_or_else(|| format!("Element not found: {}", element_id))?;
+        let cached_elem =
+            cache.get(element_id).ok_or_else(|| format!("Element not found: {}", element_id))?;
         (cached_elem.element_type.clone(), cached_elem.bounds.clone())
     }; // 锁在这里被释放
 
@@ -351,10 +346,12 @@ pub async fn focus_element(element_id: &str) -> Result<(), String> {
 
         // 尝试使用 UIAutomation 聚焦
         let focus_result = {
-            let automation = UIAutomation::new()
-                .map_err(|e| format!("Failed to create UIAutomation: {}", e))?;
+            let automation =
+                UIAutomation::new().map_err(|e| format!("Failed to create UIAutomation: {}", e))?;
 
-            if let Ok(element) = automation.element_from_point(uiautomation::types::Point::new(center_x, center_y)) {
+            if let Ok(element) =
+                automation.element_from_point(uiautomation::types::Point::new(center_x, center_y))
+            {
                 element.set_focus().map_err(|e| format!("Failed to set focus: {}", e))
             } else {
                 Err("Element not found at position".to_string())
@@ -372,4 +369,3 @@ pub async fn focus_element(element_id: &str) -> Result<(), String> {
 
     Ok(())
 }
-

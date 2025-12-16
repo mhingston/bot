@@ -101,26 +101,49 @@ pub async fn close_window(state: State<'_, AppState>, window_id: String) -> Resu
 
 /// 获取所有窗口元素
 #[tauri::command]
-pub async fn get_window_elements(state: State<'_, AppState>) -> Result<Vec<WindowElementDto>, String> {
+pub async fn get_window_elements(
+    state: State<'_, AppState>,
+) -> Result<Vec<WindowElementDto>, String> {
     log::info!("API: get_window_elements called");
 
-    let windows = state
-        .get_window_elements
-        .execute()
-        .await
-        .map_err(|e| {
-            let api_error: ApiError = e.into();
-            api_error.to_string()
-        })?;
+    let windows = state.get_window_elements.execute().await.map_err(|e| {
+        let api_error: ApiError = e.into();
+        api_error.to_string()
+    })?;
 
     // 转换为 DTO
     let window_dtos: Vec<WindowElementDto> = windows.into_iter().map(Into::into).collect();
-    
+
     Ok(window_dtos)
 }
 
+/// 切换到指定的桌面窗口（使其获得焦点）
+#[tauri::command]
+pub async fn switch_to_window(state: State<'_, AppState>, window_id: u32) -> Result<(), String> {
+    log::info!("API: switch_to_window called, window_id={}", window_id);
+
+    state.switch_to_window.execute(window_id).await.map_err(|e| {
+        let api_error: ApiError = e.into();
+        api_error.to_string()
+    })
+}
+
+/// 关闭指定的桌面窗口
+#[tauri::command]
+pub async fn close_desktop_window(
+    state: State<'_, AppState>,
+    window_id: u32,
+) -> Result<(), String> {
+    log::info!("API: close_desktop_window called, window_id={}", window_id);
+
+    state.close_desktop_window.execute(window_id).await.map_err(|e| {
+        let api_error: ApiError = e.into();
+        api_error.to_string()
+    })
+}
+
 /// 立即调整窗口大小并居中（无动画）
-/// 
+///
 /// 使用 DDD 架构：调用 Application Layer 的 Use Case
 #[tauri::command]
 pub async fn resize_and_center(
@@ -139,14 +162,11 @@ pub async fn resize_and_center(
 
     // 获取窗口 ID
     let window_id = aumate_core_shared::WindowId::new(window_label.clone());
-    
+
     // 从 app 获取 WebviewWindow并注册
     use tauri::Manager;
     if let Some(webview_window) = app.get_webview_window(&window_label) {
-        state
-            .window_layout
-            .register_window(window_id.clone(), webview_window)
-            .await;
+        state.window_layout.register_window(window_id.clone(), webview_window).await;
     } else {
         return Err(format!("Window not found: {}", window_label));
     }
@@ -163,7 +183,7 @@ pub async fn resize_and_center(
 }
 
 /// 带动画的调整窗口大小并居中
-/// 
+///
 /// 使用 DDD 架构：调用 Application Layer 的 Use Case
 #[tauri::command]
 pub async fn animate_resize_and_center(
@@ -184,14 +204,11 @@ pub async fn animate_resize_and_center(
 
     // 获取窗口 ID
     let window_id = aumate_core_shared::WindowId::new(window_label.clone());
-    
+
     // 从 app 获取 WebviewWindow并注册
     use tauri::Manager;
     if let Some(webview_window) = app.get_webview_window(&window_label) {
-        state
-            .window_layout
-            .register_window(window_id.clone(), webview_window)
-            .await;
+        state.window_layout.register_window(window_id.clone(), webview_window).await;
     } else {
         return Err(format!("Window not found: {}", window_label));
     }

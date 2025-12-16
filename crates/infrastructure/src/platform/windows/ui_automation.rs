@@ -116,14 +116,10 @@ impl UIElements {
                     rect.get_top(),
                     (rect.get_right() - rect.get_left()) as u32,
                     (rect.get_bottom() - rect.get_top()) as u32,
-                ).map_err(|e| format!("Invalid rectangle: {}", e))?;
-                
-                return Ok(Some(UIElement {
-                    bounds,
-                    role: None,
-                    title: None,
-                    value: None,
-                }));
+                )
+                .map_err(|e| format!("Invalid rectangle: {}", e))?;
+
+                return Ok(Some(UIElement { bounds, role: None, title: None, value: None }));
             }
         }
 
@@ -185,7 +181,14 @@ pub fn get_all_windows() -> Result<Vec<WindowElement>, String> {
         let app_name = window.app_name().unwrap_or_default();
 
         let Ok(rect) = Rectangle::from_xywh(x, y, width, height) else {
-            log::warn!("Invalid rectangle for window: {} ({}, {}, {}, {})", title, x, y, width, height);
+            log::warn!(
+                "Invalid rectangle for window: {} ({}, {}, {}, {})",
+                title,
+                x,
+                y,
+                width,
+                height
+            );
             continue;
         };
 
@@ -251,4 +254,3 @@ pub fn close_window(window_id: u32) -> Result<(), String> {
         Ok(())
     }
 }
-

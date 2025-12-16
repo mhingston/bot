@@ -40,6 +40,3 @@ pub trait GlobalShortcutPort: Send + Sync {
     /// * `Err(InfrastructureError)` - 检查失败（如格式错误）
     async fn is_available(&self, shortcut: &str) -> Result<bool, InfrastructureError>;
 }
-
-
-

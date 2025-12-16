@@ -79,4 +79,3 @@ impl SettingsStoragePort for FileSystemSettingsAdapter {
         Ok(())
     }
 }
-

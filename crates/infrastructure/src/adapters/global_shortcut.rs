@@ -15,9 +15,7 @@ pub struct GlobalShortcutAdapter {
 
 impl GlobalShortcutAdapter {
     pub fn new(app_handle: AppHandle) -> Self {
-        Self {
-            app_handle: Arc::new(app_handle),
-        }
+        Self { app_handle: Arc::new(app_handle) }
     }
 }
 
@@ -28,19 +26,19 @@ impl GlobalShortcutPort for GlobalShortcutAdapter {
         {
             use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
 
-            let parsed_shortcut: Shortcut = shortcut
-                .parse()
-                .map_err(|e| InfrastructureError::InvalidInput(format!("Invalid shortcut format '{}': {}", shortcut, e)))?;
+            let parsed_shortcut: Shortcut = shortcut.parse().map_err(|e| {
+                InfrastructureError::InvalidInput(format!(
+                    "Invalid shortcut format '{}': {}",
+                    shortcut, e
+                ))
+            })?;
 
-            self.app_handle
-                .global_shortcut()
-                .register(parsed_shortcut)
-                .map_err(|e| {
-                    InfrastructureError::PlatformOperationFailed(format!(
-                        "Failed to register shortcut '{}': {}",
-                        shortcut, e
-                    ))
-                })?;
+            self.app_handle.global_shortcut().register(parsed_shortcut).map_err(|e| {
+                InfrastructureError::PlatformOperationFailed(format!(
+                    "Failed to register shortcut '{}': {}",
+                    shortcut, e
+                ))
+            })?;
 
             log::info!("Successfully registered global shortcut: {}", shortcut);
             Ok(())
@@ -59,19 +57,19 @@ impl GlobalShortcutPort for GlobalShortcutAdapter {
         {
             use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
 
-            let parsed_shortcut: Shortcut = shortcut
-                .parse()
-                .map_err(|e| InfrastructureError::InvalidInput(format!("Invalid shortcut format '{}': {}", shortcut, e)))?;
+            let parsed_shortcut: Shortcut = shortcut.parse().map_err(|e| {
+                InfrastructureError::InvalidInput(format!(
+                    "Invalid shortcut format '{}': {}",
+                    shortcut, e
+                ))
+            })?;
 
-            self.app_handle
-                .global_shortcut()
-                .unregister(parsed_shortcut)
-                .map_err(|e| {
-                    InfrastructureError::PlatformOperationFailed(format!(
-                        "Failed to unregister shortcut '{}': {}",
-                        shortcut, e
-                    ))
-                })?;
+            self.app_handle.global_shortcut().unregister(parsed_shortcut).map_err(|e| {
+                InfrastructureError::PlatformOperationFailed(format!(
+                    "Failed to unregister shortcut '{}': {}",
+                    shortcut, e
+                ))
+            })?;
 
             log::info!("Successfully unregistered global shortcut: {}", shortcut);
             Ok(())
@@ -90,9 +88,12 @@ impl GlobalShortcutPort for GlobalShortcutAdapter {
         {
             use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
 
-            let parsed_shortcut: Shortcut = shortcut
-                .parse()
-                .map_err(|e| InfrastructureError::InvalidInput(format!("Invalid shortcut format '{}': {}", shortcut, e)))?;
+            let parsed_shortcut: Shortcut = shortcut.parse().map_err(|e| {
+                InfrastructureError::InvalidInput(format!(
+                    "Invalid shortcut format '{}': {}",
+                    shortcut, e
+                ))
+            })?;
 
             // Try to register, then immediately unregister if successful
             match self.app_handle.global_shortcut().register(parsed_shortcut) {
@@ -114,6 +115,3 @@ impl GlobalShortcutPort for GlobalShortcutAdapter {
         }
     }
 }
-
-
-

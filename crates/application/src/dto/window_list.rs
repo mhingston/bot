@@ -18,13 +18,9 @@ pub struct WindowElementDto {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WindowRectDto {
-    #[serde(rename = "minX")]
     pub min_x: f64,
-    #[serde(rename = "minY")]
     pub min_y: f64,
-    #[serde(rename = "maxX")]
     pub max_x: f64,
-    #[serde(rename = "maxY")]
     pub max_y: f64,
 }
 

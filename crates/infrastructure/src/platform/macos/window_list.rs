@@ -15,7 +15,7 @@ pub fn get_all_windows() -> Result<Vec<WindowInfo>, String> {
     // TODO: 实现完整的窗口列表获取
     // 需要使用 CGWindowListCopyWindowInfo 等 Core Graphics API
     // 参考: https://developer.apple.com/documentation/coregraphics/quartz_window_services
-    
+
     Ok(Vec::new())
 }
 

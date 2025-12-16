@@ -85,9 +85,11 @@ pub async fn write_clipboard_image(
     log::info!("API: write_clipboard_image called, size={}x{}", width, height);
 
     // 直接调用 ClipboardAdapter 的 write_image_rgba 方法
-    state.clipboard.write_image_rgba(data, width as usize, height as usize).await.map_err(|e| {
-        format!("Failed to write image to clipboard: {}", e)
-    })
+    state
+        .clipboard
+        .write_image_rgba(data, width as usize, height as usize)
+        .await
+        .map_err(|e| format!("Failed to write image to clipboard: {}", e))
 }
 
 /// 从 PNG base64 写入图像到剪贴板 (优化版)
@@ -102,14 +104,12 @@ pub async fn write_clipboard_image_png(
     use image::GenericImageView;
 
     // Decode base64 to PNG bytes
-    let png_data = STANDARD.decode(&png_base64).map_err(|e| {
-        format!("Failed to decode base64: {}", e)
-    })?;
+    let png_data =
+        STANDARD.decode(&png_base64).map_err(|e| format!("Failed to decode base64: {}", e))?;
 
     // Decode PNG to get RGBA pixels
-    let img = image::load_from_memory(&png_data).map_err(|e| {
-        format!("Failed to decode PNG: {}", e)
-    })?;
+    let img =
+        image::load_from_memory(&png_data).map_err(|e| format!("Failed to decode PNG: {}", e))?;
 
     let (width, height) = img.dimensions();
     let rgba = img.to_rgba8();
@@ -118,7 +118,9 @@ pub async fn write_clipboard_image_png(
     log::info!("API: Decoded PNG to {}x{} RGBA image", width, height);
 
     // 直接调用 ClipboardAdapter 的 write_image_rgba 方法（绕过不支持图像的通用 write 方法）
-    state.clipboard.write_image_rgba(data, width as usize, height as usize).await.map_err(|e| {
-        format!("Failed to write image to clipboard: {}", e)
-    })
+    state
+        .clipboard
+        .write_image_rgba(data, width as usize, height as usize)
+        .await
+        .map_err(|e| format!("Failed to write image to clipboard: {}", e))
 }

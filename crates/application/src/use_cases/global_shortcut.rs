@@ -23,15 +23,19 @@ impl RegisterGlobalShortcutUseCase {
     pub async fn execute(&self, shortcut: String) -> Result<(), UseCaseError> {
         log::info!("[RegisterGlobalShortcutUseCase] Registering shortcut: {}", shortcut);
 
-        self.global_shortcut
-            .register(&shortcut)
-            .await
-            .map_err(|e| {
-                log::error!("[RegisterGlobalShortcutUseCase] Failed to register shortcut '{}': {}", shortcut, e);
-                UseCaseError::from(e)
-            })?;
+        self.global_shortcut.register(&shortcut).await.map_err(|e| {
+            log::error!(
+                "[RegisterGlobalShortcutUseCase] Failed to register shortcut '{}': {}",
+                shortcut,
+                e
+            );
+            UseCaseError::from(e)
+        })?;
 
-        log::info!("[RegisterGlobalShortcutUseCase] Successfully registered shortcut: {}", shortcut);
+        log::info!(
+            "[RegisterGlobalShortcutUseCase] Successfully registered shortcut: {}",
+            shortcut
+        );
         Ok(())
     }
 }
@@ -57,15 +61,19 @@ impl UnregisterGlobalShortcutUseCase {
     pub async fn execute(&self, shortcut: String) -> Result<(), UseCaseError> {
         log::info!("[UnregisterGlobalShortcutUseCase] Unregistering shortcut: {}", shortcut);
 
-        self.global_shortcut
-            .unregister(&shortcut)
-            .await
-            .map_err(|e| {
-                log::error!("[UnregisterGlobalShortcutUseCase] Failed to unregister shortcut '{}': {}", shortcut, e);
-                UseCaseError::from(e)
-            })?;
+        self.global_shortcut.unregister(&shortcut).await.map_err(|e| {
+            log::error!(
+                "[UnregisterGlobalShortcutUseCase] Failed to unregister shortcut '{}': {}",
+                shortcut,
+                e
+            );
+            UseCaseError::from(e)
+        })?;
 
-        log::info!("[UnregisterGlobalShortcutUseCase] Successfully unregistered shortcut: {}", shortcut);
+        log::info!(
+            "[UnregisterGlobalShortcutUseCase] Successfully unregistered shortcut: {}",
+            shortcut
+        );
         Ok(())
     }
 }
@@ -90,19 +98,25 @@ impl CheckGlobalShortcutAvailabilityUseCase {
     /// * `Ok(false)` - 不可用（已被占用）
     /// * `Err(UseCaseError)` - 检查失败
     pub async fn execute(&self, shortcut: String) -> Result<bool, UseCaseError> {
-        log::info!("[CheckGlobalShortcutAvailabilityUseCase] Checking availability of shortcut: {}", shortcut);
+        log::info!(
+            "[CheckGlobalShortcutAvailabilityUseCase] Checking availability of shortcut: {}",
+            shortcut
+        );
 
-        let available = self
-            .global_shortcut
-            .is_available(&shortcut)
-            .await
-            .map_err(|e| {
-                log::error!("[CheckGlobalShortcutAvailabilityUseCase] Failed to check shortcut '{}': {}", shortcut, e);
-                UseCaseError::from(e)
-            })?;
+        let available = self.global_shortcut.is_available(&shortcut).await.map_err(|e| {
+            log::error!(
+                "[CheckGlobalShortcutAvailabilityUseCase] Failed to check shortcut '{}': {}",
+                shortcut,
+                e
+            );
+            UseCaseError::from(e)
+        })?;
 
-        log::info!("[CheckGlobalShortcutAvailabilityUseCase] Shortcut '{}' is {}", shortcut, if available { "available" } else { "not available" });
+        log::info!(
+            "[CheckGlobalShortcutAvailabilityUseCase] Shortcut '{}' is {}",
+            shortcut,
+            if available { "available" } else { "not available" }
+        );
         Ok(available)
     }
 }
-

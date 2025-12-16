@@ -14,8 +14,8 @@ use window_vibrancy::{NSVisualEffectMaterial, apply_vibrancy};
 // Import commands and state management
 mod commands;
 mod setup;
-mod state;
 mod shortcut_parser;
+mod state;
 
 use commands::*;
 use setup::setup_application;
@@ -26,22 +26,22 @@ fn center_window_precise(window: &tauri::WebviewWindow) {
         let scale_factor = monitor.scale_factor();
         let monitor_size = monitor.size();
         let monitor_pos = monitor.position();
-        
+
         // 转换为逻辑像素
         let screen_width = monitor_size.width as f64 / scale_factor;
         let screen_height = monitor_size.height as f64 / scale_factor;
         let monitor_x = monitor_pos.x as f64 / scale_factor;
         let monitor_y = monitor_pos.y as f64 / scale_factor;
-        
+
         // 获取窗口当前尺寸（物理像素）并转换为逻辑像素
         if let Ok(window_size) = window.inner_size() {
             let window_width = window_size.width as f64 / scale_factor;
             let window_height = window_size.height as f64 / scale_factor;
-            
+
             // 计算居中位置
             let target_x = monitor_x + (screen_width - window_width) / 2.0;
             let target_y = monitor_y + (screen_height - window_height) / 2.0;
-            
+
             // 设置位置（使用 LogicalPosition）
             let _ = window.set_position(tauri::LogicalPosition::new(target_x, target_y));
         }
@@ -91,8 +91,13 @@ pub fn run() {
             }
             #[cfg(target_os = "macos")]
             {
-                apply_vibrancy(&commandpalette_window, NSVisualEffectMaterial::HudWindow, None, None)
-                    .expect("Failed to apply vibrancy to commandpalette");
+                apply_vibrancy(
+                    &commandpalette_window,
+                    NSVisualEffectMaterial::HudWindow,
+                    None,
+                    None,
+                )
+                .expect("Failed to apply vibrancy to commandpalette");
             }
 
             // Apply vibrancy to settings window
@@ -113,23 +118,24 @@ pub fn run() {
                 let scale_factor = monitor.scale_factor();
                 let monitor_size = monitor.size();
                 let monitor_pos = monitor.position();
-                
+
                 // 转换为逻辑像素
                 let screen_width = monitor_size.width as f64 / scale_factor;
                 let screen_height = monitor_size.height as f64 / scale_factor;
                 let monitor_x = monitor_pos.x as f64 / scale_factor;
                 let monitor_y = monitor_pos.y as f64 / scale_factor;
-                
+
                 // 窗口尺寸（从配置读取）
                 let window_width = 900.0;
                 let window_height = 600.0;
-                
+
                 // 计算居中位置
                 let target_x = monitor_x + (screen_width - window_width) / 2.0;
                 let target_y = monitor_y + (screen_height - window_height) / 2.0;
-                
+
                 // 设置位置
-                let _ = settings_window.set_position(tauri::LogicalPosition::new(target_x, target_y));
+                let _ =
+                    settings_window.set_position(tauri::LogicalPosition::new(target_x, target_y));
             }
 
             // Create system tray menu
@@ -180,16 +186,14 @@ pub fn run() {
             // Register global shortcuts from settings
             #[cfg(desktop)]
             {
-                use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
                 use shortcut_parser::parse_shortcut;
+                use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
                 // 从设置中读取快捷键配置
                 let shortcuts_config = {
                     let app_state = app.state::<state::AppState>();
                     // 使用 block_on 同步获取设置
-                    match tauri::async_runtime::block_on(
-                        app_state.get_settings.execute()
-                    ) {
+                    match tauri::async_runtime::block_on(app_state.get_settings.execute()) {
                         Ok(settings) => settings.shortcuts,
                         Err(e) => {
                             log::error!("Failed to load shortcuts settings: {}", e);
@@ -205,10 +209,15 @@ pub fn run() {
                 log::info!("  element_scan: {}", shortcuts_config.element_scan);
 
                 // 解析快捷键字符串
-                let toggle_palette_shortcut = match parse_shortcut(&shortcuts_config.toggle_palette) {
+                let toggle_palette_shortcut = match parse_shortcut(&shortcuts_config.toggle_palette)
+                {
                     Ok(s) => s,
                     Err(e) => {
-                        log::error!("Failed to parse toggle_palette shortcut '{}': {}", shortcuts_config.toggle_palette, e);
+                        log::error!(
+                            "Failed to parse toggle_palette shortcut '{}': {}",
+                            shortcuts_config.toggle_palette,
+                            e
+                        );
                         parse_shortcut("F3").unwrap() // fallback
                     }
                 };
@@ -216,7 +225,11 @@ pub fn run() {
                 let screenshot_shortcut = match parse_shortcut(&shortcuts_config.screenshot) {
                     Ok(s) => s,
                     Err(e) => {
-                        log::error!("Failed to parse screenshot shortcut '{}': {}", shortcuts_config.screenshot, e);
+                        log::error!(
+                            "Failed to parse screenshot shortcut '{}': {}",
+                            shortcuts_config.screenshot,
+                            e
+                        );
                         parse_shortcut("Ctrl+4").unwrap() // fallback
                     }
                 };
@@ -224,7 +237,11 @@ pub fn run() {
                 let element_scan_shortcut = match parse_shortcut(&shortcuts_config.element_scan) {
                     Ok(s) => s,
                     Err(e) => {
-                        log::error!("Failed to parse element_scan shortcut '{}': {}", shortcuts_config.element_scan, e);
+                        log::error!(
+                            "Failed to parse element_scan shortcut '{}': {}",
+                            shortcuts_config.element_scan,
+                            e
+                        );
                         parse_shortcut("Ctrl+5").unwrap() // fallback
                     }
                 };
@@ -235,29 +252,46 @@ pub fn run() {
                         .with_handler(move |app_handle, hotkey, event| {
                             if event.state == ShortcutState::Pressed {
                                 if hotkey == &toggle_palette_shortcut {
-                                    if let Some(window) = app_handle.get_webview_window("commandpalette") {
+                                    if let Some(window) =
+                                        app_handle.get_webview_window("commandpalette")
+                                    {
                                         toggle_window(&window);
                                     }
                                 } else if hotkey == &screenshot_shortcut {
                                     let app_handle_clone = app_handle.clone();
                                     tauri::async_runtime::spawn(async move {
-                                        if let Err(e) = commands::create_draw_window(app_handle_clone).await {
+                                        if let Err(e) =
+                                            commands::create_draw_window(app_handle_clone).await
+                                        {
                                             log::error!("Failed to create draw window: {}", e);
                                         }
                                     });
                                 } else if hotkey == &element_scan_shortcut {
                                     // Ctrl+5 作为切换键：如果已打开则关闭，否则打开
-                                    if let Some(window) = app_handle.get_webview_window("elementscan") {
+                                    if let Some(window) =
+                                        app_handle.get_webview_window("elementscan")
+                                    {
                                         if let Ok(is_visible) = window.is_visible() {
                                             if is_visible {
-                                                log::info!("Element scan window is visible, hiding it");
+                                                log::info!(
+                                                    "Element scan window is visible, hiding it"
+                                                );
                                                 let _ = window.hide();
                                             } else {
-                                                log::info!("Element scan window is hidden, showing it");
+                                                log::info!(
+                                                    "Element scan window is hidden, showing it"
+                                                );
                                                 let app_handle_clone = app_handle.clone();
                                                 tauri::async_runtime::spawn(async move {
-                                                    if let Err(e) = commands::start_element_scan(app_handle_clone).await {
-                                                        log::error!("Failed to start element scan: {}", e);
+                                                    if let Err(e) = commands::start_element_scan(
+                                                        app_handle_clone,
+                                                    )
+                                                    .await
+                                                    {
+                                                        log::error!(
+                                                            "Failed to start element scan: {}",
+                                                            e
+                                                        );
                                                     }
                                                 });
                                             }
@@ -271,15 +305,27 @@ pub fn run() {
 
                 // 注册快捷键
                 if let Err(e) = app.global_shortcut().register(toggle_palette_shortcut) {
-                    log::warn!("Failed to register toggle_palette hotkey '{}': {}", shortcuts_config.toggle_palette, e);
+                    log::warn!(
+                        "Failed to register toggle_palette hotkey '{}': {}",
+                        shortcuts_config.toggle_palette,
+                        e
+                    );
                 }
-                
+
                 if let Err(e) = app.global_shortcut().register(screenshot_shortcut) {
-                    log::warn!("Failed to register screenshot hotkey '{}': {}", shortcuts_config.screenshot, e);
+                    log::warn!(
+                        "Failed to register screenshot hotkey '{}': {}",
+                        shortcuts_config.screenshot,
+                        e
+                    );
                 }
-                
+
                 if let Err(e) = app.global_shortcut().register(element_scan_shortcut) {
-                    log::warn!("Failed to register element_scan hotkey '{}': {}", shortcuts_config.element_scan, e);
+                    log::warn!(
+                        "Failed to register element_scan hotkey '{}': {}",
+                        shortcuts_config.element_scan,
+                        e
+                    );
                 }
 
                 log::info!("Global shortcuts registered successfully");
@@ -325,6 +371,8 @@ pub fn run() {
             unpin_window,
             close_window,
             get_window_elements,
+            switch_to_window,
+            close_desktop_window,
             resize_and_center,
             animate_resize_and_center,
             // Permissions commands

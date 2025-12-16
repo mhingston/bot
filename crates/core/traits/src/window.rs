@@ -164,7 +164,7 @@ pub struct WindowInfo {
 
 /// 窗口列表 Port
 ///
-/// 负责获取系统窗口列表
+/// 负责获取系统窗口列表和操作桌面窗口
 ///
 /// **实现者**:
 /// - `WindowListAdapter` (macOS/Windows/Linux)
@@ -172,9 +172,15 @@ pub struct WindowInfo {
 pub trait WindowListPort: Send + Sync {
     /// 获取所有可见窗口的列表
     async fn get_window_list(&self) -> Result<Vec<WindowInfo>, InfrastructureError>;
-    
+
     /// 获取当前活动窗口
     async fn get_active_window(&self) -> Result<Option<WindowInfo>, InfrastructureError>;
+
+    /// 切换到指定窗口（使窗口获得焦点）
+    async fn switch_to_window(&self, window_id: u32) -> Result<(), InfrastructureError>;
+
+    /// 关闭桌面窗口
+    async fn close_desktop_window(&self, window_id: u32) -> Result<(), InfrastructureError>;
 }
 
 /// 窗口布局信息（大小和位置，逻辑像素）
@@ -205,10 +211,16 @@ pub struct MonitorInfo {
 #[async_trait]
 pub trait WindowLayoutPort: Send + Sync {
     /// 获取窗口当前布局（逻辑像素）
-    async fn get_window_layout(&self, window_id: &WindowId) -> Result<WindowLayout, InfrastructureError>;
+    async fn get_window_layout(
+        &self,
+        window_id: &WindowId,
+    ) -> Result<WindowLayout, InfrastructureError>;
 
     /// 获取当前显示器信息
-    async fn get_monitor_info(&self, window_id: &WindowId) -> Result<MonitorInfo, InfrastructureError>;
+    async fn get_monitor_info(
+        &self,
+        window_id: &WindowId,
+    ) -> Result<MonitorInfo, InfrastructureError>;
 
     /// 设置窗口布局（逻辑像素）
     async fn set_window_layout(

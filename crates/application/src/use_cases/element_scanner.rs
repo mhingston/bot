@@ -17,19 +17,12 @@ impl ScanElementsUseCase {
     pub async fn execute(&self) -> Result<Vec<ScannableElementDto>, UseCaseError> {
         log::info!("[ScanElementsUseCase] Executing element scan");
 
-        let elements = self
-            .scanner
-            .scan_elements()
-            .await
-            .map_err(|e| {
-                log::error!("[ScanElementsUseCase] Failed to scan elements: {}", e);
-                UseCaseError::from(e)
-            })?;
+        let elements = self.scanner.scan_elements().await.map_err(|e| {
+            log::error!("[ScanElementsUseCase] Failed to scan elements: {}", e);
+            UseCaseError::from(e)
+        })?;
 
-        log::info!(
-            "[ScanElementsUseCase] Successfully scanned {} elements",
-            elements.len()
-        );
+        log::info!("[ScanElementsUseCase] Successfully scanned {} elements", elements.len());
 
         Ok(elements.into_iter().map(Into::into).collect())
     }
@@ -48,17 +41,10 @@ impl ClickElementUseCase {
     pub async fn execute(&self, element_id: &str) -> Result<(), UseCaseError> {
         log::info!("[ClickElementUseCase] Clicking element: {}", element_id);
 
-        self.scanner
-            .click_element(element_id)
-            .await
-            .map_err(|e| {
-                log::error!(
-                    "[ClickElementUseCase] Failed to click element '{}': {}",
-                    element_id,
-                    e
-                );
-                UseCaseError::from(e)
-            })?;
+        self.scanner.click_element(element_id).await.map_err(|e| {
+            log::error!("[ClickElementUseCase] Failed to click element '{}': {}", element_id, e);
+            UseCaseError::from(e)
+        })?;
 
         log::info!("[ClickElementUseCase] Successfully clicked element: {}", element_id);
         Ok(())
@@ -78,17 +64,10 @@ impl FocusElementUseCase {
     pub async fn execute(&self, element_id: &str) -> Result<(), UseCaseError> {
         log::info!("[FocusElementUseCase] Focusing element: {}", element_id);
 
-        self.scanner
-            .focus_element(element_id)
-            .await
-            .map_err(|e| {
-                log::error!(
-                    "[FocusElementUseCase] Failed to focus element '{}': {}",
-                    element_id,
-                    e
-                );
-                UseCaseError::from(e)
-            })?;
+        self.scanner.focus_element(element_id).await.map_err(|e| {
+            log::error!("[FocusElementUseCase] Failed to focus element '{}': {}", element_id, e);
+            UseCaseError::from(e)
+        })?;
 
         log::info!("[FocusElementUseCase] Successfully focused element: {}", element_id);
         Ok(())
@@ -140,30 +119,24 @@ impl TriggerElementActionUseCase {
 
         match action_type {
             ElementActionType::Click => {
-                self.scanner
-                    .click_element(element_id)
-                    .await
-                    .map_err(|e| {
-                        log::error!(
-                            "[TriggerElementActionUseCase] Failed to click element '{}': {}",
-                            element_id,
-                            e
-                        );
-                        UseCaseError::from(e)
-                    })?;
+                self.scanner.click_element(element_id).await.map_err(|e| {
+                    log::error!(
+                        "[TriggerElementActionUseCase] Failed to click element '{}': {}",
+                        element_id,
+                        e
+                    );
+                    UseCaseError::from(e)
+                })?;
             }
             ElementActionType::Focus => {
-                self.scanner
-                    .focus_element(element_id)
-                    .await
-                    .map_err(|e| {
-                        log::error!(
-                            "[TriggerElementActionUseCase] Failed to focus element '{}': {}",
-                            element_id,
-                            e
-                        );
-                        UseCaseError::from(e)
-                    })?;
+                self.scanner.focus_element(element_id).await.map_err(|e| {
+                    log::error!(
+                        "[TriggerElementActionUseCase] Failed to focus element '{}': {}",
+                        element_id,
+                        e
+                    );
+                    UseCaseError::from(e)
+                })?;
             }
         }
 
@@ -175,4 +148,3 @@ impl TriggerElementActionUseCase {
         Ok(())
     }
 }
-

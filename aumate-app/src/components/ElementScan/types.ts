@@ -12,4 +12,3 @@ export interface ScannableElement {
   title: string | null;
   label: string;
 }
-

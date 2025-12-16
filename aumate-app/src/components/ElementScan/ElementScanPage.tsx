@@ -18,8 +18,9 @@ export const ElementScanPage: React.FC = () => {
       setError(null);
       console.log("[ElementScan] Starting element scan...");
 
-      const scannedElements =
-        await invoke<ScannableElement[]>("scan_screen_elements");
+      const scannedElements = await invoke<ScannableElement[]>(
+        "scan_screen_elements",
+      );
 
       console.log(
         `[ElementScan] Found ${scannedElements.length} elements:`,
@@ -39,8 +40,7 @@ export const ElementScanPage: React.FC = () => {
     async (elementId: string, elementType: string) => {
       try {
         // 根据元素类型决定操作
-        const actionType =
-          elementType === "InputField" ? "focus" : "click";
+        const actionType = elementType === "InputField" ? "focus" : "click";
 
         console.log(
           `[ElementScan] Triggering ${actionType} on element:`,
@@ -104,7 +104,7 @@ export const ElementScanPage: React.FC = () => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       console.log("[ElementScan] KeyDown event:", e.key, e.code, e);
-      
+
       // 按 Escape 关闭窗口
       if (e.key === "Escape" || e.code === "Escape") {
         console.log("[ElementScan] ESC pressed, closing window");
@@ -154,10 +154,7 @@ export const ElementScanPage: React.FC = () => {
   }, [scanElements]);
 
   return (
-    <div
-      className="fixed inset-0 bg-black/20"
-      style={{ cursor: "crosshair" }}
-    >
+    <div className="fixed inset-0 bg-black/20" style={{ cursor: "crosshair" }}>
       {/* 加载中提示 */}
       {isScanning && (
         <div className="fixed top-8 left-1/2 transform -translate-x-1/2 z-[20000]">
@@ -219,4 +216,3 @@ export const ElementScanPage: React.FC = () => {
     </div>
   );
 };
-

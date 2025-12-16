@@ -51,12 +51,8 @@ impl ResizeAndCenterUseCase {
         );
 
         // Set new layout
-        let layout = WindowLayout {
-            width: target_width,
-            height: target_height,
-            x: target_x,
-            y: target_y,
-        };
+        let layout =
+            WindowLayout { width: target_width, height: target_height, x: target_x, y: target_y };
 
         self.layout_port.set_window_layout(&window_id, layout).await?;
 
@@ -142,11 +138,7 @@ impl AnimateResizeAndCenterUseCase {
 
         // Easing function (easeInOutCubic)
         let ease_in_out_cubic = |t: f64| -> f64 {
-            if t < 0.5 {
-                4.0 * t * t * t
-            } else {
-                1.0 - (-2.0 * t + 2.0).powi(3) / 2.0
-            }
+            if t < 0.5 { 4.0 * t * t * t } else { 1.0 - (-2.0 * t + 2.0).powi(3) / 2.0 }
         };
 
         // Execute animation
@@ -167,9 +159,7 @@ impl AnimateResizeAndCenterUseCase {
                 y: frame_y.round(),
             };
 
-            self.layout_port
-                .set_window_layout(&window_id, frame_layout)
-                .await?;
+            self.layout_port.set_window_layout(&window_id, frame_layout).await?;
 
             // Wait for next frame
             if frame < total_frames {
@@ -178,16 +168,10 @@ impl AnimateResizeAndCenterUseCase {
         }
 
         // Ensure final state is exact
-        let final_layout = WindowLayout {
-            width: target_width,
-            height: target_height,
-            x: target_x,
-            y: target_y,
-        };
+        let final_layout =
+            WindowLayout { width: target_width, height: target_height, x: target_x, y: target_y };
 
-        self.layout_port
-            .set_window_layout(&window_id, final_layout)
-            .await?;
+        self.layout_port.set_window_layout(&window_id, final_layout).await?;
 
         log::info!("Animation completed successfully");
         Ok(())

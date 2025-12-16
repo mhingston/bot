@@ -68,18 +68,9 @@ impl MonitorInfo {
         let height = monitor.height().unwrap_or(0);
         let scale_factor = monitor.scale_factor().unwrap_or(1.0);
 
-        let monitor_rect = Rectangle::from_bounds(
-            x,
-            y,
-            x + width as i32,
-            y + height as i32,
-        );
+        let monitor_rect = Rectangle::from_bounds(x, y, x + width as i32, y + height as i32);
 
-        MonitorInfo {
-            monitor: monitor.clone(),
-            rect: monitor_rect,
-            scale_factor,
-        }
+        MonitorInfo { monitor: monitor.clone(), rect: monitor_rect, scale_factor }
     }
 
     pub fn get_monitor_crop_region(&self, crop_region: Rectangle) -> Rectangle {

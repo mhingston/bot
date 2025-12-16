@@ -11,11 +11,11 @@ pub async fn create_draw_window(app: AppHandle) -> Result<(), String> {
         log::info!("Draw window exists, showing it");
         let _ = window.show();
         let _ = window.set_focus();
-        
+
         // 重新设置窗口层级以覆盖菜单栏和 Dock
         #[cfg(target_os = "macos")]
         set_window_above_menubar(&window)?;
-        
+
         let _ = window.emit("start-screenshot", ());
         return Ok(());
     }
@@ -45,25 +45,21 @@ pub async fn create_draw_window(app: AppHandle) -> Result<(), String> {
     );
 
     // 创建新窗口
-    let window = WebviewWindowBuilder::new(
-        &app,
-        "draw",
-        WebviewUrl::App("pages/draw.html".into()),
-    )
-    .title("Screenshot Editor")
-    .position(logical_x, logical_y)
-    .inner_size(logical_width, logical_height)
-    .decorations(false)
-    .transparent(true)
-    .resizable(false)
-    .maximizable(false)
-    .minimizable(false)
-    .shadow(false)
-    .skip_taskbar(true)
-    .always_on_top(true)
-    .focused(true)
-    .build()
-    .map_err(|e| format!("Failed to create window: {}", e))?;
+    let window = WebviewWindowBuilder::new(&app, "draw", WebviewUrl::App("pages/draw.html".into()))
+        .title("Screenshot Editor")
+        .position(logical_x, logical_y)
+        .inner_size(logical_width, logical_height)
+        .decorations(false)
+        .transparent(true)
+        .resizable(false)
+        .maximizable(false)
+        .minimizable(false)
+        .shadow(false)
+        .skip_taskbar(true)
+        .always_on_top(true)
+        .focused(true)
+        .build()
+        .map_err(|e| format!("Failed to create window: {}", e))?;
 
     // macOS: 设置窗口层级以覆盖菜单栏和 Dock
     #[cfg(target_os = "macos")]
@@ -80,25 +76,27 @@ pub async fn create_draw_window(app: AppHandle) -> Result<(), String> {
 fn set_window_above_menubar(window: &tauri::WebviewWindow) -> Result<(), String> {
     use cocoa::appkit::{NSMainMenuWindowLevel, NSWindow, NSWindowCollectionBehavior};
     use cocoa::base::id;
-    
+
     // 获取 NSWindow 指针，转换为 usize 以便在线程间传递
-    let ns_window_ptr = window.ns_window()
-        .map_err(|e| format!("Failed to get NSWindow: {:?}", e))? as usize;
-    
-    window.run_on_main_thread(move || unsafe {
-        let ns_window = ns_window_ptr as id;
-        
-        // 设置窗口层级高于菜单栏
-        // NSMainMenuWindowLevel = 24, 我们使用 25 确保覆盖所有
-        ns_window.setLevel_((NSMainMenuWindowLevel + 1) as i64);
-        
-        // 设置窗口行为：可以出现在所有空间、静止、全屏辅助
-        let behavior = NSWindowCollectionBehavior::NSWindowCollectionBehaviorCanJoinAllSpaces
-            | NSWindowCollectionBehavior::NSWindowCollectionBehaviorStationary
-            | NSWindowCollectionBehavior::NSWindowCollectionBehaviorFullScreenAuxiliary;
-        
-        ns_window.setCollectionBehavior_(behavior);
-    }).map_err(|e| format!("Failed to set window level: {:?}", e))
+    let ns_window_ptr =
+        window.ns_window().map_err(|e| format!("Failed to get NSWindow: {:?}", e))? as usize;
+
+    window
+        .run_on_main_thread(move || unsafe {
+            let ns_window = ns_window_ptr as id;
+
+            // 设置窗口层级高于菜单栏
+            // NSMainMenuWindowLevel = 24, 我们使用 25 确保覆盖所有
+            ns_window.setLevel_((NSMainMenuWindowLevel + 1) as i64);
+
+            // 设置窗口行为：可以出现在所有空间、静止、全屏辅助
+            let behavior = NSWindowCollectionBehavior::NSWindowCollectionBehaviorCanJoinAllSpaces
+                | NSWindowCollectionBehavior::NSWindowCollectionBehaviorStationary
+                | NSWindowCollectionBehavior::NSWindowCollectionBehaviorFullScreenAuxiliary;
+
+            ns_window.setCollectionBehavior_(behavior);
+        })
+        .map_err(|e| format!("Failed to set window level: {:?}", e))
 }
 
 /// 关闭截图窗口
@@ -107,11 +105,8 @@ pub async fn close_draw_window(app: AppHandle) -> Result<(), String> {
     log::info!("API: close_draw_window called");
 
     if let Some(window) = app.get_webview_window("draw") {
-        window
-            .destroy()
-            .map_err(|e| format!("Failed to destroy window: {}", e))?;
+        window.destroy().map_err(|e| format!("Failed to destroy window: {}", e))?;
     }
 
     Ok(())
 }
-
