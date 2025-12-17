@@ -34,7 +34,7 @@
         "center": true,
         "alwaysOnTop": true,
         "skipTaskbar": true,
-        "shadow": false
+        "shadow": true
       },
       {
         "label": "elementscan",

@@ -5,12 +5,6 @@ use tauri::{
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
 };
 
-#[cfg(target_os = "windows")]
-use window_vibrancy::apply_acrylic;
-
-#[cfg(target_os = "macos")]
-use window_vibrancy::{NSVisualEffectMaterial, apply_vibrancy};
-
 // Import commands and state management
 mod commands;
 mod setup;
@@ -82,36 +76,54 @@ pub fn run() {
             // Setup application state with AppHandle for global shortcut management
             let app_state = setup_application(app.handle().clone());
             app.manage(app_state);
-            // Apply vibrancy to commandpalette window
-            let commandpalette_window = app.get_webview_window("commandpalette").unwrap();
-            #[cfg(target_os = "windows")]
+
+            // Apply platform-specific vibrancy effects at runtime
+            // This is more explicit than using windowEffects in tauri.conf.json
+            // which only supports a single effect configuration for all platforms
             {
-                apply_acrylic(&commandpalette_window, Some((0, 0, 0, 50)))
-                    .expect("Failed to apply mica effect to commandpalette");
-            }
-            #[cfg(target_os = "macos")]
-            {
-                apply_vibrancy(
-                    &commandpalette_window,
-                    NSVisualEffectMaterial::HudWindow,
-                    None,
-                    None,
-                )
-                .expect("Failed to apply vibrancy to commandpalette");
+                use tauri::utils::config::WindowEffectsConfig;
+                use tauri::window::Effect;
+
+                #[cfg(target_os = "windows")]
+                let effects = {
+                    use tauri::utils::config::Color;
+                    WindowEffectsConfig {
+                        effects: vec![Effect::Acrylic],
+                        state: None,
+                        radius: Some(12.0),
+                        color: Some(Color(0, 0, 0, 50)), // Semi-transparent black
+                    }
+                };
+
+                #[cfg(target_os = "macos")]
+                let effects = WindowEffectsConfig {
+                    effects: vec![Effect::HudWindow],
+                    state: None,
+                    radius: Some(12.0),
+                    color: None,
+                };
+
+                #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+                let effects = WindowEffectsConfig {
+                    effects: vec![],
+                    state: None,
+                    radius: None,
+                    color: None,
+                };
+
+                // Apply to settings window
+                if let Some(window) = app.get_webview_window("settings") {
+                    let _ = window.set_effects(effects.clone());
+                }
+
+                // Apply to commandpalette window
+                if let Some(window) = app.get_webview_window("commandpalette") {
+                    let _ = window.set_effects(effects);
+                }
             }
 
-            // Apply vibrancy to settings window
+            // Get settings window for centering
             let settings_window = app.get_webview_window("settings").unwrap();
-            #[cfg(target_os = "windows")]
-            {
-                apply_acrylic(&settings_window, Some((0, 0, 0, 50)))
-                    .expect("Failed to apply mica effect to settings");
-            }
-            #[cfg(target_os = "macos")]
-            {
-                apply_vibrancy(&settings_window, NSVisualEffectMaterial::HudWindow, None, None)
-                    .expect("Failed to apply vibrancy to settings");
-            }
 
             // 确保窗口正确居中
             if let Ok(Some(monitor)) = settings_window.current_monitor() {
@@ -375,6 +387,7 @@ pub fn run() {
             close_desktop_window,
             resize_and_center,
             animate_resize_and_center,
+            set_window_vibrancy,
             // Permissions commands
             commands::permissions::check_permissions,
             commands::permissions::request_screen_recording_permission,
