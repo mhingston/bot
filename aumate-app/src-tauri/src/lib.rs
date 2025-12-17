@@ -73,6 +73,19 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .setup(|app| {
+            // Set Windows App User Model ID for proper process identification in Task Manager
+            #[cfg(windows)]
+            {
+                use windows::core::HSTRING;
+                use windows::Win32::UI::Shell::SetCurrentProcessExplicitAppUserModelID;
+
+                let app_id = HSTRING::from("com.zhanglin.aumate");
+                unsafe {
+                    let _ = SetCurrentProcessExplicitAppUserModelID(&app_id);
+                }
+                log::info!("Set Windows AppUserModelID to: com.zhanglin.aumate");
+            }
+
             // Setup application state with AppHandle for global shortcut management
             let app_state = setup_application(app.handle().clone());
             app.manage(app_state);

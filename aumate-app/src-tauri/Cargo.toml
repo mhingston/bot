@@ -46,7 +46,8 @@ windows = { workspace = true, features = [
     "Win32_UI_WindowsAndMessaging",
     "Win32_Foundation",
     "Win32_Graphics_Dwm",
-    "Win32_UI_Accessibility"
+    "Win32_UI_Accessibility",
+    "Win32_UI_Shell"
 ] }
 
 # macOS-specific dependencies
