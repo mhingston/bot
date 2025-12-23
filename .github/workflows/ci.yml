@@ -63,9 +63,9 @@ jobs:
             libxdo-dev
 
       - name: Install dependencies
-        # Use --ignore-optional to skip platform-specific @tego/bot-* packages
+        # Use --no-optional to skip platform-specific @tego/bot-* packages
         # which are only published during releases and don't exist during CI
-        run: pnpm install -r --ignore-optional
+        run: pnpm install -r --no-optional
 
       - name: Build
         run: pnpm build
